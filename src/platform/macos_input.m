@@ -1,0 +1,143 @@
+#include "macos_internal.h"
+#include "macos_keys.h"
+
+#ifdef __APPLE__
+#include <ApplicationServices/ApplicationServices.h>
+#include <SDL3/SDL.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdatomic.h>
+#include <string.h>
+
+typedef struct MacInputState {
+    BongoPlatform *platform;
+    SDL_Thread *thread;
+    SDL_Semaphore *ready;
+    CFMachPortRef tap;
+    CFRunLoopSourceRef source;
+    CFRunLoopRef loop;
+    atomic_bool supported;
+} MacInputState;
+
+static atomic_bool global_supported = ATOMIC_VAR_INIT(false);
+
+static void push(MacInputState *state, BongoInputKind kind,
+    const char *name, float value) {
+    if (!state || !name) return;
+    BongoInputEvent input = {.kind = kind, .timestamp_ms = SDL_GetTicks(), .value = value};
+    snprintf(input.name, sizeof(input.name), "%s", name);
+    if (bongo_input_push(state->platform->input, &input)) {
+        SDL_Event wake = {.type = SDL_EVENT_USER};
+        SDL_PushEvent(&wake);
+    }
+}
+
+static CGEventFlags modifier_flag(CGKeyCode code) {
+    if (code == 56 || code == 60) return kCGEventFlagMaskShift;
+    if (code == 59 || code == 62) return kCGEventFlagMaskControl;
+    if (code == 58 || code == 61) return kCGEventFlagMaskAlternate;
+    if (code == 54 || code == 55) return kCGEventFlagMaskCommand;
+    if (code == 57) return kCGEventFlagMaskAlphaShift;
+    return 0;
+}
+
+static CGEventRef event_tap(CGEventTapProxy proxy, CGEventType type,
+    CGEventRef event, void *userdata) {
+    (void)proxy;
+    MacInputState *state = userdata;
+    if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
+        if (state->tap) CGEventTapEnable(state->tap, true);
+        return event;
+    }
+    if (type == kCGEventMouseMoved || type == kCGEventLeftMouseDragged ||
+        type == kCGEventRightMouseDragged || type == kCGEventOtherMouseDragged) {
+        CGPoint point = CGEventGetLocation(event);
+        bongo_input_mouse(state->platform->input, point.x, point.y);
+        return event;
+    }
+    if (type == kCGEventKeyDown || type == kCGEventKeyUp || type == kCGEventFlagsChanged) {
+        CGKeyCode code = (CGKeyCode)CGEventGetIntegerValueField(event,
+            kCGKeyboardEventKeycode);
+        char buffer[16]; const char *name = bongo_macos_key_name(code, buffer);
+        bool down = type == kCGEventKeyDown;
+        if (type == kCGEventFlagsChanged) {
+            CGEventFlags flag = modifier_flag(code);
+            down = flag && (CGEventGetFlags(event) & flag) != 0;
+        }
+        if (name) push(state, down ? BONGO_INPUT_KEY_DOWN : BONGO_INPUT_KEY_UP,
+            name, down ? 1.0f : 0.0f);
+        return event;
+    }
+    const char *name = type == kCGEventLeftMouseDown || type == kCGEventLeftMouseUp
+        ? "Left" : type == kCGEventRightMouseDown || type == kCGEventRightMouseUp
+        ? "Right" : "Middle";
+    bool down = type == kCGEventLeftMouseDown || type == kCGEventRightMouseDown ||
+        type == kCGEventOtherMouseDown;
+    push(state, down ? BONGO_INPUT_MOUSE_DOWN : BONGO_INPUT_MOUSE_UP,
+        name, down ? 1.0f : 0.0f);
+    return event;
+}
+
+static int SDLCALL input_thread(void *userdata) {
+    MacInputState *state = userdata;
+    @autoreleasepool {
+        CGEventMask mask = CGEventMaskBit(kCGEventKeyDown) |
+            CGEventMaskBit(kCGEventKeyUp) | CGEventMaskBit(kCGEventFlagsChanged) |
+            CGEventMaskBit(kCGEventLeftMouseDown) | CGEventMaskBit(kCGEventLeftMouseUp) |
+            CGEventMaskBit(kCGEventRightMouseDown) | CGEventMaskBit(kCGEventRightMouseUp) |
+            CGEventMaskBit(kCGEventOtherMouseDown) | CGEventMaskBit(kCGEventOtherMouseUp) |
+            CGEventMaskBit(kCGEventMouseMoved) | CGEventMaskBit(kCGEventLeftMouseDragged) |
+            CGEventMaskBit(kCGEventRightMouseDragged) | CGEventMaskBit(kCGEventOtherMouseDragged);
+        state->tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap,
+            kCGEventTapOptionListenOnly, mask, event_tap, state);
+        if (state->tap) {
+            state->source = CFMachPortCreateRunLoopSource(NULL, state->tap, 0);
+            state->loop = CFRunLoopGetCurrent(); CFRetain(state->loop);
+            CFRunLoopAddSource(state->loop, state->source, kCFRunLoopCommonModes);
+            CGEventTapEnable(state->tap, true);
+            atomic_store(&state->supported, true);
+            atomic_store(&global_supported, true);
+        }
+        SDL_SignalSemaphore(state->ready);
+        if (atomic_load(&state->supported)) CFRunLoopRun();
+        if (state->source) CFRelease(state->source);
+        if (state->tap) CFRelease(state->tap);
+        if (state->loop) CFRelease(state->loop);
+    }
+    return 0;
+}
+
+bool bongo_macos_input_start(BongoPlatform *platform, BongoError *error) {
+    if (@available(macOS 10.15, *)) {
+        if (!CGPreflightListenEventAccess()) CGRequestListenEventAccess();
+    }
+    MacInputState *state = calloc(1, sizeof(*state));
+    if (!state) return false;
+    state->platform = platform;
+    atomic_init(&state->supported, false);
+    state->ready = SDL_CreateSemaphore(0);
+    state->thread = state->ready ? SDL_CreateThread(input_thread,
+        "bongo-macos-input", state) : NULL;
+    platform->native = state;
+    if (!state->thread || !SDL_WaitSemaphoreTimeout(state->ready, 3000) ||
+        !atomic_load(&state->supported)) {
+        bongo_error_set(error, BONGO_ERROR_PLATFORM,
+            "macOS input monitoring permission is required for global input");
+        return false;
+    }
+    return true;
+}
+
+void bongo_macos_input_stop(BongoPlatform *platform) {
+    MacInputState *state = platform ? platform->native : NULL;
+    if (!state) return;
+    if (state->loop) CFRunLoopStop(state->loop);
+    if (state->thread) SDL_WaitThread(state->thread, NULL);
+    if (state->ready) SDL_DestroySemaphore(state->ready);
+    free(state);
+    platform->native = NULL;
+    atomic_store(&global_supported, false);
+}
+
+bool bongo_macos_input_supported(void) { return atomic_load(&global_supported); }
+#endif

@@ -1,0 +1,17 @@
+#include "test.h"
+
+int bongo_test_failures;
+
+int main(void) {
+    test_config();
+    test_input();
+    test_models();
+    test_shortcut();
+    test_update();
+    if (bongo_test_failures) {
+        fprintf(stderr, "%d checks failed\n", bongo_test_failures);
+        return 1;
+    }
+    puts("all core checks passed");
+    return 0;
+}
