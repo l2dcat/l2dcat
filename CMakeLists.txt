@@ -215,7 +215,15 @@ if(WIN32)
   add_custom_target(l2dcat_asset_pack DEPENDS "${L2DCAT_ASSET_PACK}")
   file(TO_CMAKE_PATH "${L2DCAT_ASSET_PACK}" L2DCAT_ASSET_PACK_RC)
   file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico" L2DCAT_ICON_RC)
-  file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/windows.manifest" L2DCAT_MANIFEST_RC)
+  set(L2DCAT_WINDOWS_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/windows.manifest")
+  if(MSVC)
+    set(L2DCAT_MANIFEST_RESOURCE "")
+    target_link_options(l2dcat PRIVATE "/MANIFEST:EMBED"
+      "/MANIFESTINPUT:${L2DCAT_WINDOWS_MANIFEST}")
+  else()
+    file(TO_CMAKE_PATH "${L2DCAT_WINDOWS_MANIFEST}" L2DCAT_MANIFEST_RC)
+    set(L2DCAT_MANIFEST_RESOURCE "1 RT_MANIFEST \"${L2DCAT_MANIFEST_RC}\"")
+  endif()
   configure_file(cmake/windows_resources.rc.in
     "${CMAKE_CURRENT_BINARY_DIR}/windows_resources.rc" @ONLY)
   set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/windows_resources.rc"
