@@ -42,6 +42,8 @@ set(BUILD_UTILS OFF CACHE BOOL "" FORCE)
 add_subdirectory("${CUBISM_GLEW_PATH}/build/cmake" "${CMAKE_BINARY_DIR}/cubism-glew")
 set(FRAMEWORK_SOURCE OpenGL)
 add_subdirectory("${CUBISM_FRAMEWORK_PATH}" "${CMAKE_BINARY_DIR}/cubism-framework")
+include(cmake/CubismShaderOptimize.cmake)
+l2dcat_optimize_cubism_shaders(Framework)
 
 if(WIN32)
   target_compile_definitions(Framework PUBLIC CSM_TARGET_WIN_GL)

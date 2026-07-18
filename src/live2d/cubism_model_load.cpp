@@ -3,7 +3,10 @@
 #include "l2dcat/image.h"
 
 #include <Effect/CubismEyeBlink.hpp>
+#include <Effect/CubismBreath.hpp>
+#include <Id/CubismIdManager.hpp>
 #include <Motion/CubismExpressionUpdater.hpp>
+#include <Motion/CubismBreathUpdater.hpp>
 #include <Motion/CubismEyeBlinkUpdater.hpp>
 #include <Motion/CubismMotion.hpp>
 #include <Motion/CubismPhysicsUpdater.hpp>
@@ -124,6 +127,21 @@ void NativeModel::load_effects() {
         auto bytes = read(path(setting_->GetUserDataFile()));
         if (!bytes.empty()) LoadUserData(bytes.data(), (Csm::csmSizeInt)bytes.size());
     }
+    Csm::csmVector<Csm::CubismBreath::BreathParameterData> breath;
+    auto *ids = Csm::CubismFramework::GetIdManager();
+    breath.PushBack(Csm::CubismBreath::BreathParameterData(
+        ids->GetId("ParamAngleX"), 0.0f, 15.0f, 6.5345f, 0.5f));
+    breath.PushBack(Csm::CubismBreath::BreathParameterData(
+        ids->GetId("ParamAngleY"), 0.0f, 8.0f, 3.5345f, 0.5f));
+    breath.PushBack(Csm::CubismBreath::BreathParameterData(
+        ids->GetId("ParamAngleZ"), 0.0f, 10.0f, 5.5345f, 0.5f));
+    breath.PushBack(Csm::CubismBreath::BreathParameterData(
+        ids->GetId("ParamBodyAngleX"), 0.0f, 4.0f, 15.5345f, 0.5f));
+    breath.PushBack(Csm::CubismBreath::BreathParameterData(
+        ids->GetId("ParamBreath"), 0.5f, 0.5f, 3.2345f, 0.5f));
+    _breath = Csm::CubismBreath::Create();
+    _breath->SetParameters(breath);
+    _updateScheduler.AddUpdatableList(CSM_NEW Csm::CubismBreathUpdater(*_breath));
     for (int i = 0; i < setting_->GetEyeBlinkParameterCount(); ++i)
         eye_blink_ids_.PushBack(setting_->GetEyeBlinkParameterId(i));
     for (int i = 0; i < setting_->GetLipSyncParameterCount(); ++i)

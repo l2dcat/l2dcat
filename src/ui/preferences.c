@@ -135,7 +135,7 @@ static void SDLCALL model_imported(void *userdata, const char *const *files,
     L2DCatPreferences *value = userdata;
     value->import_dialog_open = false;
     if (!files || !files[0]) return;
-    l2dcat_preferences_import_path(value->app, value->window, files[0]);
+    for (size_t i = 0; files[i]; ++i) l2dcat_preferences_import_path(value->app, value->window, files[i]);
 }
 
 bool l2dcat_preferences_visible(const L2DCatPreferences *value) {
@@ -284,7 +284,7 @@ void l2dcat_preferences_render(L2DCatPreferences *value) {
     if (value->import_requested && !value->import_dialog_open) {
         value->import_requested = false;
         value->import_dialog_open = true;
-        SDL_ShowOpenFolderDialog(model_imported, value, value->window, NULL, false);
+        SDL_ShowOpenFolderDialog(model_imported, value, value->window, NULL, true);
     }
     if (value->font_language != value->app->config.app.language) {
         L2DCatError error = {0};

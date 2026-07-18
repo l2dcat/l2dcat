@@ -117,6 +117,7 @@ add_library(l2dcat_runtime STATIC
   src/runtime/tray.c
   src/runtime/update.c
   src/runtime/window.c
+  src/runtime/window_hit.c
   src/ui/nuklear_impl.c
   src/ui/ui_backend.c
   src/ui/ui_font.c

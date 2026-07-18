@@ -148,8 +148,6 @@ static bool valid_manifest(const char *root, const char *setting, L2DCatError *e
     size_t index, maximum; yyjson_val *texture;
     yyjson_arr_foreach(textures, index, maximum, texture)
         valid = valid && referenced_file(root, yyjson_get_str(texture));
-    valid = valid && referenced_file(root, "resources/background.png") &&
-        referenced_file(root, "resources/cover.png");
     yyjson_doc_free(document);
     if (!valid) l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
         "Model manifest or referenced assets are invalid");

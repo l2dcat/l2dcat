@@ -53,6 +53,8 @@ private:
     int height_ = 354;
     bool motion_updated_ = false;
     bool mirror_ = false;
+    bool external_parameters_dirty_ = false;
+    float accumulated_seconds_ = 0.0f;
     float opacity_snapshot_ = -1.0f;
 };
 

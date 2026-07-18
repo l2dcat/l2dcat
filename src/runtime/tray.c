@@ -17,6 +17,9 @@ struct L2DCatTray {
     SDL_TrayEntry *preferences;
     SDL_TrayEntry *exit;
     L2DCatImage icon;
+    bool state_valid;
+    bool last_visible, last_pass_through, last_always_on_top;
+    L2DCatLanguage last_language;
 };
 
 static void on_visible(void *userdata, SDL_TrayEntry *entry) {
@@ -109,6 +112,16 @@ L2DCatTray *l2dcat_tray_create(L2DCatApp *app, L2DCatError *error) {
 
 void l2dcat_tray_sync(L2DCatTray *tray) {
     if (!tray) return;
+    L2DCatApp *app = tray->app;
+    if (tray->state_valid && tray->last_visible == app->config.window.visible &&
+        tray->last_pass_through == app->config.window.pass_through &&
+        tray->last_always_on_top == app->config.window.always_on_top &&
+        tray->last_language == app->config.app.language) return;
+    tray->state_valid = true;
+    tray->last_visible = app->config.window.visible;
+    tray->last_pass_through = app->config.window.pass_through;
+    tray->last_always_on_top = app->config.window.always_on_top;
+    tray->last_language = app->config.app.language;
     SDL_SetTrayEntryChecked(tray->visible, tray->app->config.window.visible);
     SDL_SetTrayEntryChecked(tray->pass_through, tray->app->config.window.pass_through);
     SDL_SetTrayEntryChecked(tray->always_on_top, tray->app->config.window.always_on_top);

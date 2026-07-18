@@ -34,6 +34,13 @@ static bool changed(std::vector<float> &snapshot, int count, Getter value) {
 
 bool NativeModel::update(float delta_seconds) {
     if (!_model) return false;
+    accumulated_seconds_ += delta_seconds;
+    bool active = external_parameters_dirty_ || !_motionManager->IsFinished() ||
+        !_expressionManager->IsFinished();
+    if (!active && accumulated_seconds_ < 0.03f) return false;
+    delta_seconds = accumulated_seconds_;
+    accumulated_seconds_ = 0.0f;
+    external_parameters_dirty_ = false;
     motion_updated_ = false;
     _model->LoadParameters();
     if (!_motionManager->IsFinished())
@@ -78,6 +85,7 @@ bool NativeModel::set_parameter(const char *id, float value) {
     if (index < 0 || index >= _model->GetParameterCount()) return false;
     _model->SetParameterValue(index, value);
     _model->SaveParameters();
+    external_parameters_dirty_ = true;
     return true;
 }
 

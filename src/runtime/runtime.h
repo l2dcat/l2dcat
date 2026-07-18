@@ -15,6 +15,7 @@ void l2dcat_app_locate_assets(L2DCatApp *app);
 void l2dcat_window_destroy(L2DCatApp *app);
 void l2dcat_window_apply(L2DCatApp *app);
 bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event);
+bool l2dcat_window_visible_at_pointer(L2DCatApp *app, float x, float y);
 const char *l2dcat_gamepad_axis_name(Uint8 axis);
 const char *l2dcat_gamepad_button_name(Uint8 button);
 void l2dcat_gamepads_set_enabled(L2DCatApp *app, bool enabled);

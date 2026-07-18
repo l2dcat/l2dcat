@@ -88,6 +88,21 @@ static void resize_by_pointer(L2DCatApp *app, const SDL_Event *event) {
     SDL_SetWindowSize(app->window, app->config.window.width, app->config.window.height);
 }
 
+static void begin_drag_candidate(L2DCatApp *app, const SDL_MouseButtonEvent *event) {
+    app->drag_candidate = l2dcat_window_visible_at_pointer(app, event->x, event->y);
+    app->drag_start_x = event->x;
+    app->drag_start_y = event->y;
+}
+
+static void update_drag_candidate(L2DCatApp *app, const SDL_MouseMotionEvent *event) {
+    if (!app->drag_candidate) return;
+    if (!(event->state & SDL_BUTTON_LMASK)) { app->drag_candidate = false; return; }
+    float x = event->x - app->drag_start_x, y = event->y - app->drag_start_y;
+    if (x * x + y * y < 9.0f) return;
+    app->drag_candidate = false;
+    l2dcat_platform_begin_drag(&app->platform);
+}
+
 static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
     return l2dcat_i18n_get(app->i18n, key, fallback);
 }
@@ -246,9 +261,13 @@ bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
         clamp_to_display(app);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         event->button.button == SDL_BUTTON_LEFT) {
-        l2dcat_platform_begin_drag(&app->platform);
+        begin_drag_candidate(app, &event->button);
     } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
         resize_by_pointer(app, event);
+        update_drag_candidate(app, &event->motion);
+    } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
+        event->button.button == SDL_BUTTON_LEFT) {
+        app->drag_candidate = false;
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_RIGHT) {
         if (app->resize_gesture) app->resize_gesture = false;
