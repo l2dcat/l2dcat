@@ -67,7 +67,7 @@ jobs:
         run: echo "::add-matcher::$GITHUB_WORKSPACE/.github/gcc-problem-matcher.json"
 
       - name: Build
-        run: cmake --build build-quality --parallel 2
+        run: bash .github/scripts/build-unix.sh cmake --build build-quality --parallel 2
 
       - name: Run native tests
         run: ctest --test-dir build-quality --output-on-failure
@@ -123,7 +123,7 @@ jobs:
 
       - name: Build Unix release
         if: runner.os != 'Windows'
-        run: cmake --build build --parallel 2
+        run: bash .github/scripts/build-unix.sh cmake --build build --parallel 2
 
       - name: Test Windows release
         if: runner.os == 'Windows'
