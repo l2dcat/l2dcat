@@ -24,7 +24,7 @@ void l2dcat_config_defaults(L2DCatConfig *config) {
     config->app.theme = L2DCAT_THEME_AUTO;
     config->app.language = L2DCAT_LANG_EN_US;
     config->current_mode = L2DCAT_MODE_GAMEPAD;
-    strcpy(config->current_model, "gamepad");
+    memcpy(config->current_model, "gamepad", sizeof("gamepad"));
 }
 
 void l2dcat_config_validate(L2DCatConfig *config) {

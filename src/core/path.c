@@ -32,7 +32,7 @@ const char *l2dcat_path_name(const char *path) {
 static bool path_type(const char *path, bool directory) {
 #ifdef _WIN32
     wchar_t *wide = l2dcat_windows_wide(path);
-    struct _stat64 value;
+    struct _stat64 value = {0};
     bool found = wide && _wstat64(wide, &value) == 0;
     free(wide);
     return found && (directory ? (value.st_mode & _S_IFDIR) != 0

@@ -47,7 +47,7 @@ static L2DCatResult scan_windows(L2DCatModelCatalog *catalog, const char *root, 
     char pattern[L2DCAT_PATH_CAP];
     l2dcat_path_join(pattern, sizeof(pattern), root, "*");
     wchar_t *wide = l2dcat_windows_wide(pattern);
-    WIN32_FIND_DATAW data;
+    WIN32_FIND_DATAW data = {0};
     HANDLE find = wide ? FindFirstFileW(wide, &data) : INVALID_HANDLE_VALUE;
     free(wide);
     if (find == INVALID_HANDLE_VALUE) return L2DCAT_OK;

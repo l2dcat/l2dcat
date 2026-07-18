@@ -12,7 +12,7 @@ $arguments = if ($BuildCommand.Count -gt 1) { $BuildCommand[1..($BuildCommand.Co
 $status = $LASTEXITCODE
 if ($status -eq 0) { exit 0 }
 
-$pattern = 'FAILED:|fatal error|error [A-Z]+\d+:|LNK\d+|MSB\d+: error|unresolved external|cannot open file|ninja: build stopped'
+$pattern = 'FAILED:|fatal error|(?:warning|error) [A-Z]+\d+:|LNK\d+|MSB\d+: error|unresolved external|cannot open file|ninja: build stopped'
 Get-Content -LiteralPath $log |
     Where-Object { $_ -match $pattern } |
     Select-Object -Last 30 |
