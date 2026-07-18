@@ -4,6 +4,7 @@
 #include "l2dcat/config.h"
 #include "l2dcat/input.h"
 #include "l2dcat/model.h"
+#include "l2dcat/mouse.h"
 #include "l2dcat/platform.h"
 #include "l2dcat/shortcut.h"
 
@@ -55,6 +56,8 @@ typedef struct L2DCatApp {
     uint64_t last_frame_ns;
     uint64_t smoke_deadline_ns;
     uint64_t hover_deadline_ns;
+    uint64_t mouse_last_ns;
+    L2DCatMouseTracking mouse_tracking;
     bool hover_inside;
     bool hover_hidden;
     bool resize_gesture;

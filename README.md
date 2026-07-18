@@ -16,6 +16,10 @@ The Cubism SDK is not redistributed by this repository. Download it from the
 official Live2D site after accepting its license. The expected directory must
 contain `Core`, `Framework`, and their original SDK files.
 
+Without that SDK, CMake builds the diagnostic renderer only. The window,
+overlays, preferences, and input auditing remain available, but the Live2D
+model cannot render or react to mouse movement, motions, or expressions.
+
 ## Configure
 
 ```powershell
@@ -33,7 +37,9 @@ Every push, pull request, tag, and manual run executes `.github/workflows/ci.yml
 Cppcheck, warning-clean compilation, the 300-line policy, legacy-name scanning,
 and CTest must pass before the build matrix starts. Successful runs publish
 downloadable Windows x86-64, Linux x86-64, and macOS artifacts from the run's
-Artifacts section; no signing secret is required for these CI packages.
+Artifacts section; no signing secret is required for these CI packages. The
+public CI artifacts use the diagnostic renderer unless a licensed Cubism SDK
+is provisioned on the runner.
 
 ## Distribution
 

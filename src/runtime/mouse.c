@@ -1,7 +1,20 @@
 #include "runtime.h"
+#include "l2dcat/file.h"
+#include "l2dcat/path.h"
 
 #include <SDL3/SDL.h>
+#include <stdio.h>
 #include <string.h>
+
+static void audit_mouse(L2DCatApp *app, double x, double y) {
+    if (!app->smoke_input_audit) return;
+    char path[L2DCAT_PATH_CAP];
+    if (!l2dcat_path_join(path, sizeof(path), app->data_root, "input-audit.txt")) return;
+    FILE *file = l2dcat_file_open(path, "ab");
+    if (!file) return;
+    fprintf(file, "mouse x=%.2f y=%.2f\n", x, y);
+    fclose(file);
+}
 
 static void track_hover(L2DCatApp *app, double x, double y) {
     int window_x, window_y, width, height;
@@ -34,26 +47,28 @@ static void set_parameter(L2DCatApp *app, const char *id,
     L2DCatParameterRange range;
     if (!l2dcat_live2d_parameter(app->live2d, id, &range)) return;
     size_t length = strlen(id);
-    bool y_axis = length && id[length - 1] == 'Y';
-    bool z_axis = length && id[length - 1] == 'Z';
-    float value;
-    if (z_axis) {
-        float x = 1.0f - 2.0f * x_ratio;
-        float y = 1.0f - 2.0f * y_ratio;
-        value = x * y * range.minimum;
-    } else {
-        float ratio = y_axis ? y_ratio : x_ratio;
-        value = range.maximum - ratio * (range.maximum - range.minimum);
-    }
-    if (!y_axis && app->config.model.mouse_mirror) value = -value;
+    char axis = length ? id[length - 1] : 'X';
+    float value = l2dcat_mouse_parameter_value(range.minimum, range.maximum,
+        x_ratio, y_ratio, axis, app->config.model.mouse_mirror);
     l2dcat_live2d_set_parameter(app->live2d, id, value);
 }
 
 void l2dcat_app_apply_mouse(L2DCatApp *app) {
-    double x, y;
-    if (!app || !l2dcat_input_take_mouse(&app->input, &x, &y)) return;
-    track_hover(app, x, y);
+    if (!app) return;
+    double target_x, target_y;
+    bool received = l2dcat_input_take_mouse(&app->input, &target_x, &target_y);
+    if (received) {
+        audit_mouse(app, target_x, target_y);
+        track_hover(app, target_x, target_y);
+        l2dcat_mouse_target(&app->mouse_tracking, target_x, target_y);
+    }
+    uint64_t now = SDL_GetTicksNS();
+    float elapsed = app->mouse_last_ns
+        ? (float)((now - app->mouse_last_ns) / 1000000000.0) : 1.0f / 60.0f;
+    app->mouse_last_ns = now;
     if (app->config.model.ignore_mouse) return;
+    double x, y;
+    if (!l2dcat_mouse_step(&app->mouse_tracking, elapsed, &x, &y)) return;
     SDL_Point point = {(int)x, (int)y}; SDL_Rect bounds;
     SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
     if (!display || !SDL_GetDisplayBounds(display, &bounds) ||

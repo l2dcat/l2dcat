@@ -22,6 +22,8 @@ a Live2D visual pass.
 - Thirty-second zh-CN preferences soak: 81.43 MiB, 0.246 MiB growth — PASS.
 - Desktop binary SHA-256 matches `c/build/l2dcat.exe` — PASS.
 - Cubism Native SDK under `c/vendor/CubismSdkForNative` — BLOCKED, absent.
+- Tauri-parity mouse mapping and frame-rate-independent 0.75 damping tests — PASS.
+- Windows pointer-hook runtime audit: 24 coordinate samples, process exit 0 — PASS.
 
 ## Models and rendering
 
@@ -47,6 +49,8 @@ a Live2D visual pass.
 | Gamepad buttons and four axes | PASS | App-state assertions cover values, hands and reset. |
 | Global Windows keyboard input | PASS | Injected A/right-arrow events change rendered overlays. |
 | Global Windows mouse input | PASS | Injected left/right down/up events reach the audit queue. |
+| Global Windows pointer movement | PASS | Low-level hook coordinates are captured by the runtime mouse audit; smoothing and parameter mapping have deterministic unit coverage. |
+| Pointer-driven Live2D tracking | BLOCKED | Global pointer collection, seven-parameter mapping, mirror behavior and Tauri-parity damping are implemented and unit-tested; visual proof requires the absent Cubism Native SDK. |
 | Windows automatic key release | PASS | Core input tests cover scheduled releases. |
 | Gamepad hot plug | PENDING | SDL implementation exists; physical-device test remains. |
 | Behavior shortcuts | PENDING | Parsing and dispatch are tested indirectly; Cubism result is blocked. |

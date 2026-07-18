@@ -85,6 +85,7 @@ add_library(l2dcat_core STATIC
   src/core/file.c
   src/core/i18n.c
   src/core/input_state.c
+  src/core/mouse_tracking.c
   src/core/sha256.c
   src/core/model_catalog.c
   src/core/model_behavior.c
@@ -173,6 +174,7 @@ else()
     src/platform/linux_x11.c src/platform/linux_update_verify.c src/platform/posix_http.c)
   target_link_libraries(l2dcat_runtime PRIVATE CURL::libcurl OpenSSL::Crypto
     X11::X11 X11::Xi X11::Xfixes m)
+  target_link_libraries(l2dcat_core PRIVATE m)
 endif()
 
 add_executable(l2dcat src/main.c)
