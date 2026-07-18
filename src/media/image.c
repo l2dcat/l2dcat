@@ -35,12 +35,13 @@ void l2dcat_image_free(L2DCatImage *image) {
     memset(image, 0, sizeof(*image));
 }
 
-static unsigned int upload(const L2DCatImage *image, GLuint texture) {
+static unsigned int upload(const L2DCatImage *image, GLuint texture, bool mipmapped) {
     bool created = texture == 0;
     if (created) glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     if (created) {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+            mipmapped ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -50,13 +51,29 @@ static unsigned int upload(const L2DCatImage *image, GLuint texture) {
         image->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
     else glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height,
         GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
+    if (created && mipmapped) {
+        PFNGLGENERATEMIPMAPPROC generate_mipmap =
+            (PFNGLGENERATEMIPMAPPROC)SDL_GL_GetProcAddress("glGenerateMipmap");
+        if (generate_mipmap) generate_mipmap(GL_TEXTURE_2D);
+    }
     return texture;
 }
 
 unsigned int l2dcat_image_texture(const char *path, int *width, int *height, L2DCatError *error) {
     L2DCatImage image;
     if (l2dcat_image_load(path, &image, error) != L2DCAT_OK) return 0;
-    GLuint texture = upload(&image, 0);
+    GLuint texture = upload(&image, 0, false);
+    if (width) *width = image.width;
+    if (height) *height = image.height;
+    l2dcat_image_free(&image);
+    return texture;
+}
+
+unsigned int l2dcat_image_texture_mipmapped(const char *path, int *width, int *height,
+    L2DCatError *error) {
+    L2DCatImage image;
+    if (l2dcat_image_load(path, &image, error) != L2DCAT_OK) return 0;
+    GLuint texture = upload(&image, 0, true);
     if (width) *width = image.width;
     if (height) *height = image.height;
     l2dcat_image_free(&image);
@@ -100,7 +117,7 @@ unsigned int l2dcat_image_composite_texture(const char *base, const char *left,
     if (erase_left) erase_paw(&image, true);
     if (erase_right) erase_paw(&image, false);
     bool valid = blend_file(&image, left, error) && blend_file(&image, right, error);
-    if (valid) texture = upload(&image, texture);
+    if (valid) texture = upload(&image, texture, false);
     l2dcat_image_free(&image);
     return texture;
 }

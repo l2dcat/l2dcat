@@ -177,7 +177,7 @@ void NativeModel::load_motions() {
 bool NativeModel::load_textures(L2DCatError *error) {
     textures_.assign((size_t)setting_->GetTextureCount(), 0);
     for (int i = 0; i < setting_->GetTextureCount(); ++i) {
-        textures_[(size_t)i] = l2dcat_image_texture(
+        textures_[(size_t)i] = l2dcat_image_texture_mipmapped(
             path(setting_->GetTextureFileName(i)).c_str(), nullptr, nullptr, error);
         if (!textures_[(size_t)i]) return false;
     }

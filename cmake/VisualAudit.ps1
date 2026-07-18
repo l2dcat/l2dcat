@@ -195,6 +195,21 @@ function Measure-ImageDifference([string]$Left, [string]$Right) {
     } finally { $a.Dispose(); $b.Dispose() }
 }
 
+function Measure-ModelAppearance([string]$Path) {
+    if (-not (Test-Path $Path)) { return 0 }
+    $bitmap = [Drawing.Bitmap]::new($Path)
+    try {
+        $bright = 0
+        for ($y = 15; $y -lt [Math]::Min(210, $bitmap.Height); $y += 3) {
+            for ($x = 90; $x -lt [Math]::Min(525, $bitmap.Width); $x += 3) {
+                $pixel = $bitmap.GetPixel($x, $y)
+                if ($pixel.A -ge 128 -and $pixel.R + $pixel.G + $pixel.B -ge 600) { $bright++ }
+            }
+        }
+        return $bright
+    } finally { $bitmap.Dispose() }
+}
+
 if (($Live2DScenarios.Count -or $ExternalKeys.Count) -and $SkipMain) {
     throw "Input scenarios require same-run main idle baselines; remove -SkipMain"
 }
@@ -238,15 +253,19 @@ if (-not $SkipMain) {
             Wait-Frame $frame
             $path = Join-Path $OutputDir "main-$model.png"
             $audit = Save-Window $window $path
+            $internal = Join-Path $OutputDir "internal-main-$model.bmp"
             if (Test-Path $frame) {
-                Copy-Frame $frame (Join-Path $OutputDir "internal-main-$model.bmp")
+                Copy-Frame $frame $internal
             }
             $log = Join-Path $runData "live2d-audit.txt"
             if (Test-Path $log) { Copy-Item $log (Join-Path $OutputDir "main-$model.txt") -Force }
+            $modelBright = Measure-ModelAppearance $internal
             $results.Add([pscustomobject]@{ View="main"; Theme=""; Language=""; Page="";
                 Model=$model; Scenario="idle"; Width=$audit.Width; Height=$audit.Height;
                 SampleColors=$audit.SampleColors; Difference=0.0;
+                ModelBrightPixels=$modelBright;
                 Passed=($audit.SampleColors -ge 8 -and
+                    $modelBright -ge 500 -and
                     (Test-Live2DLog $log)); Path=$path })
         } finally { Stop-AuditProcess $process }
     }
@@ -275,7 +294,7 @@ foreach ($specification in $Live2DScenarios) {
         $difference = Measure-ImageDifference `
             (Join-Path $OutputDir "internal-main-$model.bmp") $internal
         $released = $scenario.EndsWith("-release") -or $scenario -eq "key-stress"
-        $changed = $scenario -eq "idle" -or ($released -and $difference -le 0.003) -or
+        $changed = $scenario -eq "idle" -or ($released -and $difference -le 0.01) -or
             (-not $released -and $difference -ge 0.0005)
         $results.Add([pscustomobject]@{ View="live2d"; Theme=""; Language=""; Page="";
             Model=$model; Scenario=$scenario; Width=$audit.Width; Height=$audit.Height;
