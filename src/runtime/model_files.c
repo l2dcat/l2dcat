@@ -144,9 +144,7 @@ static bool valid_manifest(const char *root, const char *setting, L2DCatError *e
     yyjson_val *textures = yyjson_obj_get(refs, "Textures");
     bool valid = yyjson_get_int(yyjson_obj_get(manifest, "Version")) == 3 &&
         yyjson_is_obj(refs) && referenced_file(root, moc) && yyjson_is_arr(textures) &&
-        yyjson_arr_size(textures) > 0 &&
-        referenced_file(root, "resources/cover.png") &&
-        referenced_file(root, "resources/background.png");
+        yyjson_arr_size(textures) > 0;
     size_t index, maximum; yyjson_val *texture;
     yyjson_arr_foreach(textures, index, maximum, texture)
         valid = valid && referenced_file(root, yyjson_get_str(texture));

@@ -22,10 +22,10 @@ Set-Content -LiteralPath (Join-Path $malformed "cat.model3.json") -Value "{" -No
 $fixtures += [pscustomobject]@{ Name="malformed-json"; Path=$malformed; Valid=$false }
 $missingCover = New-Fixture "missing-cover"
 Remove-Item -LiteralPath (Join-Path $missingCover "resources\cover.png")
-$fixtures += [pscustomobject]@{ Name="missing-cover"; Path=$missingCover; Valid=$false }
+$fixtures += [pscustomobject]@{ Name="missing-cover"; Path=$missingCover; Valid=$true }
 $missingBackground = New-Fixture "missing-background"
 Remove-Item -LiteralPath (Join-Path $missingBackground "resources\background.png")
-$fixtures += [pscustomobject]@{ Name="missing-background"; Path=$missingBackground; Valid=$false }
+$fixtures += [pscustomobject]@{ Name="missing-background"; Path=$missingBackground; Valid=$true }
 $missingTexture = New-Fixture "missing-texture"
 Remove-Item -LiteralPath (Join-Path $missingTexture "demomodel.1024\texture_00.png")
 $fixtures += [pscustomobject]@{ Name="missing-texture"; Path=$missingTexture; Valid=$false }
