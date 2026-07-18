@@ -1,5 +1,6 @@
 #include "l2dcat/app.h"
 #include "l2dcat/platform.h"
+#include <SDL3/SDL_main.h>
 
 int main(int argc, char **argv) {
     int helper = l2dcat_platform_update_helper(argc, argv);
