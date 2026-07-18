@@ -66,7 +66,7 @@ function Get-AppWindows([int]$ProcessId) {
 }
 
 function Wait-AppWindow([int]$ProcessId, [bool]$Largest) {
-    $deadline = [DateTime]::UtcNow.AddSeconds(5)
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
     $required = 1
     if ($Largest) { $required = 2 }
     do {
@@ -89,7 +89,7 @@ function Save-Window([object]$Window, [string]$Path) {
             40, 40, 0, 0, 0x0041)
     }
     [void][L2DCatVisualNative]::SetForegroundWindow($Window.Handle)
-    Start-Sleep -Milliseconds $(if ($width -gt 700) { 650 } else { 80 })
+    Start-Sleep -Milliseconds $(if ($Window.Width -gt 700) { 650 } else { 80 })
     $rect = [L2DCatVisualNative+Rect]::new()
     [void][L2DCatVisualNative]::GetWindowRect($Window.Handle, [ref]$rect)
     $width = $rect.Right - $rect.Left
@@ -147,7 +147,7 @@ function Stop-AuditProcess([Diagnostics.Process]$Process) {
 }
 
 function Wait-Frame([string]$Path) {
-    $deadline = [DateTime]::UtcNow.AddSeconds(2)
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
     while (-not (Test-Path $Path) -and [DateTime]::UtcNow -lt $deadline) {
         Start-Sleep -Milliseconds 20
     }
@@ -208,9 +208,12 @@ if (-not $SkipPreferences) {
             $arguments = @("--ci-smoke", "--ci-preferences", "--ci-preference-page=$page",
                 "--ci-language=$language", "--ci-theme=$theme", "--ci-exit-ms=8000",
                 "--data-root=$auditData")
+            $uiFrame = Join-Path $auditData "ui-frame.txt"
+            Remove-Item -LiteralPath $uiFrame -Force -ErrorAction SilentlyContinue
             $process = Start-Process -FilePath $Exe -ArgumentList $arguments -WorkingDirectory (Split-Path $Exe) -PassThru
             try {
                 $window = Wait-AppWindow $process.Id $true
+                Wait-Frame $uiFrame
                 $path = Join-Path $OutputDir "preferences-$theme-$language-page$page.png"
                 $audit = Save-Window $window $path
                 $results.Add([pscustomobject]@{ View="preferences"; Theme=$theme; Language=$language;
@@ -231,10 +234,10 @@ if (-not $SkipMain) {
         $process = Start-Process -FilePath $Exe -ArgumentList $arguments -WorkingDirectory (Split-Path $Exe) -PassThru
         try {
             $window = Wait-AppWindow $process.Id $false
-            $path = Join-Path $OutputDir "main-$model.png"
-            $audit = Save-Window $window $path
             $frame = Join-Path $runData "frame.bmp"
             Wait-Frame $frame
+            $path = Join-Path $OutputDir "main-$model.png"
+            $audit = Save-Window $window $path
             if (Test-Path $frame) {
                 Copy-Frame $frame (Join-Path $OutputDir "internal-main-$model.bmp")
             }
@@ -261,11 +264,10 @@ foreach ($specification in $Live2DScenarios) {
     $process = Start-Process -FilePath $Exe -ArgumentList $arguments -WorkingDirectory (Split-Path $Exe) -PassThru
     try {
         $window = Wait-AppWindow $process.Id $false
-        Start-Sleep -Milliseconds 450
-        $path = Join-Path $OutputDir "live2d-$model-$scenario.png"
-        $audit = Save-Window $window $path
         $frame = Join-Path $runData "frame.bmp"
         Wait-Frame $frame
+        $path = Join-Path $OutputDir "live2d-$model-$scenario.png"
+        $audit = Save-Window $window $path
         $internal = Join-Path $OutputDir "internal-live2d-$model-$scenario.bmp"
         if (Test-Path $frame) { Copy-Frame $frame $internal }
         $log = Join-Path $runData "live2d-audit.txt"

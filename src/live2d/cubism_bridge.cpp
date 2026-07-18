@@ -1,8 +1,12 @@
 #include "l2dcat/file.h"
 #include "l2dcat/model.h"
+#if defined(CSM_TARGET_WIN_GL) || defined(CSM_TARGET_LINUX_GL)
+#include <GL/glew.h>
+#endif
 #include "cubism_model.hpp"
 
 #include <CubismFramework.hpp>
+#include <SDL3/SDL_filesystem.h>
 #include <cstdio>
 #include <cstdlib>
 #include <new>
@@ -37,6 +41,8 @@ public:
 };
 
 Allocator allocator;
+CubismFramework::Option framework_option;
+std::string resource_root;
 int runtime_count;
 
 void log_message(const char *message) {
@@ -46,6 +52,12 @@ void log_message(const char *message) {
 Csm::csmByte *load_file(const std::string path, Csm::csmSizeInt *size) {
     if (size) *size = 0;
     FILE *file = l2dcat_file_open(path.c_str(), "rb");
+    if (!file) {
+        const char *base = SDL_GetBasePath();
+        if (base) file = l2dcat_file_open((std::string(base) + path).c_str(), "rb");
+    }
+    if (!file && !resource_root.empty())
+        file = l2dcat_file_open((resource_root + "/" + path).c_str(), "rb");
     if (!file) return nullptr;
     std::fseek(file, 0, SEEK_END);
     long length = std::ftell(file);
@@ -64,12 +76,30 @@ void release_file(Csm::csmByte *bytes) { std::free(bytes); }
 
 bool start_framework(L2DCatError *error) {
     if (runtime_count++) return true;
-    CubismFramework::Option option{};
-    option.LogFunction = log_message;
-    option.LoggingLevel = CubismFramework::Option::LogLevel_Warning;
-    option.LoadFileFunction = load_file;
-    option.ReleaseBytesFunction = release_file;
-    if (!CubismFramework::StartUp(&allocator, &option)) {
+#if defined(CSM_TARGET_WIN_GL) || defined(CSM_TARGET_LINUX_GL)
+    glewExperimental = GL_TRUE;
+    GLenum glew_result = glewInit();
+    glGetError();
+    if (glew_result != GLEW_OK) {
+        runtime_count = 0;
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "GLEW initialization failed: %s",
+            reinterpret_cast<const char *>(glewGetErrorString(glew_result)));
+        return false;
+    }
+    if (!glCreateShader || !glShaderSource || !glCompileShader ||
+        !glGetShaderiv || !glCreateProgram || !glGenFramebuffers) {
+        runtime_count = 0;
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM,
+            "Required OpenGL 3.3 functions are unavailable");
+        return false;
+    }
+#endif
+    framework_option = CubismFramework::Option{};
+    framework_option.LogFunction = log_message;
+    framework_option.LoggingLevel = CubismFramework::Option::LogLevel_Warning;
+    framework_option.LoadFileFunction = load_file;
+    framework_option.ReleaseBytesFunction = release_file;
+    if (!CubismFramework::StartUp(&allocator, &framework_option)) {
         runtime_count = 0;
         l2dcat_error_set(error, L2DCAT_ERROR_CUBISM, "Cubism Framework startup failed");
         return false;
@@ -89,7 +119,9 @@ void stop_framework() {
 
 struct L2DCatLive2D { l2dcat::NativeModel *model; };
 
-extern "C" L2DCatLive2D *l2dcat_live2d_create(L2DCatError *error) {
+extern "C" L2DCatLive2D *l2dcat_live2d_create(const char *asset_root,
+    L2DCatError *error) {
+    resource_root = asset_root ? asset_root : "";
     if (!start_framework(error)) return nullptr;
     L2DCatLive2D *runtime = new(std::nothrow) L2DCatLive2D{};
     if (!runtime) {

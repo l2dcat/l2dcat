@@ -39,7 +39,7 @@ desktop runtime.
 - English, Simplified Chinese, Traditional Chinese, Portuguese, and Vietnamese.
 - Light, dark, and system themes.
 - Persist native settings and custom models without external project paths.
-- Build, test, run, and package with only files contained under `c/`.
+- Build, test, run, and package with only files contained in this repository.
 - Persist settings atomically and recover from a truncated write.
 
 ## Release gates

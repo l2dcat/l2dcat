@@ -12,6 +12,10 @@ typedef struct L2DCatImage {
     SDL_Surface *surface;
 } L2DCatImage;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 L2DCatResult l2dcat_image_load(const char *path, L2DCatImage *image, L2DCatError *error);
 void l2dcat_image_free(L2DCatImage *image);
 unsigned int l2dcat_image_texture(const char *path, int *width, int *height,
@@ -19,5 +23,9 @@ unsigned int l2dcat_image_texture(const char *path, int *width, int *height,
 unsigned int l2dcat_image_composite_texture(const char *base, const char *left,
     const char *right, unsigned int texture, bool erase_left, bool erase_right,
     L2DCatError *error);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

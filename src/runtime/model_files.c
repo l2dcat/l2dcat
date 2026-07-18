@@ -19,15 +19,18 @@ bool l2dcat_app_select_model(L2DCatApp *app, const char *id) {
     const L2DCatModelEntry *entry = l2dcat_models_find(&app->models, id);
     if (!entry) return false;
     L2DCatError error = {0};
-    L2DCatBehaviorCatalog behaviors = {0};
-    if (l2dcat_behaviors_load(&behaviors, entry, &error) != L2DCAT_OK)
+    L2DCatBehaviorCatalog *behaviors = calloc(1, sizeof(*behaviors));
+    if (!behaviors) return false;
+    if (l2dcat_behaviors_load(behaviors, entry, &error) != L2DCAT_OK)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
     if (l2dcat_live2d_load(app->live2d, entry->directory,
         entry->setting_file, &error) != L2DCAT_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+        free(behaviors);
         return false;
     }
-    app->behaviors = behaviors;
+    app->behaviors = *behaviors;
+    free(behaviors);
     l2dcat_overlay_load(app->overlay, entry->directory, &error);
     snprintf(app->config.current_model, sizeof(app->config.current_model), "%s", entry->id);
     app->config.current_mode = entry->mode;

@@ -76,6 +76,10 @@ typedef struct L2DCatConfig {
     L2DCatModelMode current_mode;
 } L2DCatConfig;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void l2dcat_config_defaults(L2DCatConfig *config);
 void l2dcat_config_validate(L2DCatConfig *config);
 L2DCatResult l2dcat_config_load(const char *path, L2DCatConfig *config, L2DCatError *error);
@@ -83,5 +87,9 @@ L2DCatResult l2dcat_config_save(const char *path, const L2DCatConfig *config, L2
 const char *l2dcat_theme_name(L2DCatTheme value);
 const char *l2dcat_language_name(L2DCatLanguage value);
 const char *l2dcat_mode_name(L2DCatModelMode value);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

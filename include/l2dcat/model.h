@@ -35,6 +35,10 @@ typedef struct L2DCatBehaviorCatalog {
     size_t count;
 } L2DCatBehaviorCatalog;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void l2dcat_models_init(L2DCatModelCatalog *catalog);
 L2DCatResult l2dcat_models_scan(L2DCatModelCatalog *catalog, const char *root,
     bool preset, L2DCatError *error);
@@ -46,7 +50,7 @@ L2DCatResult l2dcat_behaviors_load(L2DCatBehaviorCatalog *catalog,
 typedef struct L2DCatLive2D L2DCatLive2D;
 typedef struct L2DCatParameterRange { float minimum, maximum, value; } L2DCatParameterRange;
 
-L2DCatLive2D *l2dcat_live2d_create(L2DCatError *error);
+L2DCatLive2D *l2dcat_live2d_create(const char *asset_root, L2DCatError *error);
 void l2dcat_live2d_destroy(L2DCatLive2D *live2d);
 L2DCatResult l2dcat_live2d_load(L2DCatLive2D *live2d, const char *model_dir,
     const char *setting_file, L2DCatError *error);
@@ -59,5 +63,9 @@ bool l2dcat_live2d_parameter(L2DCatLive2D *live2d, const char *id,
     L2DCatParameterRange *range);
 bool l2dcat_live2d_start_motion(L2DCatLive2D *live2d, const char *group, int index);
 bool l2dcat_live2d_set_expression(L2DCatLive2D *live2d, int index);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

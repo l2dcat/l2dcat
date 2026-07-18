@@ -118,6 +118,9 @@ else()
       COMMAND ${CMAKE_COMMAND} -E make_directory "${appdir}/usr/bin/assets"
       COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets" "${appdir}/usr/bin/assets"
+      COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CUBISM_FRAMEWORK_PATH}/src/Rendering/OpenGL/Shaders/Standard"
+        "${appdir}/usr/bin/assets/FrameworkShaders"
       COMMAND ${CMAKE_COMMAND} -E env ARCH=${appimage_arch}
         "${appimagetool}" --sign-key "${L2DCAT_LINUX_SIGN_KEY}"
         "${appdir}" "${output}"

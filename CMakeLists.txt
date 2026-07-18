@@ -32,7 +32,7 @@ include(cmake/ReleaseOptimize.cmake)
 
 add_library(l2dcat_warnings INTERFACE)
 if(MSVC)
-  target_compile_options(l2dcat_warnings INTERFACE /W4 /permissive-)
+  target_compile_options(l2dcat_warnings INTERFACE /W4 /permissive- /utf-8)
   target_compile_options(l2dcat_warnings INTERFACE
     $<$<COMPILE_LANGUAGE:C>:/experimental:c11atomics>)
   if(L2DCAT_WARNINGS_AS_ERRORS)
@@ -94,6 +94,7 @@ add_library(l2dcat_core STATIC
 target_sources(l2dcat_core PRIVATE src/core/shortcut.c)
 target_include_directories(l2dcat_core PUBLIC include)
 target_link_libraries(l2dcat_core PUBLIC yyjson PRIVATE l2dcat_warnings)
+include(cmake/CubismAssets.cmake)
 if(WIN32)
   target_sources(l2dcat_core PRIVATE src/core/windows_utf8.c)
 endif()
@@ -131,8 +132,8 @@ target_include_directories(l2dcat_runtime PUBLIC include)
 target_include_directories(l2dcat_runtime SYSTEM PRIVATE
   ${stb_SOURCE_DIR} ${miniaudio_SOURCE_DIR}
   ${nuklear_SOURCE_DIR})
-target_link_libraries(l2dcat_runtime PUBLIC l2dcat_core SDL3::SDL3-static OpenGL::GL miniaudio)
 target_link_libraries(l2dcat_runtime PRIVATE l2dcat_warnings)
+target_link_libraries(l2dcat_runtime PUBLIC l2dcat_core SDL3::SDL3-static OpenGL::GL miniaudio)
 if(MSVC)
   set_source_files_properties(src/media/stb_image_impl.c src/ui/nuklear_impl.c
     PROPERTIES COMPILE_OPTIONS "/W0")
@@ -205,11 +206,13 @@ if(WIN32)
   set(L2DCAT_ASSET_PACK "${CMAKE_CURRENT_BINARY_DIR}/l2dcat-assets.tar")
   file(GLOB_RECURSE L2DCAT_ASSET_INPUTS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets/*")
+  l2dcat_configure_embedded_cubism_assets()
   add_custom_command(OUTPUT "${L2DCAT_ASSET_PACK}"
     COMMAND ${CMAKE_COMMAND} -E rm -rf "${L2DCAT_ASSET_STAGE}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${L2DCAT_ASSET_STAGE}/assets"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets" "${L2DCAT_ASSET_STAGE}/assets"
+    ${L2DCAT_ASSET_EXTRA_COMMANDS}
     COMMAND ${CMAKE_COMMAND} -E chdir "${L2DCAT_ASSET_STAGE}"
       ${CMAKE_COMMAND} -E tar cf "${L2DCAT_ASSET_PACK}" --format=gnutar assets
     DEPENDS ${L2DCAT_ASSET_INPUTS}
@@ -235,14 +238,20 @@ if(WIN32)
   set_target_properties(l2dcat PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 
+if(MSVC)
+  set_property(SOURCE src/main.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
+  get_target_property(L2DCAT_RUNTIME_SOURCES l2dcat_runtime SOURCES)
+  foreach(L2DCAT_SOURCE IN LISTS L2DCAT_RUNTIME_SOURCES)
+    if(L2DCAT_SOURCE MATCHES "\\.c$")
+      set_property(SOURCE "${L2DCAT_SOURCE}" APPEND PROPERTY
+        COMPILE_OPTIONS "/experimental:c11atomics")
+    endif()
+  endforeach()
+endif()
+
 include(cmake/NativeRelease.cmake)
 
-if(L2DCAT_CUBISM_ENABLED)
-  add_custom_command(TARGET l2dcat POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-      ${L2DCAT_CUBISM_SDK}/Framework/src/Rendering/OpenGL/Shaders/Standard
-      $<TARGET_FILE_DIR:l2dcat>/FrameworkShaders)
-endif()
+l2dcat_stage_cubism_assets(l2dcat)
 
 add_custom_target(check-lines ALL
   COMMAND ${CMAKE_COMMAND} -DROOT=${CMAKE_CURRENT_SOURCE_DIR}

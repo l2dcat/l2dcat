@@ -6,13 +6,15 @@
 
 static bool set_gl_attributes(void) {
 #ifdef __APPLE__
-    const int major = 4, minor = 1;
+    const int major = 4, minor = 1, profile = SDL_GL_CONTEXT_PROFILE_CORE;
+#elif defined(L2DCAT_HAS_CUBISM)
+    const int major = 3, minor = 3, profile = SDL_GL_CONTEXT_PROFILE_COMPATIBILITY;
 #else
-    const int major = 3, minor = 3;
+    const int major = 3, minor = 3, profile = SDL_GL_CONTEXT_PROFILE_CORE;
 #endif
     return SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, major) &&
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor) &&
-        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE) &&
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, profile) &&
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) &&
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0) &&
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8) &&

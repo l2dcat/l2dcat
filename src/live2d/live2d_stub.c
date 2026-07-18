@@ -4,7 +4,8 @@
 
 struct L2DCatLive2D { int width; int height; };
 
-L2DCatLive2D *l2dcat_live2d_create(L2DCatError *error) {
+L2DCatLive2D *l2dcat_live2d_create(const char *asset_root, L2DCatError *error) {
+    (void)asset_root;
     L2DCatLive2D *value = calloc(1, sizeof(*value));
     if (!value) l2dcat_error_set(error, L2DCAT_ERROR_MEMORY, "Cannot allocate Live2D runtime");
     return value;

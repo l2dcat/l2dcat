@@ -1,6 +1,10 @@
 option(L2DCAT_OPTIMIZE_RELEASE_SIZE
   "Enable conservative size and dead-code optimization for Release builds" ON)
 
+if(MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 # Apply before FetchContent so static dependencies use the same settings. LTO
 # stays disabled because not every supported third-party archive is LTO-safe.
 if(L2DCAT_OPTIMIZE_RELEASE_SIZE)

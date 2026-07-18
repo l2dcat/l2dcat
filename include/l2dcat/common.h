@@ -29,6 +29,14 @@ typedef struct L2DCatError {
     char message[256];
 } L2DCatError;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void l2dcat_error_set(L2DCatError *error, L2DCatResult code, const char *format, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

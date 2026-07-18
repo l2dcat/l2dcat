@@ -22,8 +22,21 @@ static bool motion(L2DCatApp *app, const char *scenario) {
     return true;
 }
 
+static bool pointer(L2DCatApp *app, bool mirror) {
+    SDL_Rect bounds;
+    SDL_DisplayID display = SDL_GetPrimaryDisplay();
+    if (!display || !SDL_GetDisplayBounds(display, &bounds)) return false;
+    app->config.model.mouse_mirror = mirror;
+    l2dcat_input_mouse(&app->input, bounds.x + bounds.w * 0.9,
+        bounds.y + bounds.h * 0.1);
+    l2dcat_app_apply_mouse(app);
+    return true;
+}
+
 static bool apply(L2DCatApp *app, const char *scenario) {
     if (strcmp(scenario, "mirror") == 0) app->config.model.mirror = true;
+    else if (strcmp(scenario, "mouse-move") == 0) return pointer(app, false);
+    else if (strcmp(scenario, "mouse-move-mirror") == 0) return pointer(app, true);
     else if (strcmp(scenario, "key-left") == 0)
         input(app, L2DCAT_INPUT_KEY_DOWN, "KeyA", 1.0f);
     else if (strcmp(scenario, "key-right") == 0)
@@ -111,6 +124,12 @@ static bool assertions(L2DCatApp *app, const char *scenario, bool operation) {
         return active(app, "ParamMouseLeftDown");
     if (strcmp(scenario, "mouse-right") == 0)
         return active(app, "ParamMouseRightDown");
+    if (strcmp(scenario, "mouse-move") == 0)
+        return signed_value(app, "ParamAngleX", false) &&
+            signed_value(app, "ParamAngleY", true);
+    if (strcmp(scenario, "mouse-move-mirror") == 0)
+        return signed_value(app, "ParamAngleX", true) &&
+            signed_value(app, "ParamAngleY", true);
     if (strcmp(scenario, "gamepad-sticks") == 0)
         return signed_value(app, "CatParamStickLX", true) &&
             signed_value(app, "CatParamStickLY", false) &&
@@ -143,7 +162,8 @@ void l2dcat_live2d_audit_run(L2DCatApp *app) {
         "CatParamStickLX", "CatParamStickLY", "CatParamStickRX", "CatParamStickRY",
         "CatParamStickLeftDown", "CatParamStickRightDown",
         "CatParamStickShowLeftHand", "CatParamStickShowRightHand",
-        "ParamMouseLeftDown", "ParamMouseRightDown"};
+        "ParamMouseLeftDown", "ParamMouseRightDown", "ParamMouseX", "ParamMouseY",
+        "ParamAngleX", "ParamAngleY", "ParamAngleZ", "ParamEyeBallX", "ParamEyeBallY"};
     for (size_t i = 0; i < sizeof(parameters) / sizeof(parameters[0]); ++i)
         parameter(file, app, parameters[i]);
     fclose(file);

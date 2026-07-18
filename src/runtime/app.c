@@ -133,7 +133,7 @@ static bool initialize(L2DCatApp *app, int argc, char **argv, L2DCatError *error
     if (!app->i18n) SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error->message);
     if (l2dcat_platform_init(&app->platform, app->window, &app->input, error) != L2DCAT_OK) return false;
     l2dcat_window_apply(app);
-    app->live2d = l2dcat_live2d_create(error);
+    app->live2d = l2dcat_live2d_create(app->asset_root, error);
     if (!app->live2d) return false;
     app->overlay = l2dcat_overlay_create(error);
     if (!app->overlay) return false;
@@ -281,18 +281,20 @@ static void shutdown(L2DCatApp *app) {
 
 int l2dcat_app_run(int argc, char **argv) {
     if (!l2dcat_platform_single_instance_begin()) return 0;
-    L2DCatApp app;
+    L2DCatApp *app = calloc(1, sizeof(*app));
+    if (!app) { l2dcat_platform_single_instance_end(); return 1; }
     L2DCatError error = {0};
-    if (!initialize(&app, argc, argv, &error)) {
+    if (!initialize(app, argc, argv, &error)) {
         fprintf(stderr, "%s\n", error.message[0] ? error.message : "Initialization failed");
-        shutdown(&app);
+        if (app->smoke) ci_failure(app, &error);
+        shutdown(app); free(app);
         l2dcat_platform_single_instance_end();
         return 1;
     }
-    loop(&app);
-    shutdown(&app);
-    bool restart = app.restart_requested;
-    l2dcat_platform_single_instance_end();
+    loop(app);
+    shutdown(app);
+    bool restart = app->restart_requested; int exit_code = app->exit_code;
+    free(app); l2dcat_platform_single_instance_end();
     if (restart) l2dcat_platform_restart();
-    return app.exit_code;
+    return exit_code;
 }

@@ -226,6 +226,7 @@ void l2dcat_overlay_begin_clip(L2DCatOverlay *value, float radius_percent) {
         "radius_percent"), radius);
     value->gl.bind_vertex_array(value->vao);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    value->gl.bind_vertex_array(0);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glStencilMask(0x00);
     glStencilFunc(GL_EQUAL, 1, 0xff);
@@ -255,6 +256,7 @@ static void draw(L2DCatOverlay *value, GLuint texture, bool mirror, bool blend) 
     glBindTexture(GL_TEXTURE_2D, texture);
     value->gl.bind_vertex_array(value->vao);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    value->gl.bind_vertex_array(0);
 }
 
 void l2dcat_overlay_draw_background(L2DCatOverlay *value, bool mirror) {
