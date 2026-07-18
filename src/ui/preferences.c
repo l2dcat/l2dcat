@@ -128,7 +128,6 @@ void l2dcat_preferences_destroy(L2DCatPreferences *value) {
 }
 void l2dcat_preferences_request_model_import(L2DCatPreferences *value) {
     if (value && !value->import_dialog_open) value->import_requested = true; }
-
 static void SDLCALL model_imported(void *userdata, const char *const *files,
     int filter) {
     (void)filter;
@@ -137,22 +136,18 @@ static void SDLCALL model_imported(void *userdata, const char *const *files,
     if (!files || !files[0]) return;
     for (size_t i = 0; files[i]; ++i) l2dcat_preferences_import_path(value->app, value->window, files[i]);
 }
-
 bool l2dcat_preferences_visible(const L2DCatPreferences *value) {
     return value && value->window; }
-
 void l2dcat_preferences_input_begin(L2DCatPreferences *value) {
     if (!value || !value->window || value->input_active) return;
     l2dcat_ui_input_begin(&value->ui);
     value->input_active = true;
 }
-
 void l2dcat_preferences_input_end(L2DCatPreferences *value) {
     if (!value || !value->window || !value->input_active) return;
     l2dcat_ui_input_end(&value->ui);
     value->input_active = false;
 }
-
 static Uint32 event_window(const SDL_Event *event) {
     if (event->type >= SDL_EVENT_WINDOW_FIRST && event->type <= SDL_EVENT_WINDOW_LAST)
         return event->window.windowID;
@@ -167,10 +162,12 @@ static Uint32 event_window(const SDL_Event *event) {
     default: return 0;
     }
 }
-
 bool l2dcat_preferences_event(L2DCatPreferences *value, const SDL_Event *event) {
-    if (!value || !value->window || !event ||
-        event_window(event) != SDL_GetWindowID(value->window)) return false;
+    if (!value || !value->window || !event) return false;
+    if (event->type == SDL_EVENT_SYSTEM_THEME_CHANGED) {
+        value->render_dirty = true; return false;
+    }
+    if (event_window(event) != SDL_GetWindowID(value->window)) return false;
     if (event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
         l2dcat_preferences_close(value);
         return true;
@@ -198,8 +195,7 @@ static void draw_page(L2DCatPreferences *value, struct nk_context *context) {
 void l2dcat_preferences_render(L2DCatPreferences *value) {
     if (!value || !value->window) return;
     uint64_t now = SDL_GetTicksNS();
-    if (!value->render_dirty && value->last_render_ns &&
-        now - value->last_render_ns < 100000000ULL) return;
+    if (!value->render_dirty && value->last_render_ns) return;
     value->render_dirty = false; value->last_render_ns = now;
     l2dcat_preferences_input_end(value);
     SDL_GL_MakeCurrent(value->window, value->gl_context);
@@ -297,4 +293,8 @@ void l2dcat_preferences_render(L2DCatPreferences *value) {
         l2dcat_preferences_close(value);
         l2dcat_preferences_show(value);
     }
+}
+
+void l2dcat_preferences_invalidate(L2DCatPreferences *value) {
+    if (value) value->render_dirty = true;
 }

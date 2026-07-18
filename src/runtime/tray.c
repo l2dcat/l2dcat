@@ -29,6 +29,7 @@ static void on_visible(void *userdata, SDL_TrayEntry *entry) {
     app->config.window.visible = !app->config.window.visible;
     app->config.window.visible ? SDL_ShowWindow(app->window) : SDL_HideWindow(app->window);
     l2dcat_tray_sync(tray);
+    l2dcat_preferences_invalidate(app->preferences);
 }
 
 static void on_pass_through(void *userdata, SDL_TrayEntry *entry) {
@@ -38,6 +39,7 @@ static void on_pass_through(void *userdata, SDL_TrayEntry *entry) {
     l2dcat_platform_set_click_through(&tray->app->platform,
         tray->app->config.window.pass_through);
     l2dcat_tray_sync(tray);
+    l2dcat_preferences_invalidate(tray->app->preferences);
 }
 
 static void on_always_on_top(void *userdata, SDL_TrayEntry *entry) {
@@ -47,6 +49,7 @@ static void on_always_on_top(void *userdata, SDL_TrayEntry *entry) {
     l2dcat_platform_set_always_on_top(&tray->app->platform,
         tray->app->config.window.always_on_top);
     l2dcat_tray_sync(tray);
+    l2dcat_preferences_invalidate(tray->app->preferences);
 }
 
 static void on_preferences(void *userdata, SDL_TrayEntry *entry) {

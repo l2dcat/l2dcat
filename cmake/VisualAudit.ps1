@@ -274,7 +274,9 @@ foreach ($specification in $Live2DScenarios) {
         if (Test-Path $log) { Copy-Item $log (Join-Path $OutputDir "live2d-$model-$scenario.txt") -Force }
         $difference = Measure-ImageDifference `
             (Join-Path $OutputDir "internal-main-$model.bmp") $internal
-        $changed = $scenario -eq "idle" -or $difference -ge 0.0005
+        $released = $scenario.EndsWith("-release") -or $scenario -eq "key-stress"
+        $changed = $scenario -eq "idle" -or ($released -and $difference -le 0.003) -or
+            (-not $released -and $difference -ge 0.0005)
         $results.Add([pscustomobject]@{ View="live2d"; Theme=""; Language=""; Page="";
             Model=$model; Scenario=$scenario; Width=$audit.Width; Height=$audit.Height;
             SampleColors=$audit.SampleColors; Difference=$difference;

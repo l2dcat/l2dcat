@@ -16,6 +16,7 @@ void l2dcat_preferences_input_begin(L2DCatPreferences *preferences);
 void l2dcat_preferences_input_end(L2DCatPreferences *preferences);
 bool l2dcat_preferences_event(L2DCatPreferences *preferences, const SDL_Event *event);
 void l2dcat_preferences_render(L2DCatPreferences *preferences);
+void l2dcat_preferences_invalidate(L2DCatPreferences *preferences);
 void l2dcat_preferences_request_model_import(L2DCatPreferences *preferences);
 
 #endif

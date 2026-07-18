@@ -203,8 +203,10 @@ endif()
 
 if(WIN32)
   target_sources(l2dcat_runtime PRIVATE src/platform/windows_keys.c)
+  add_executable(l2dcat_asset_packer src/tools/asset_packer.cpp)
+  target_link_libraries(l2dcat_asset_packer PRIVATE l2dcat_warnings)
   set(L2DCAT_ASSET_STAGE "${CMAKE_CURRENT_BINARY_DIR}/embedded-assets")
-  set(L2DCAT_ASSET_PACK "${CMAKE_CURRENT_BINARY_DIR}/l2dcat-assets.tar")
+  set(L2DCAT_ASSET_PACK "${CMAKE_CURRENT_BINARY_DIR}/l2dcat-assets.pak")
   file(GLOB_RECURSE L2DCAT_ASSET_INPUTS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets/*")
   l2dcat_configure_embedded_cubism_assets()
@@ -214,9 +216,9 @@ if(WIN32)
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets" "${L2DCAT_ASSET_STAGE}/assets"
     ${L2DCAT_ASSET_EXTRA_COMMANDS}
-    COMMAND ${CMAKE_COMMAND} -E chdir "${L2DCAT_ASSET_STAGE}"
-      ${CMAKE_COMMAND} -E tar cf "${L2DCAT_ASSET_PACK}" --format=gnutar assets
-    DEPENDS ${L2DCAT_ASSET_INPUTS}
+    COMMAND "$<TARGET_FILE:l2dcat_asset_packer>"
+      "${L2DCAT_ASSET_STAGE}/assets" "${L2DCAT_ASSET_PACK}"
+    DEPENDS ${L2DCAT_ASSET_INPUTS} l2dcat_asset_packer
     VERBATIM)
   add_custom_target(l2dcat_asset_pack DEPENDS "${L2DCAT_ASSET_PACK}")
   file(TO_CMAKE_PATH "${L2DCAT_ASSET_PACK}" L2DCAT_ASSET_PACK_RC)
@@ -238,7 +240,6 @@ if(WIN32)
   add_dependencies(l2dcat l2dcat_asset_pack)
   set_target_properties(l2dcat PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
-
 if(MSVC)
   set_property(SOURCE src/main.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
   get_target_property(L2DCAT_RUNTIME_SOURCES l2dcat_runtime SOURCES)

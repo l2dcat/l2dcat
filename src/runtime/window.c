@@ -154,6 +154,7 @@ void l2dcat_window_menu_action(L2DCatApp *app, L2DCatMenuAction action) {
     } else if (action == L2DCAT_MENU_RESTART) {
         app->restart_requested = true; app->running = false;
     } else if (action == L2DCAT_MENU_EXIT) app->running = false;
+    l2dcat_preferences_invalidate(app->preferences);
 }
 
 bool l2dcat_window_menu_self_test(L2DCatApp *app) {
@@ -252,9 +253,9 @@ bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
     }
     if (event->type == SDL_EVENT_WINDOW_RESIZED ||
         event->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-        int pixel_width, pixel_height;
-        SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
-        l2dcat_live2d_resize(app->live2d, pixel_width, pixel_height);
+        SDL_GetWindowSizeInPixels(app->window,
+            &app->resize_pixel_width, &app->resize_pixel_height);
+        app->resize_pending = true;
     } else if (event->type == SDL_EVENT_WINDOW_MOVED) {
         app->config.window.x = event->window.data1;
         app->config.window.y = event->window.data2;

@@ -46,6 +46,8 @@ private:
     std::vector<GLuint> textures_;
     std::vector<float> parameter_snapshot_;
     std::vector<float> part_snapshot_;
+    std::vector<float> pending_parameter_values_;
+    std::vector<unsigned char> pending_parameters_;
     Csm::csmVector<Csm::CubismIdHandle> eye_blink_ids_;
     Csm::csmVector<Csm::CubismIdHandle> lip_sync_ids_;
     std::string directory_;

@@ -50,11 +50,6 @@ static unsigned int upload(const L2DCatImage *image, GLuint texture) {
         image->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
     else glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height,
         GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
-    if (created) {
-        PFNGLGENERATEMIPMAPPROC generate_mipmap =
-            (PFNGLGENERATEMIPMAPPROC)SDL_GL_GetProcAddress("glGenerateMipmap");
-        if (generate_mipmap) generate_mipmap(GL_TEXTURE_2D);
-    }
     return texture;
 }
 

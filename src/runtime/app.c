@@ -211,7 +211,7 @@ static void drain_input(L2DCatApp *app) {
         l2dcat_app_shortcuts(app, &event);
         l2dcat_app_apply_input(app, &event);
     }
-    l2dcat_app_apply_mouse(app);
+    if (!app->smoke_ignore_global_input) l2dcat_app_apply_mouse(app);
 }
 
 static void update_model(L2DCatApp *app, uint64_t now) {
@@ -250,6 +250,7 @@ static void loop(L2DCatApp *app) {
             handle_event(app, &event);
             while (SDL_PollEvent(&event)) handle_event(app, &event);
         }
+        l2dcat_window_apply_pending_resize(app);
         l2dcat_preferences_input_end(app->preferences);
         drain_input(app);
         uint64_t now = SDL_GetTicksNS();
@@ -262,7 +263,6 @@ static void loop(L2DCatApp *app) {
         if (app->smoke_deadline_ns && now >= app->smoke_deadline_ns) app->running = false;
     }
 }
-
 static void shutdown(L2DCatApp *app) {
     if (!app->smoke && app->config_path[0]) {
         L2DCatError error = {0};

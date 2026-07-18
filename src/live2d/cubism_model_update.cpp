@@ -43,6 +43,11 @@ bool NativeModel::update(float delta_seconds) {
     external_parameters_dirty_ = false;
     motion_updated_ = false;
     _model->LoadParameters();
+    for (int i = 0; i < _model->GetParameterCount(); ++i) {
+        if (!pending_parameters_[(size_t)i]) continue;
+        _model->SetParameterValue(i, pending_parameter_values_[(size_t)i]);
+        pending_parameters_[(size_t)i] = 0;
+    }
     if (!_motionManager->IsFinished())
         motion_updated_ = _motionManager->UpdateMotion(_model, delta_seconds);
     _model->SaveParameters();
@@ -84,7 +89,8 @@ bool NativeModel::set_parameter(const char *id, float value) {
     int index = _model->GetParameterIndex(handle);
     if (index < 0 || index >= _model->GetParameterCount()) return false;
     _model->SetParameterValue(index, value);
-    _model->SaveParameters();
+    pending_parameter_values_[(size_t)index] = value;
+    pending_parameters_[(size_t)index] = 1;
     external_parameters_dirty_ = true;
     return true;
 }

@@ -61,6 +61,8 @@ typedef struct L2DCatApp {
     bool hover_inside;
     bool hover_hidden;
     bool resize_gesture;
+    bool resize_pending;
+    int resize_pixel_width, resize_pixel_height;
     bool drag_candidate;
     float drag_start_x, drag_start_y;
     float left_stick_x, left_stick_y;

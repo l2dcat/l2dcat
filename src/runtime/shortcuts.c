@@ -24,13 +24,16 @@ void l2dcat_app_shortcuts(L2DCatApp *app, const L2DCatInputEvent *event) {
     } else if (l2dcat_shortcut_matches(&app->shortcut_state, event, shortcuts->mirror)) {
         app->config.model.mirror = !app->config.model.mirror;
         app->dirty = true;
+        l2dcat_preferences_invalidate(app->preferences);
     } else if (l2dcat_shortcut_matches(&app->shortcut_state, event, shortcuts->pass_through)) {
         app->config.window.pass_through = !app->config.window.pass_through;
         l2dcat_platform_set_click_through(&app->platform, app->config.window.pass_through);
+        l2dcat_preferences_invalidate(app->preferences);
     } else if (l2dcat_shortcut_matches(&app->shortcut_state, event,
         shortcuts->always_on_top)) {
         app->config.window.always_on_top = !app->config.window.always_on_top;
         l2dcat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
+        l2dcat_preferences_invalidate(app->preferences);
     } else if (app->config.model.behavior) {
         for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
             L2DCatBehaviorShortcut *shortcut = &app->config.behavior_shortcuts[i];

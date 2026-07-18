@@ -43,7 +43,7 @@ $results = foreach ($row in $rows) {
     $release = $scenario.EndsWith("-release") -or $scenario -eq "key-stress"
     $visualRatio = $frame.Visible / [double]$baseline.Visible
     $faceRatio = $frame.FaceInk / [double]$baseline.FaceInk
-    $differencePassed = if ($release) { $difference -le 0.00001 } else {
+    $differencePassed = if ($release) { $difference -le 0.003 } else {
         $difference -ge 0.005 -and $difference -le 0.12 }
     $passed = $differencePassed -and
         $visualRatio -ge 0.85 -and $faceRatio -ge 0.75

@@ -18,6 +18,11 @@ struct L2DCatOverlay {
     L2DCatGL gl;
     GLuint program;
     GLuint clip_program;
+    GLint mirror_location;
+    GLint image_location;
+    GLint erase_left_location;
+    GLint erase_right_location;
+    GLint radius_location;
     GLuint vao;
     GLuint vbo;
     GLuint background;
@@ -93,6 +98,11 @@ L2DCatOverlay *l2dcat_overlay_create(L2DCatError *error) {
         free(value);
         return NULL;
     }
+    value->mirror_location = value->gl.uniform_location(value->program, "mirror");
+    value->image_location = value->gl.uniform_location(value->program, "image");
+    value->erase_left_location = value->gl.uniform_location(value->program, "erase_left");
+    value->erase_right_location = value->gl.uniform_location(value->program, "erase_right");
+    value->radius_location = value->gl.uniform_location(value->clip_program, "radius_percent");
     const float vertices[] = {-1, -1, 0, 1, 1, -1, 1, 1, -1, 1, 0, 0, 1, 1, 1, 0};
     value->gl.gen_vertex_arrays(1, &value->vao);
     value->gl.bind_vertex_array(value->vao);
@@ -222,8 +232,7 @@ void l2dcat_overlay_begin_clip(L2DCatOverlay *value, float radius_percent) {
     glStencilFunc(GL_ALWAYS, 1, 0xff);
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
     value->gl.use_program(value->clip_program);
-    value->gl.uniform_1i(value->gl.uniform_location(value->clip_program,
-        "radius_percent"), radius);
+    value->gl.uniform_1i(value->radius_location, radius);
     value->gl.bind_vertex_array(value->vao);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     value->gl.bind_vertex_array(0);
@@ -246,11 +255,11 @@ static void draw(L2DCatOverlay *value, GLuint texture, bool mirror, bool blend) 
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     } else glDisable(GL_BLEND);
     value->gl.use_program(value->program);
-    value->gl.uniform_1i(value->gl.uniform_location(value->program, "mirror"), mirror);
-    value->gl.uniform_1i(value->gl.uniform_location(value->program, "image"), 0);
-    value->gl.uniform_1i(value->gl.uniform_location(value->program, "erase_left"),
+    value->gl.uniform_1i(value->mirror_location, mirror);
+    value->gl.uniform_1i(value->image_location, 0);
+    value->gl.uniform_1i(value->erase_left_location,
         !blend && value->composed_cover && !value->composite && value->left != 0);
-    value->gl.uniform_1i(value->gl.uniform_location(value->program, "erase_right"),
+    value->gl.uniform_1i(value->erase_right_location,
         !blend && value->composed_cover && !value->composite && value->right != 0);
     value->gl.active_texture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);

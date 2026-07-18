@@ -91,6 +91,8 @@ bool NativeModel::load_model(L2DCatError *error) {
         l2dcat_error_set(error, L2DCAT_ERROR_CUBISM, "Cubism rejected moc3: %s", name);
         return false;
     }
+    pending_parameter_values_.resize((size_t)_model->GetParameterCount());
+    pending_parameters_.resize((size_t)_model->GetParameterCount());
     return true;
 }
 

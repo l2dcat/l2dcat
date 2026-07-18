@@ -9,18 +9,19 @@
 #include <string.h>
 #include <windows.h>
 
-static bool zero_block(const unsigned char *block) {
-    for (size_t i = 0; i < 512; ++i) if (block[i]) return false;
-    return true;
+static uint16_t read16(const unsigned char *data) {
+    return (uint16_t)(data[0] | (uint16_t)data[1] << 8);
 }
 
-static size_t octal_size(const unsigned char *text, size_t length) {
-    size_t value = 0;
-    for (size_t i = 0; i < length; ++i) {
-        if (text[i] == 0 || text[i] == ' ') continue;
-        if (text[i] < '0' || text[i] > '7') break;
-        value = value * 8 + (size_t)(text[i] - '0');
-    }
+static uint32_t read32(const unsigned char *data) {
+    uint32_t value = 0;
+    for (int i = 3; i >= 0; --i) value = value << 8 | data[i];
+    return value;
+}
+
+static uint64_t read64(const unsigned char *data) {
+    uint64_t value = 0;
+    for (int i = 7; i >= 0; --i) value = value << 8 | data[i];
     return value;
 }
 
@@ -34,17 +35,6 @@ static bool safe_name(const char *name) {
         cursor += 2;
     }
     return strchr(name, ':') == NULL;
-}
-
-static bool tar_name(const unsigned char *header, char *output, size_t capacity) {
-    char name[101], prefix[156];
-    memcpy(name, header, 100); name[100] = '\0';
-    memcpy(prefix, header + 345, 155); prefix[155] = '\0';
-    int length = prefix[0] ? snprintf(output, capacity, "%s/%s", prefix, name) :
-        snprintf(output, capacity, "%s", name);
-    while (output[0] == '.' && output[1] == '/') memmove(output, output + 2,
-        strlen(output + 2) + 1);
-    return length > 0 && (size_t)length < capacity && safe_name(output);
 }
 
 static bool write_file(const char *path, const unsigned char *data, size_t size,
@@ -71,41 +61,42 @@ static bool current_pack(const char *marker, const char *models,
     return read && strcmp(actual, expected) == 0;
 }
 
-static bool extract_tar(const unsigned char *data, size_t size, const char *target,
+static bool extract_pack(const unsigned char *data, size_t size, const char *target,
     L2DCatError *error) {
-    size_t offset = 0;
-    while (offset + 512 <= size) {
-        const unsigned char *header = data + offset;
-        if (zero_block(header)) return true;
+    const unsigned char magic[8] = {'L', '2', 'D', 'P', 'A', 'K', '1', 0};
+    if (size < 12 || memcmp(data, magic, sizeof(magic)) != 0) {
+        l2dcat_error_set(error, L2DCAT_ERROR_FORMAT, "Invalid embedded asset pack");
+        return false;
+    }
+    uint32_t count = read32(data + 8);
+    size_t offset = 12;
+    if (count > 4096) return false;
+    for (uint32_t index = 0; index < count; ++index) {
+        if (offset + 16 > size) return false;
+        uint16_t name_size = read16(data + offset);
+        uint32_t file_size = read32(data + offset + 4);
+        uint64_t file_offset = read64(data + offset + 8);
+        offset += 16;
         char name[L2DCAT_PATH_CAP], path[L2DCAT_PATH_CAP];
-        if (!tar_name(header, name, sizeof(name)) ||
+        if (!name_size || name_size >= sizeof(name) || offset + name_size > size ||
+            file_offset > size || file_size > size - (size_t)file_offset) return false;
+        memcpy(name, data + offset, name_size); name[name_size] = '\0';
+        offset += name_size;
+        if (!safe_name(name) ||
             !l2dcat_path_join(path, sizeof(path), target, name)) {
             l2dcat_error_set(error, L2DCAT_ERROR_FORMAT, "Unsafe embedded asset path");
             return false;
         }
-        size_t file_size = octal_size(header + 124, 12);
-        size_t blocks = (file_size + 511) / 512;
-        if (offset + 512 + blocks * 512 > size) {
-            l2dcat_error_set(error, L2DCAT_ERROR_FORMAT, "Truncated embedded asset pack");
-            return false;
+        const char *slash = strrchr(path, '/');
+        if (slash) {
+            char parent[L2DCAT_PATH_CAP];
+            size_t length = (size_t)(slash - path);
+            memcpy(parent, path, length); parent[length] = '\0';
+            if (!SDL_CreateDirectory(parent)) return false;
         }
-        char type = (char)header[156];
-        if (type == '5') {
-            if (!SDL_CreateDirectory(path)) return false;
-        } else if (type == 0 || type == '0') {
-            const char *slash = strrchr(path, '/');
-            if (slash) {
-                char parent[L2DCAT_PATH_CAP];
-                size_t length = (size_t)(slash - path);
-                memcpy(parent, path, length); parent[length] = '\0';
-                if (!SDL_CreateDirectory(parent)) return false;
-            }
-            if (!write_file(path, header + 512, file_size, error)) return false;
-        }
-        offset += 512 + blocks * 512;
+        if (!write_file(path, data + (size_t)file_offset, file_size, error)) return false;
     }
-    l2dcat_error_set(error, L2DCAT_ERROR_FORMAT, "Invalid embedded asset pack");
-    return false;
+    return true;
 }
 
 L2DCatResult l2dcat_platform_embedded_assets(const char *target, L2DCatError *error) {
@@ -122,7 +113,7 @@ L2DCatResult l2dcat_platform_embedded_assets(const char *target, L2DCatError *er
     if (data && size) l2dcat_sha256_bytes(data, size, digest);
     if (data && size && current_pack(marker, models, digest)) return L2DCAT_OK;
     if (!data || !size || !SDL_CreateDirectory(target) ||
-        !extract_tar(data, size, target, error)) return L2DCAT_ERROR_IO;
+        !extract_pack(data, size, target, error)) return L2DCAT_ERROR_IO;
     return write_file(marker, (const unsigned char *)digest, 64, error)
         ? L2DCAT_OK : L2DCAT_ERROR_IO;
 }

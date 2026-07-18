@@ -13,6 +13,8 @@ typedef struct L2DCatUIBackend {
     struct nk_buffer commands;
     struct nk_draw_null_texture null_texture;
     GLuint program;
+    GLint texture_location;
+    GLint projection_location;
     GLuint vao;
     GLuint vbo;
     GLuint ebo;

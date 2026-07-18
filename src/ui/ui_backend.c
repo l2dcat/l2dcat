@@ -109,6 +109,8 @@ static bool create_device(L2DCatUIBackend *ui, L2DCatError *error) {
     if (!l2dcat_gl_load(&ui->gl, error)) return false;
     ui->program = l2dcat_gl_program(&ui->gl, vertex_source, fragment_source, error);
     if (!ui->program) return false;
+    ui->texture_location = ui->gl.uniform_location(ui->program, "Texture");
+    ui->projection_location = ui->gl.uniform_location(ui->program, "Projection");
     ui->gl.gen_vertex_arrays(1, &ui->vao);
     ui->gl.bind_vertex_array(ui->vao);
     ui->gl.gen_buffers(1, &ui->vbo);
@@ -257,9 +259,8 @@ void l2dcat_ui_render(L2DCatUIBackend *ui) {
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_SCISSOR_TEST);
     ui->gl.use_program(ui->program);
-    ui->gl.uniform_1i(ui->gl.uniform_location(ui->program, "Texture"), 0);
-    ui->gl.uniform_matrix_4fv(ui->gl.uniform_location(ui->program, "Projection"),
-        1, GL_FALSE, &projection[0][0]);
+    ui->gl.uniform_1i(ui->texture_location, 0);
+    ui->gl.uniform_matrix_4fv(ui->projection_location, 1, GL_FALSE, &projection[0][0]);
     ui->gl.active_texture(GL_TEXTURE0);
     ui->gl.bind_vertex_array(ui->vao);
     const struct nk_draw_command *command;
