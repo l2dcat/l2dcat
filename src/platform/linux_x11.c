@@ -9,6 +9,7 @@
 #include <X11/keysym.h>
 #include <X11/extensions/XInput2.h>
 #include <X11/extensions/Xfixes.h>
+#include <X11/extensions/shape.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
