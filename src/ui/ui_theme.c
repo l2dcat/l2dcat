@@ -43,7 +43,7 @@ static void apply_geometry(struct nk_style *style) {
     style->scrollh = style->scrollv;
 }
 
-void bongo_ui_apply_theme(struct nk_context *context, bool dark) {
+void l2dcat_ui_apply_theme(struct nk_context *context, bool dark) {
     struct nk_color table[NK_COLOR_COUNT];
     struct nk_color text = color(dark, 0x202431, 0xECEEF5);
     struct nk_color muted = color(dark, 0x667085, 0xA7AFC0);
@@ -95,7 +95,7 @@ void bongo_ui_apply_theme(struct nk_context *context, bool dark) {
     context->style.text.color = text;
 }
 
-bool bongo_ui_nav_button(struct nk_context *context, const char *label,
+bool l2dcat_ui_nav_button(struct nk_context *context, const char *label,
     bool active, bool dark) {
     struct nk_style_button style = context->style.button;
     struct nk_color base = color(dark, 0xFFFFFF, 0x1B1F29);

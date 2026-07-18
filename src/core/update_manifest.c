@@ -1,5 +1,5 @@
-#include "bongo/file.h"
-#include "bongo/update_manifest.h"
+#include "l2dcat/file.h"
+#include "l2dcat/update_manifest.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -104,7 +104,7 @@ static int compare_prerelease(const ParsedVersion *left, const ParsedVersion *ri
     return a < left->prerelease_end ? 1 : b < right->prerelease_end ? -1 : 0;
 }
 
-int bongo_version_compare(const char *left, const char *right) {
+int l2dcat_version_compare(const char *left, const char *right) {
     ParsedVersion a, b;
     if (!parse_version(left, &a) || !parse_version(right, &b)) return 0;
     for (size_t index = 0; index < 3; ++index) {
@@ -147,17 +147,17 @@ static bool valid_https_url(const char *value) {
     return true;
 }
 
-BongoResult bongo_update_manifest_load(const char *path, const char *platform,
-    BongoUpdateManifest *manifest, BongoError *error) {
-    if (!path || !platform || !manifest) return BONGO_ERROR_ARGUMENT;
+L2DCatResult l2dcat_update_manifest_load(const char *path, const char *platform,
+    L2DCatUpdateManifest *manifest, L2DCatError *error) {
+    if (!path || !platform || !manifest) return L2DCAT_ERROR_ARGUMENT;
     yyjson_read_err json_error = {0};
-    FILE *file = bongo_file_open(path, "rb");
+    FILE *file = l2dcat_file_open(path, "rb");
     yyjson_doc *doc = file ? yyjson_read_fp(file, 0, NULL, &json_error) : NULL;
     if (file) fclose(file);
     if (!doc) {
-        bongo_error_set(error, BONGO_ERROR_FORMAT, "Invalid update manifest: %s",
+        l2dcat_error_set(error, L2DCAT_ERROR_FORMAT, "Invalid update manifest: %s",
             json_error.msg ? json_error.msg : "cannot open file");
-        return BONGO_ERROR_FORMAT;
+        return L2DCAT_ERROR_FORMAT;
     }
     memset(manifest, 0, sizeof(*manifest));
     yyjson_val *root = yyjson_doc_get_root(doc);
@@ -180,11 +180,11 @@ BongoResult bongo_update_manifest_load(const char *path, const char *platform,
     if (!fields || !parse_version(manifest->version, &version) ||
         !valid_https_url(manifest->url) ||
         !valid_hash(manifest->sha256)) {
-        bongo_error_set(error, BONGO_ERROR_FORMAT,
+        l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
             "Update manifest requires version, HTTPS URL, and SHA-256");
-        return BONGO_ERROR_FORMAT;
+        return L2DCAT_ERROR_FORMAT;
     }
     for (size_t i = 0; i < 64; ++i) manifest->sha256[i] =
         (char)tolower((unsigned char)manifest->sha256[i]);
-    return BONGO_OK;
+    return L2DCAT_OK;
 }

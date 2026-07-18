@@ -1,4 +1,4 @@
-#include "bongo/platform.h"
+#include "l2dcat/platform.h"
 #include "windows_keys.h"
 
 #ifdef _WIN32
@@ -12,7 +12,7 @@
 #include <windows.h>
 
 typedef struct WindowsState {
-    BongoPlatform *platform;
+    L2DCatPlatform *platform;
     HANDLE thread;
     HANDLE ready;
     DWORD thread_id;
@@ -24,19 +24,19 @@ typedef struct WindowsState {
 static WindowsState *global_state;
 static HANDLE instance_mutex;
 
-static HWND native_window(BongoPlatform *platform) {
+static HWND native_window(L2DCatPlatform *platform) {
     return (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(platform->window),
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 }
 
-static void push_event(BongoInputKind kind, const char *name, float value) {
+static void push_event(L2DCatInputKind kind, const char *name, float value) {
     if (!global_state || !global_state->platform || !name) return;
-    BongoInputEvent event = {0};
+    L2DCatInputEvent event = {0};
     event.kind = kind;
     event.timestamp_ms = GetTickCount64();
     event.value = value;
     snprintf(event.name, sizeof(event.name), "%s", name);
-    if (bongo_input_push(global_state->platform->input, &event)) {
+    if (l2dcat_input_push(global_state->platform->input, &event)) {
         SDL_Event wake = {.type = SDL_EVENT_USER};
         SDL_PushEvent(&wake);
     }
@@ -48,8 +48,8 @@ static LRESULT CALLBACK keyboard_hook(int code, WPARAM message, LPARAM data) {
         bool down = message == WM_KEYDOWN || message == WM_SYSKEYDOWN;
         bool up = message == WM_KEYUP || message == WM_SYSKEYUP;
         char buffer[16];
-        const char *name = bongo_windows_key_name(key, buffer);
-        if (name && (down || up)) push_event(down ? BONGO_INPUT_KEY_DOWN : BONGO_INPUT_KEY_UP,
+        const char *name = l2dcat_windows_key_name(key, buffer);
+        if (name && (down || up)) push_event(down ? L2DCAT_INPUT_KEY_DOWN : L2DCAT_INPUT_KEY_UP,
             name, down ? 1.0f : 0.0f);
     }
     return CallNextHookEx(NULL, code, message, data);
@@ -70,12 +70,12 @@ static LRESULT CALLBACK mouse_hook(int code, WPARAM message, LPARAM data) {
     if (code == HC_ACTION && global_state) {
         const MSLLHOOKSTRUCT *mouse = (const MSLLHOOKSTRUCT *)data;
         if (message == WM_MOUSEMOVE) {
-            bongo_input_mouse(global_state->platform->input, mouse->pt.x, mouse->pt.y);
+            l2dcat_input_mouse(global_state->platform->input, mouse->pt.x, mouse->pt.y);
         } else {
             const char *name = mouse_button(message, mouse->mouseData);
             bool down = message == WM_LBUTTONDOWN || message == WM_RBUTTONDOWN ||
                 message == WM_MBUTTONDOWN || message == WM_XBUTTONDOWN;
-            if (name) push_event(down ? BONGO_INPUT_MOUSE_DOWN : BONGO_INPUT_MOUSE_UP,
+            if (name) push_event(down ? L2DCAT_INPUT_MOUSE_DOWN : L2DCAT_INPUT_MOUSE_UP,
                 name, down ? 1.0f : 0.0f);
         }
     }
@@ -101,14 +101,14 @@ static DWORD WINAPI hook_thread(void *context) {
     return 0;
 }
 
-BongoResult bongo_platform_init(BongoPlatform *platform, SDL_Window *window,
-    BongoInputState *input, BongoError *error) {
-    if (!platform || !window || !input) return BONGO_ERROR_ARGUMENT;
+L2DCatResult l2dcat_platform_init(L2DCatPlatform *platform, SDL_Window *window,
+    L2DCatInputState *input, L2DCatError *error) {
+    if (!platform || !window || !input) return L2DCAT_ERROR_ARGUMENT;
     memset(platform, 0, sizeof(*platform));
     platform->window = window;
     platform->input = input;
     WindowsState *state = calloc(1, sizeof(*state));
-    if (!state) return BONGO_ERROR_MEMORY;
+    if (!state) return L2DCAT_ERROR_MEMORY;
     state->platform = platform;
     state->ready = CreateEventW(NULL, TRUE, FALSE, NULL);
     state->thread = state->ready
@@ -116,9 +116,9 @@ BongoResult bongo_platform_init(BongoPlatform *platform, SDL_Window *window,
     platform->native = state;
     if (!state->ready || !state->thread || WaitForSingleObject(state->ready, 3000) != WAIT_OBJECT_0 ||
         !state->hooks_ready) {
-        bongo_error_set(error, BONGO_ERROR_PLATFORM, "Global input hooks failed");
-        bongo_platform_shutdown(platform);
-        return BONGO_ERROR_PLATFORM;
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Global input hooks failed");
+        l2dcat_platform_shutdown(platform);
+        return L2DCAT_ERROR_PLATFORM;
     }
     HWND hwnd = native_window(platform);
     LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
@@ -129,10 +129,10 @@ BongoResult bongo_platform_init(BongoPlatform *platform, SDL_Window *window,
     DwmExtendFrameIntoClientArea(hwnd, &margins);
     SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE |
         SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-    return BONGO_OK;
+    return L2DCAT_OK;
 }
 
-void bongo_platform_shutdown(BongoPlatform *platform) {
+void l2dcat_platform_shutdown(L2DCatPlatform *platform) {
     WindowsState *state = platform ? platform->native : NULL;
     if (!state) return;
     if (state->thread_id) PostThreadMessageW(state->thread_id, WM_QUIT, 0, 0);
@@ -150,34 +150,34 @@ static void update_extended_style(HWND hwnd, LONG_PTR add, LONG_PTR remove) {
         SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
-void bongo_platform_set_click_through(BongoPlatform *platform, bool enabled) {
+void l2dcat_platform_set_click_through(L2DCatPlatform *platform, bool enabled) {
     update_extended_style(native_window(platform), enabled ? WS_EX_TRANSPARENT : 0,
         enabled ? 0 : WS_EX_TRANSPARENT);
 }
 
-void bongo_platform_set_always_on_top(BongoPlatform *platform, bool enabled) {
+void l2dcat_platform_set_always_on_top(L2DCatPlatform *platform, bool enabled) {
     SetWindowPos(native_window(platform), enabled ? HWND_TOPMOST : HWND_NOTOPMOST,
         0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 }
 
-void bongo_platform_set_taskbar(BongoPlatform *platform, bool visible) {
+void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
     update_extended_style(native_window(platform), visible ? WS_EX_APPWINDOW : WS_EX_TOOLWINDOW,
         visible ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW);
 }
 
-void bongo_platform_begin_drag(BongoPlatform *platform) {
+void l2dcat_platform_begin_drag(L2DCatPlatform *platform) {
     HWND hwnd = native_window(platform);
     ReleaseCapture();
     SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
 
-bool bongo_platform_global_input_supported(void) { return true; }
+bool l2dcat_platform_global_input_supported(void) { return true; }
 
-bool bongo_platform_single_instance_begin(void) {
-    instance_mutex = CreateMutexW(NULL, FALSE, L"Local\\BongoCatNative.SingleInstance");
+bool l2dcat_platform_single_instance_begin(void) {
+    instance_mutex = CreateMutexW(NULL, FALSE, L"Local\\l2dcat.SingleInstance");
     if (!instance_mutex) return true;
     if (GetLastError() != ERROR_ALREADY_EXISTS) return true;
-    HWND existing = FindWindowW(NULL, L"BongoCat");
+    HWND existing = FindWindowW(NULL, L"l2dcat");
     if (existing) {
         ShowWindowAsync(existing, IsIconic(existing) ? SW_RESTORE : SW_SHOW);
         SetForegroundWindow(existing);
@@ -187,38 +187,38 @@ bool bongo_platform_single_instance_begin(void) {
     return false;
 }
 
-void bongo_platform_single_instance_end(void) {
+void l2dcat_platform_single_instance_end(void) {
     if (instance_mutex) CloseHandle(instance_mutex);
     instance_mutex = NULL;
 }
 
-BongoResult bongo_platform_set_autostart(bool enabled, BongoError *error) {
+L2DCatResult l2dcat_platform_set_autostart(bool enabled, L2DCatError *error) {
     HKEY key;
     LONG result = RegCreateKeyExW(HKEY_CURRENT_USER,
         L"Software\\Microsoft\\Windows\\CurrentVersion\\Run", 0, NULL, 0,
         KEY_SET_VALUE, NULL, &key, NULL);
     if (result != ERROR_SUCCESS) {
-        bongo_error_set(error, BONGO_ERROR_PLATFORM, "Cannot open autostart registry key");
-        return BONGO_ERROR_PLATFORM;
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Cannot open autostart registry key");
+        return L2DCAT_ERROR_PLATFORM;
     }
     if (enabled) {
-        wchar_t executable[BONGO_PATH_CAP];
-        DWORD length = GetModuleFileNameW(NULL, executable, BONGO_PATH_CAP);
-        wchar_t command[BONGO_PATH_CAP + 4];
-        swprintf(command, BONGO_PATH_CAP + 4, L"\"%ls\"", executable);
-        result = RegSetValueExW(key, L"BongoCat", 0, REG_SZ,
+        wchar_t executable[L2DCAT_PATH_CAP];
+        DWORD length = GetModuleFileNameW(NULL, executable, L2DCAT_PATH_CAP);
+        wchar_t command[L2DCAT_PATH_CAP + 4];
+        swprintf(command, L2DCAT_PATH_CAP + 4, L"\"%ls\"", executable);
+        result = RegSetValueExW(key, L"l2dcat", 0, REG_SZ,
             (const BYTE *)command, (DWORD)((wcslen(command) + 1) * sizeof(wchar_t)));
         (void)length;
-    } else result = RegDeleteValueW(key, L"BongoCat");
+    } else result = RegDeleteValueW(key, L"l2dcat");
     RegCloseKey(key);
     if (result != ERROR_SUCCESS && result != ERROR_FILE_NOT_FOUND) {
-        bongo_error_set(error, BONGO_ERROR_PLATFORM, "Cannot update autostart setting");
-        return BONGO_ERROR_PLATFORM;
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Cannot update autostart setting");
+        return L2DCAT_ERROR_PLATFORM;
     }
-    return BONGO_OK;
+    return L2DCAT_OK;
 }
 
-bool bongo_platform_is_elevated(void) {
+bool l2dcat_platform_is_elevated(void) {
     BOOL elevated = FALSE;
     PSID administrators = NULL;
     SID_IDENTIFIER_AUTHORITY authority = SECURITY_NT_AUTHORITY;
@@ -244,48 +244,48 @@ static void menu_text(HMENU menu, UINT flags, UINT_PTR id, const char *text) {
     free(label);
 }
 
-BongoMenuAction bongo_platform_context_menu(BongoPlatform *platform,
-    const BongoMenuLabels *labels) {
-    if (!platform || !labels) return BONGO_MENU_NONE;
+L2DCatMenuAction l2dcat_platform_context_menu(L2DCatPlatform *platform,
+    const L2DCatMenuLabels *labels) {
+    if (!platform || !labels) return L2DCAT_MENU_NONE;
     HMENU menu = CreatePopupMenu(), sizes = CreatePopupMenu(), opacity = CreatePopupMenu();
-    if (!menu || !sizes || !opacity) return BONGO_MENU_NONE;
-    menu_text(menu, MF_STRING, BONGO_MENU_PREFERENCES, labels->preferences);
-    menu_text(menu, MF_STRING, BONGO_MENU_HIDE, labels->hide);
+    if (!menu || !sizes || !opacity) return L2DCAT_MENU_NONE;
+    menu_text(menu, MF_STRING, L2DCAT_MENU_PREFERENCES, labels->preferences);
+    menu_text(menu, MF_STRING, L2DCAT_MENU_HIDE, labels->hide);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
     menu_text(menu, MF_STRING | (labels->pass_through_checked ? MF_CHECKED : 0),
-        BONGO_MENU_PASS_THROUGH, labels->pass_through);
+        L2DCAT_MENU_PASS_THROUGH, labels->pass_through);
     menu_text(menu, MF_STRING | (labels->always_on_top_checked ? MF_CHECKED : 0),
-        BONGO_MENU_ALWAYS_ON_TOP, labels->always_on_top);
+        L2DCAT_MENU_ALWAYS_ON_TOP, labels->always_on_top);
     const int scales[] = {50, 75, 100, 125, 150, 200};
     for (int i = 0; i < 6; ++i) {
         wchar_t label[16]; swprintf(label, 16, L"%d%%", scales[i]);
-        AppendMenuW(sizes, MF_STRING, BONGO_MENU_SCALE_50 + i, label);
+        AppendMenuW(sizes, MF_STRING, L2DCAT_MENU_SCALE_50 + i, label);
     }
     const int opacities[] = {25, 50, 75, 100};
     for (int i = 0; i < 4; ++i) {
         wchar_t label[16]; swprintf(label, 16, L"%d%%", opacities[i]);
-        AppendMenuW(opacity, MF_STRING, BONGO_MENU_OPACITY_25 + i, label);
+        AppendMenuW(opacity, MF_STRING, L2DCAT_MENU_OPACITY_25 + i, label);
     }
     wchar_t *size_label = wide(labels->window_size), *opacity_label = wide(labels->opacity);
     AppendMenuW(menu, MF_POPUP, (UINT_PTR)sizes, size_label ? size_label : L"");
     AppendMenuW(menu, MF_POPUP, (UINT_PTR)opacity, opacity_label ? opacity_label : L"");
     free(size_label); free(opacity_label);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
-    menu_text(menu, MF_STRING, BONGO_MENU_RESTART, labels->restart);
-    menu_text(menu, MF_STRING, BONGO_MENU_EXIT, labels->exit);
+    menu_text(menu, MF_STRING, L2DCAT_MENU_RESTART, labels->restart);
+    menu_text(menu, MF_STRING, L2DCAT_MENU_EXIT, labels->exit);
     POINT point; GetCursorPos(&point);
     HWND window = native_window(platform);
     SetForegroundWindow(window);
     UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
         point.x, point.y, 0, window, NULL);
     DestroyMenu(menu);
-    return (BongoMenuAction)command;
+    return (L2DCatMenuAction)command;
 }
 
-bool bongo_platform_restart(void) {
-    wchar_t executable[BONGO_PATH_CAP], command[BONGO_PATH_CAP + 4];
-    if (!GetModuleFileNameW(NULL, executable, BONGO_PATH_CAP)) return false;
-    swprintf(command, BONGO_PATH_CAP + 4, L"\"%ls\"", executable);
+bool l2dcat_platform_restart(void) {
+    wchar_t executable[L2DCAT_PATH_CAP], command[L2DCAT_PATH_CAP + 4];
+    if (!GetModuleFileNameW(NULL, executable, L2DCAT_PATH_CAP)) return false;
+    swprintf(command, L2DCAT_PATH_CAP + 4, L"\"%ls\"", executable);
     STARTUPINFOW startup = {.cb = sizeof(startup)};
     PROCESS_INFORMATION process = {0};
     bool ok = CreateProcessW(executable, command, NULL, NULL, FALSE, 0,

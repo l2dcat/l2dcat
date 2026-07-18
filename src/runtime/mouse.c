@@ -3,7 +3,7 @@
 #include <SDL3/SDL.h>
 #include <string.h>
 
-static void track_hover(BongoApp *app, double x, double y) {
+static void track_hover(L2DCatApp *app, double x, double y) {
     int window_x, window_y, width, height;
     SDL_GetWindowPosition(app->window, &window_x, &window_y);
     SDL_GetWindowSize(app->window, &width, &height);
@@ -15,24 +15,24 @@ static void track_hover(BongoApp *app, double x, double y) {
         (uint64_t)(app->config.window.hide_delay_seconds * 1000000000.0) : 0;
     if (!inside && app->hover_hidden) {
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
-        bongo_platform_set_click_through(&app->platform,
+        l2dcat_platform_set_click_through(&app->platform,
             app->config.window.pass_through);
         app->hover_hidden = false;
     }
 }
 
-void bongo_app_update_hover(BongoApp *app, uint64_t now) {
+void l2dcat_app_update_hover(L2DCatApp *app, uint64_t now) {
     if (!app->config.window.hide_on_hover || !app->hover_inside || app->hover_hidden ||
         !app->hover_deadline_ns || now < app->hover_deadline_ns) return;
     SDL_SetWindowOpacity(app->window, 0.0f);
-    bongo_platform_set_click_through(&app->platform, true);
+    l2dcat_platform_set_click_through(&app->platform, true);
     app->hover_hidden = true;
 }
 
-static void set_parameter(BongoApp *app, const char *id,
+static void set_parameter(L2DCatApp *app, const char *id,
     float x_ratio, float y_ratio) {
-    BongoParameterRange range;
-    if (!bongo_live2d_parameter(app->live2d, id, &range)) return;
+    L2DCatParameterRange range;
+    if (!l2dcat_live2d_parameter(app->live2d, id, &range)) return;
     size_t length = strlen(id);
     bool y_axis = length && id[length - 1] == 'Y';
     bool z_axis = length && id[length - 1] == 'Z';
@@ -46,12 +46,12 @@ static void set_parameter(BongoApp *app, const char *id,
         value = range.maximum - ratio * (range.maximum - range.minimum);
     }
     if (!y_axis && app->config.model.mouse_mirror) value = -value;
-    bongo_live2d_set_parameter(app->live2d, id, value);
+    l2dcat_live2d_set_parameter(app->live2d, id, value);
 }
 
-void bongo_app_apply_mouse(BongoApp *app) {
+void l2dcat_app_apply_mouse(L2DCatApp *app) {
     double x, y;
-    if (!app || !bongo_input_take_mouse(&app->input, &x, &y)) return;
+    if (!app || !l2dcat_input_take_mouse(&app->input, &x, &y)) return;
     track_hover(app, x, y);
     if (app->config.model.ignore_mouse) return;
     SDL_Point point = {(int)x, (int)y}; SDL_Rect bounds;

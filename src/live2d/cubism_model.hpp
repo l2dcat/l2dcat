@@ -1,7 +1,7 @@
-#ifndef BONGO_CUBISM_MODEL_HPP
-#define BONGO_CUBISM_MODEL_HPP
+#ifndef L2DCAT_CUBISM_MODEL_HPP
+#define L2DCAT_CUBISM_MODEL_HPP
 
-#include "bongo/common.h"
+#include "l2dcat/common.h"
 
 #include <Model/CubismUserModel.hpp>
 #include <CubismModelSettingJson.hpp>
@@ -12,13 +12,13 @@
 #include <string>
 #include <vector>
 
-namespace bongo {
+namespace l2dcat {
 
 class NativeModel final : public Csm::CubismUserModel {
 public:
     NativeModel();
     ~NativeModel() override;
-    bool load(const char *directory, const char *setting_file, BongoError *error);
+    bool load(const char *directory, const char *setting_file, L2DCatError *error);
     void resize(int width, int height);
     bool update(float delta_seconds);
     void draw();
@@ -30,11 +30,11 @@ public:
 
 private:
     using MotionMap = std::map<std::string, Csm::ACubismMotion *>;
-    bool load_model(BongoError *error);
+    bool load_model(L2DCatError *error);
     void load_expressions();
     void load_effects();
     void load_motions();
-    bool load_textures(BongoError *error);
+    bool load_textures(L2DCatError *error);
     void bind_textures();
     std::vector<unsigned char> read(const std::string &path) const;
     std::string path(const char *relative) const;
@@ -56,6 +56,6 @@ private:
     float opacity_snapshot_ = -1.0f;
 };
 
-} // namespace bongo
+} // namespace l2dcat
 
 #endif

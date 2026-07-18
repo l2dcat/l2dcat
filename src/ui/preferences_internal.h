@@ -1,15 +1,15 @@
-#ifndef BONGO_PREFERENCES_INTERNAL_H
-#define BONGO_PREFERENCES_INTERNAL_H
+#ifndef L2DCAT_PREFERENCES_INTERNAL_H
+#define L2DCAT_PREFERENCES_INTERNAL_H
 
-#include "bongo/app.h"
+#include "l2dcat/app.h"
 #include "nuklear_config.h"
 
-void bongo_preferences_page_cat(BongoApp *app, struct nk_context *context);
-void bongo_preferences_page_general(BongoApp *app, struct nk_context *context);
-void bongo_preferences_page_model(BongoApp *app, struct nk_context *context);
-void bongo_preferences_page_shortcuts(BongoApp *app, struct nk_context *context);
-void bongo_preferences_page_about(BongoApp *app, struct nk_context *context);
-void bongo_preferences_import_path(BongoApp *app, SDL_Window *window,
+void l2dcat_preferences_page_cat(L2DCatApp *app, struct nk_context *context);
+void l2dcat_preferences_page_general(L2DCatApp *app, struct nk_context *context);
+void l2dcat_preferences_page_model(L2DCatApp *app, struct nk_context *context);
+void l2dcat_preferences_page_shortcuts(L2DCatApp *app, struct nk_context *context);
+void l2dcat_preferences_page_about(L2DCatApp *app, struct nk_context *context);
+void l2dcat_preferences_import_path(L2DCatApp *app, SDL_Window *window,
     const char *path);
 
 #endif

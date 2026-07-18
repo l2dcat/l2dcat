@@ -1,8 +1,8 @@
-#include "bongo/app.h"
-#include "bongo/platform.h"
+#include "l2dcat/app.h"
+#include "l2dcat/platform.h"
 
 int main(int argc, char **argv) {
-    int helper = bongo_platform_update_helper(argc, argv);
+    int helper = l2dcat_platform_update_helper(argc, argv);
     if (helper >= 0) return helper;
-    return bongo_app_run(argc, argv);
+    return l2dcat_app_run(argc, argv);
 }

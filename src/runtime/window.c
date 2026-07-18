@@ -1,6 +1,6 @@
 #include "runtime.h"
-#include "bongo/i18n.h"
-#include "bongo/preferences.h"
+#include "l2dcat/i18n.h"
+#include "l2dcat/preferences.h"
 
 #include <SDL3/SDL_opengl.h>
 
@@ -19,44 +19,44 @@ static bool set_gl_attributes(void) {
         SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
 }
 
-BongoResult bongo_window_create(BongoApp *app, BongoError *error) {
+L2DCatResult l2dcat_window_create(L2DCatApp *app, L2DCatError *error) {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS)) {
-        bongo_error_set(error, BONGO_ERROR_PLATFORM, "SDL initialization failed: %s", SDL_GetError());
-        return BONGO_ERROR_PLATFORM;
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "SDL initialization failed: %s", SDL_GetError());
+        return L2DCAT_ERROR_PLATFORM;
     }
     if (!set_gl_attributes()) {
-        bongo_error_set(error, BONGO_ERROR_PLATFORM, "OpenGL attributes failed: %s", SDL_GetError());
-        return BONGO_ERROR_PLATFORM;
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "OpenGL attributes failed: %s", SDL_GetError());
+        return L2DCAT_ERROR_PLATFORM;
     }
     SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_TRANSPARENT |
         SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    app->window = SDL_CreateWindow(BONGO_NAME, app->config.window.width,
+    app->window = SDL_CreateWindow(L2DCAT_NAME, app->config.window.width,
         app->config.window.height, flags);
     if (!app->window) {
-        bongo_error_set(error, BONGO_ERROR_PLATFORM, "Window creation failed: %s", SDL_GetError());
-        return BONGO_ERROR_PLATFORM;
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Window creation failed: %s", SDL_GetError());
+        return L2DCAT_ERROR_PLATFORM;
     }
     app->gl_context = SDL_GL_CreateContext(app->window);
     if (!app->gl_context || !SDL_GL_MakeCurrent(app->window, app->gl_context)) {
-        bongo_error_set(error, BONGO_ERROR_PLATFORM, "OpenGL context failed: %s", SDL_GetError());
-        return BONGO_ERROR_PLATFORM;
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "OpenGL context failed: %s", SDL_GetError());
+        return L2DCAT_ERROR_PLATFORM;
     }
     SDL_GL_SetSwapInterval(1);
-    return BONGO_OK;
+    return L2DCAT_OK;
 }
 
-void bongo_window_apply(BongoApp *app) {
-    BongoWindowOptions *value = &app->config.window;
+void l2dcat_window_apply(L2DCatApp *app) {
+    L2DCatWindowOptions *value = &app->config.window;
     SDL_SetWindowOpacity(app->window, value->opacity_percent / 100.0f);
     SDL_SetWindowSize(app->window, value->width, value->height);
     if (value->x || value->y) SDL_SetWindowPosition(app->window, value->x, value->y);
     value->visible ? SDL_ShowWindow(app->window) : SDL_HideWindow(app->window);
-    bongo_platform_set_click_through(&app->platform, value->pass_through);
-    bongo_platform_set_always_on_top(&app->platform, value->always_on_top);
-    bongo_platform_set_taskbar(&app->platform, value->taskbar_visible);
+    l2dcat_platform_set_click_through(&app->platform, value->pass_through);
+    l2dcat_platform_set_always_on_top(&app->platform, value->always_on_top);
+    l2dcat_platform_set_taskbar(&app->platform, value->taskbar_visible);
 }
 
-static void clamp_to_display(BongoApp *app) {
+static void clamp_to_display(L2DCatApp *app) {
     if (!app->config.window.keep_in_screen) return;
     SDL_DisplayID display = SDL_GetDisplayForWindow(app->window);
     SDL_Rect bounds;
@@ -71,7 +71,7 @@ static void clamp_to_display(BongoApp *app) {
     if (next_x != x || next_y != y) SDL_SetWindowPosition(app->window, next_x, next_y);
 }
 
-static void resize_by_pointer(BongoApp *app, const SDL_Event *event) {
+static void resize_by_pointer(L2DCatApp *app, const SDL_Event *event) {
     if (!(event->motion.state & SDL_BUTTON_RMASK) || !(SDL_GetModState() & SDL_KMOD_SHIFT))
         return;
     app->resize_gesture = true;
@@ -86,11 +86,11 @@ static void resize_by_pointer(BongoApp *app, const SDL_Event *event) {
     SDL_SetWindowSize(app->window, app->config.window.width, app->config.window.height);
 }
 
-static const char *tr(BongoApp *app, const char *key, const char *fallback) {
-    return bongo_i18n_get(app->i18n, key, fallback);
+static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
+    return l2dcat_i18n_get(app->i18n, key, fallback);
 }
 
-static void set_scale(BongoApp *app, float scale) {
+static void set_scale(L2DCatApp *app, float scale) {
     float old = app->config.window.scale_percent;
     if (old <= 0.0f || old == scale) return;
     float factor = scale / old;
@@ -100,8 +100,8 @@ static void set_scale(BongoApp *app, float scale) {
     SDL_SetWindowSize(app->window, app->config.window.width, app->config.window.height);
 }
 
-static void context_menu(BongoApp *app) {
-    BongoMenuLabels labels = {
+static void context_menu(L2DCatApp *app) {
+    L2DCatMenuLabels labels = {
         tr(app, "composables.useAppMenu.labels.preference", "Preferences"),
         tr(app, "composables.useAppMenu.labels.hideCat", "Hide Cat"),
         tr(app, "composables.useAppMenu.labels.passThrough", "Pass Through"),
@@ -111,56 +111,56 @@ static void context_menu(BongoApp *app) {
         tr(app, "composables.useAppMenu.labels.restartApp", "Restart"),
         tr(app, "composables.useAppMenu.labels.quitApp", "Exit"),
         app->config.window.pass_through, app->config.window.always_on_top};
-    BongoMenuAction action = bongo_platform_context_menu(&app->platform, &labels);
-    bongo_window_menu_action(app, action);
+    L2DCatMenuAction action = l2dcat_platform_context_menu(&app->platform, &labels);
+    l2dcat_window_menu_action(app, action);
 }
 
-void bongo_window_show_context_menu(BongoApp *app) { context_menu(app); }
+void l2dcat_window_show_context_menu(L2DCatApp *app) { context_menu(app); }
 
-void bongo_window_menu_action(BongoApp *app, BongoMenuAction action) {
-    if (action == BONGO_MENU_PREFERENCES) bongo_preferences_show(app->preferences);
-    else if (action == BONGO_MENU_HIDE) {
+void l2dcat_window_menu_action(L2DCatApp *app, L2DCatMenuAction action) {
+    if (action == L2DCAT_MENU_PREFERENCES) l2dcat_preferences_show(app->preferences);
+    else if (action == L2DCAT_MENU_HIDE) {
         app->config.window.visible = false; SDL_HideWindow(app->window);
-    } else if (action == BONGO_MENU_PASS_THROUGH) {
+    } else if (action == L2DCAT_MENU_PASS_THROUGH) {
         app->config.window.pass_through = !app->config.window.pass_through;
-        bongo_platform_set_click_through(&app->platform, app->config.window.pass_through);
-    } else if (action == BONGO_MENU_ALWAYS_ON_TOP) {
+        l2dcat_platform_set_click_through(&app->platform, app->config.window.pass_through);
+    } else if (action == L2DCAT_MENU_ALWAYS_ON_TOP) {
         app->config.window.always_on_top = !app->config.window.always_on_top;
-        bongo_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
-    } else if (action >= BONGO_MENU_SCALE_50 && action <= BONGO_MENU_SCALE_200) {
+        l2dcat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
+    } else if (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_SCALE_200) {
         const float scales[] = {50, 75, 100, 125, 150, 200};
-        set_scale(app, scales[action - BONGO_MENU_SCALE_50]);
-    } else if (action >= BONGO_MENU_OPACITY_25 && action <= BONGO_MENU_OPACITY_100) {
+        set_scale(app, scales[action - L2DCAT_MENU_SCALE_50]);
+    } else if (action >= L2DCAT_MENU_OPACITY_25 && action <= L2DCAT_MENU_OPACITY_100) {
         const float values[] = {25, 50, 75, 100};
-        app->config.window.opacity_percent = values[action - BONGO_MENU_OPACITY_25];
+        app->config.window.opacity_percent = values[action - L2DCAT_MENU_OPACITY_25];
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
-    } else if (action == BONGO_MENU_RESTART) {
+    } else if (action == L2DCAT_MENU_RESTART) {
         app->restart_requested = true; app->running = false;
-    } else if (action == BONGO_MENU_EXIT) app->running = false;
+    } else if (action == L2DCAT_MENU_EXIT) app->running = false;
 }
 
-bool bongo_window_menu_self_test(BongoApp *app) {
+bool l2dcat_window_menu_self_test(L2DCatApp *app) {
     if (!app || !app->preferences) return false;
     app->config.window.pass_through = false;
     app->config.window.always_on_top = false;
     app->config.window.scale_percent = 100.0f;
     app->config.window.opacity_percent = 100.0f;
-    bongo_window_menu_action(app, BONGO_MENU_PASS_THROUGH);
-    bongo_window_menu_action(app, BONGO_MENU_ALWAYS_ON_TOP);
-    bongo_window_menu_action(app, BONGO_MENU_SCALE_125);
-    bongo_window_menu_action(app, BONGO_MENU_OPACITY_50);
-    bongo_window_menu_action(app, BONGO_MENU_PREFERENCES);
+    l2dcat_window_menu_action(app, L2DCAT_MENU_PASS_THROUGH);
+    l2dcat_window_menu_action(app, L2DCAT_MENU_ALWAYS_ON_TOP);
+    l2dcat_window_menu_action(app, L2DCAT_MENU_SCALE_125);
+    l2dcat_window_menu_action(app, L2DCAT_MENU_OPACITY_50);
+    l2dcat_window_menu_action(app, L2DCAT_MENU_PREFERENCES);
     bool result = app->config.window.pass_through && app->config.window.always_on_top &&
         app->config.window.scale_percent == 125.0f &&
         app->config.window.opacity_percent == 50.0f &&
-        bongo_preferences_visible(app->preferences);
-    bongo_preferences_close(app->preferences);
+        l2dcat_preferences_visible(app->preferences);
+    l2dcat_preferences_close(app->preferences);
     return result;
 }
 
-bool bongo_window_geometry_self_test(BongoApp *app) {
+bool l2dcat_window_geometry_self_test(L2DCatApp *app) {
     if (!app || !app->window) return false;
-    BongoWindowOptions backup = app->config.window;
+    L2DCatWindowOptions backup = app->config.window;
     int original_x, original_y, original_width, original_height;
     SDL_GetWindowPosition(app->window, &original_x, &original_y);
     SDL_GetWindowSize(app->window, &original_width, &original_height);
@@ -178,17 +178,17 @@ bool bongo_window_geometry_self_test(BongoApp *app) {
     set_scale(app, 125.0f); SDL_SyncWindow(app->window);
     SDL_GetWindowSize(app->window, &width, &height);
     bool scaled = width == 400 && height == 300;
-    bongo_window_menu_action(app, BONGO_MENU_OPACITY_50);
+    l2dcat_window_menu_action(app, L2DCAT_MENU_OPACITY_50);
     bool opacity = SDL_fabsf(SDL_GetWindowOpacity(app->window) - 0.5f) < 0.02f;
     app->config.window.hide_on_hover = true;
     app->config.window.hide_delay_seconds = 0.0f;
     app->config.window.pass_through = false;
     app->config.window.opacity_percent = 100.0f;
-    bongo_input_mouse(&app->input, x + 10, y + 10); bongo_app_apply_mouse(app);
-    bongo_app_update_hover(app, SDL_GetTicksNS() + 1);
+    l2dcat_input_mouse(&app->input, x + 10, y + 10); l2dcat_app_apply_mouse(app);
+    l2dcat_app_update_hover(app, SDL_GetTicksNS() + 1);
     bool hidden = app->hover_hidden && SDL_GetWindowOpacity(app->window) < 0.02f;
-    bongo_input_mouse(&app->input, bounds.x - 10, bounds.y - 10);
-    bongo_app_apply_mouse(app);
+    l2dcat_input_mouse(&app->input, bounds.x - 10, bounds.y - 10);
+    l2dcat_app_apply_mouse(app);
     bool restored = !app->hover_hidden &&
         SDL_fabsf(SDL_GetWindowOpacity(app->window) - 1.0f) < 0.02f;
     app->config.window.width = 320; app->config.window.height = 240;
@@ -204,13 +204,13 @@ bool bongo_window_geometry_self_test(BongoApp *app) {
     bool gesture = app->resize_gesture && app->config.window.scale_percent == 120.0f &&
         width == 384 && height == 288;
     SDL_Event released = {.type = SDL_EVENT_MOUSE_BUTTON_UP};
-    released.button.button = SDL_BUTTON_RIGHT; bongo_window_event(app, &released);
+    released.button.button = SDL_BUTTON_RIGHT; l2dcat_window_event(app, &released);
     gesture = gesture && !app->resize_gesture;
     SDL_SetModState(old_modifiers);
     app->config.window = backup;
-    bongo_platform_set_click_through(&app->platform, backup.pass_through);
-    bongo_platform_set_always_on_top(&app->platform, backup.always_on_top);
-    bongo_platform_set_taskbar(&app->platform, backup.taskbar_visible);
+    l2dcat_platform_set_click_through(&app->platform, backup.pass_through);
+    l2dcat_platform_set_always_on_top(&app->platform, backup.always_on_top);
+    l2dcat_platform_set_taskbar(&app->platform, backup.taskbar_visible);
     SDL_SetWindowOpacity(app->window, backup.opacity_percent / 100.0f);
     SDL_SetWindowSize(app->window, original_width, original_height);
     SDL_SetWindowPosition(app->window, original_x, original_y);
@@ -218,7 +218,7 @@ bool bongo_window_geometry_self_test(BongoApp *app) {
     return clamped && scaled && opacity && hidden && restored && gesture;
 }
 
-bool bongo_window_event(BongoApp *app, const SDL_Event *event) {
+bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
     if (event->type >= SDL_EVENT_WINDOW_FIRST && event->type <= SDL_EVENT_WINDOW_LAST &&
         event->window.windowID != SDL_GetWindowID(app->window)) return true;
     if (event->type == SDL_EVENT_QUIT) return false;
@@ -237,14 +237,14 @@ bool bongo_window_event(BongoApp *app, const SDL_Event *event) {
         event->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
         int pixel_width, pixel_height;
         SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
-        bongo_live2d_resize(app->live2d, pixel_width, pixel_height);
+        l2dcat_live2d_resize(app->live2d, pixel_width, pixel_height);
     } else if (event->type == SDL_EVENT_WINDOW_MOVED) {
         app->config.window.x = event->window.data1;
         app->config.window.y = event->window.data2;
         clamp_to_display(app);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         event->button.button == SDL_BUTTON_LEFT) {
-        bongo_platform_begin_drag(&app->platform);
+        l2dcat_platform_begin_drag(&app->platform);
     } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
         resize_by_pointer(app, event);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
@@ -255,7 +255,7 @@ bool bongo_window_event(BongoApp *app, const SDL_Event *event) {
     return true;
 }
 
-void bongo_window_destroy(BongoApp *app) {
+void l2dcat_window_destroy(L2DCatApp *app) {
     if (app->gl_context) SDL_GL_DestroyContext(app->gl_context);
     if (app->window) SDL_DestroyWindow(app->window);
     app->gl_context = NULL;

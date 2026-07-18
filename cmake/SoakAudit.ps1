@@ -15,14 +15,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\BongoCat.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\l2dcat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\soak-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 if ($DurationSeconds -lt 5 -or $IntervalSeconds -lt 1 -or $WarmupSeconds -lt 1 -or
     $IntervalSeconds -ge $DurationSeconds) { throw "Invalid soak duration or interval" }
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
-$existing = @(Get-Process BongoCat -ErrorAction SilentlyContinue)
+$existing = @(Get-Process l2dcat -ErrorAction SilentlyContinue)
 if ($existing.Count) {
     $existing | Stop-Process -Force
     $existing | Wait-Process -Timeout 5 -ErrorAction SilentlyContinue
@@ -31,7 +31,8 @@ if ($existing.Count) {
 
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 $exitMilliseconds = ($WarmupSeconds + $DurationSeconds + 3) * 1000
-$arguments = @("--ci-smoke", "--ci-exit-ms=$exitMilliseconds", "--data-root=$data")
+$arguments = @("--ci-smoke", "--ci-ignore-global-input",
+    "--ci-exit-ms=$exitMilliseconds", "--data-root=$data")
 if ($Mode -eq "hidden") { $arguments += "--ci-shortcuts" }
 if ($Mode -eq "preferences") {
     $arguments += @("--ci-preferences", "--ci-language=$Language", "--ci-theme=light")
@@ -43,7 +44,7 @@ $samples = [Collections.Generic.List[object]]::new()
 try {
     Start-Sleep -Seconds $WarmupSeconds
     if ($process.HasExited) {
-        throw "BongoCat exited during warmup with code $($process.ExitCode)"
+        throw "l2dcat exited during warmup with code $($process.ExitCode)"
     }
     $process.Refresh()
     $started = [DateTime]::UtcNow
@@ -51,7 +52,7 @@ try {
     $previousAt = $started
     while (([DateTime]::UtcNow - $started).TotalSeconds -lt $DurationSeconds) {
         if ($process.HasExited) {
-            throw "BongoCat exited before the soak duration with code $($process.ExitCode)"
+            throw "l2dcat exited before the soak duration with code $($process.ExitCode)"
         }
         $process.Refresh()
         $now = [DateTime]::UtcNow

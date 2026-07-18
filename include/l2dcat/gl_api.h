@@ -1,10 +1,10 @@
-#ifndef BONGO_GL_API_H
-#define BONGO_GL_API_H
+#ifndef L2DCAT_GL_API_H
+#define L2DCAT_GL_API_H
 
-#include "bongo/common.h"
+#include "l2dcat/common.h"
 #include <SDL3/SDL_opengl.h>
 
-typedef struct BongoGL {
+typedef struct L2DCatGL {
     PFNGLCREATESHADERPROC create_shader;
     PFNGLSHADERSOURCEPROC shader_source;
     PFNGLCOMPILESHADERPROC compile_shader;
@@ -32,10 +32,10 @@ typedef struct BongoGL {
     PFNGLUNIFORMMATRIX4FVPROC uniform_matrix_4fv;
     PFNGLACTIVETEXTUREPROC active_texture;
     PFNGLBLENDEQUATIONPROC blend_equation;
-} BongoGL;
+} L2DCatGL;
 
-bool bongo_gl_load(BongoGL *gl, BongoError *error);
-unsigned int bongo_gl_program(BongoGL *gl, const char *vertex, const char *fragment,
-    BongoError *error);
+bool l2dcat_gl_load(L2DCatGL *gl, L2DCatError *error);
+unsigned int l2dcat_gl_program(L2DCatGL *gl, const char *vertex, const char *fragment,
+    L2DCatError *error);
 
 #endif

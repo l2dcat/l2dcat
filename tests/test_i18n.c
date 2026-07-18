@@ -1,11 +1,11 @@
-#include "bongo/i18n.h"
+#include "l2dcat/i18n.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <yyjson.h>
 
 static yyjson_doc *load(const char *root, const char *name) {
-    char path[BONGO_PATH_CAP];
+    char path[L2DCAT_PATH_CAP];
     snprintf(path, sizeof(path), "%s/%s.json", root, name);
     return yyjson_read_file(path, 0, NULL, NULL);
 }
@@ -21,7 +21,7 @@ static bool same_shape(yyjson_val *reference, yyjson_val *candidate,
     yyjson_obj_foreach(reference, index, count, key, value) {
         const char *name = yyjson_get_str(key);
         yyjson_val *next = yyjson_obj_get(candidate, name);
-        char child[BONGO_PATH_CAP];
+        char child[L2DCAT_PATH_CAP];
         snprintf(child, sizeof(child), "%s%s%s", path, path[0] ? "." : "", name);
         if (!same_shape(value, next, child)) return false;
     }
@@ -35,26 +35,26 @@ static bool includes(const uint32_t *ranges, uint32_t point) {
 }
 
 int main(void) {
-    char root[BONGO_PATH_CAP];
-    snprintf(root, sizeof(root), "%s/resources/assets/locales", BONGO_NATIVE_SOURCE_DIR);
+    char root[L2DCAT_PATH_CAP];
+    snprintf(root, sizeof(root), "%s/resources/assets/locales", L2DCAT_NATIVE_SOURCE_DIR);
     yyjson_doc *reference = load(root, "en-US");
     if (!reference) return 1;
     const uint32_t expected[] = {'A', 0x4e2d, 0x8a2d, 0x00ea, 0x1ebf};
-    for (int language = 0; language <= BONGO_LANG_VI_VN; ++language) {
-        const char *name = bongo_language_name((BongoLanguage)language);
+    for (int language = 0; language <= L2DCAT_LANG_VI_VN; ++language) {
+        const char *name = l2dcat_language_name((L2DCatLanguage)language);
         yyjson_doc *document = load(root, name);
         if (!document || !same_shape(yyjson_doc_get_root(reference),
             yyjson_doc_get_root(document), "")) return 2;
         yyjson_doc_free(document);
-        BongoError error = {0};
-        BongoI18n *i18n = bongo_i18n_create(root, (BongoLanguage)language, &error);
+        L2DCatError error = {0};
+        L2DCatI18n *i18n = l2dcat_i18n_create(root, (L2DCatLanguage)language, &error);
         uint32_t ranges[2048];
-        if (!i18n || bongo_i18n_glyph_ranges(i18n, ranges, 2048) < 3 ||
+        if (!i18n || l2dcat_i18n_glyph_ranges(i18n, ranges, 2048) < 3 ||
             ranges[0] != 0x20 || !includes(ranges, expected[language])) {
             fprintf(stderr, "Missing U+%04X for %s\n", expected[language], name);
             return 3;
         }
-        bongo_i18n_destroy(i18n);
+        l2dcat_i18n_destroy(i18n);
     }
     yyjson_doc_free(reference);
     puts("i18n smoke passed");

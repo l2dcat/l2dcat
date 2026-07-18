@@ -1,15 +1,15 @@
-#ifndef BONGO_LINUX_INTERNAL_H
-#define BONGO_LINUX_INTERNAL_H
+#ifndef L2DCAT_LINUX_INTERNAL_H
+#define L2DCAT_LINUX_INTERNAL_H
 
-#include "bongo/platform.h"
+#include "l2dcat/platform.h"
 
-bool bongo_linux_x11_start(BongoPlatform *platform, BongoError *error);
-void bongo_linux_x11_stop(BongoPlatform *platform);
-bool bongo_linux_x11_supported(const BongoPlatform *platform);
-void bongo_linux_x11_click_through(BongoPlatform *platform, bool enabled);
-void bongo_linux_x11_taskbar(BongoPlatform *platform, bool visible);
-void bongo_linux_x11_begin_drag(BongoPlatform *platform);
-BongoMenuAction bongo_linux_context_menu(BongoPlatform *platform,
-    const BongoMenuLabels *labels);
+bool l2dcat_linux_x11_start(L2DCatPlatform *platform, L2DCatError *error);
+void l2dcat_linux_x11_stop(L2DCatPlatform *platform);
+bool l2dcat_linux_x11_supported(const L2DCatPlatform *platform);
+void l2dcat_linux_x11_click_through(L2DCatPlatform *platform, bool enabled);
+void l2dcat_linux_x11_taskbar(L2DCatPlatform *platform, bool visible);
+void l2dcat_linux_x11_begin_drag(L2DCatPlatform *platform);
+L2DCatMenuAction l2dcat_linux_context_menu(L2DCatPlatform *platform,
+    const L2DCatMenuLabels *labels);
 
 #endif

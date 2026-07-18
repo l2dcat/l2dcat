@@ -1,69 +1,69 @@
-#include "bongo/i18n.h"
-#include "bongo/file.h"
-#include "bongo/path.h"
+#include "l2dcat/i18n.h"
+#include "l2dcat/file.h"
+#include "l2dcat/path.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <yyjson.h>
 
-struct BongoI18n {
-    char root[BONGO_PATH_CAP];
-    BongoLanguage language;
+struct L2DCatI18n {
+    char root[L2DCAT_PATH_CAP];
+    L2DCatLanguage language;
     yyjson_doc *fallback;
     yyjson_doc *active;
 };
 
-static yyjson_doc *load_locale(const char *root, BongoLanguage language,
-    BongoError *error) {
-    char name[32], path[BONGO_PATH_CAP];
-    snprintf(name, sizeof(name), "%s.json", bongo_language_name(language));
-    if (!bongo_path_join(path, sizeof(path), root, name)) return NULL;
+static yyjson_doc *load_locale(const char *root, L2DCatLanguage language,
+    L2DCatError *error) {
+    char name[32], path[L2DCAT_PATH_CAP];
+    snprintf(name, sizeof(name), "%s.json", l2dcat_language_name(language));
+    if (!l2dcat_path_join(path, sizeof(path), root, name)) return NULL;
     yyjson_read_err json_error = {0};
-    FILE *file = bongo_file_open(path, "rb");
+    FILE *file = l2dcat_file_open(path, "rb");
     yyjson_doc *doc = file ? yyjson_read_fp(file, 0, NULL, &json_error) : NULL;
     if (file) fclose(file);
-    if (!doc) bongo_error_set(error, BONGO_ERROR_FORMAT,
+    if (!doc) l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
         "Cannot load locale %s: %s", path,
         json_error.msg ? json_error.msg : "cannot open file");
     return doc;
 }
 
-BongoI18n *bongo_i18n_create(const char *root, BongoLanguage language,
-    BongoError *error) {
+L2DCatI18n *l2dcat_i18n_create(const char *root, L2DCatLanguage language,
+    L2DCatError *error) {
     if (!root) return NULL;
-    BongoI18n *value = calloc(1, sizeof(*value));
+    L2DCatI18n *value = calloc(1, sizeof(*value));
     if (!value) return NULL;
     snprintf(value->root, sizeof(value->root), "%s", root);
-    value->fallback = load_locale(root, BONGO_LANG_EN_US, error);
+    value->fallback = load_locale(root, L2DCAT_LANG_EN_US, error);
     if (!value->fallback) {
         free(value);
         return NULL;
     }
-    if (bongo_i18n_reload(value, language, error) != BONGO_OK) {
-        bongo_i18n_destroy(value);
+    if (l2dcat_i18n_reload(value, language, error) != L2DCAT_OK) {
+        l2dcat_i18n_destroy(value);
         return NULL;
     }
     return value;
 }
 
-void bongo_i18n_destroy(BongoI18n *value) {
+void l2dcat_i18n_destroy(L2DCatI18n *value) {
     if (!value) return;
     if (value->active && value->active != value->fallback) yyjson_doc_free(value->active);
     yyjson_doc_free(value->fallback);
     free(value);
 }
 
-BongoResult bongo_i18n_reload(BongoI18n *value, BongoLanguage language,
-    BongoError *error) {
-    if (!value) return BONGO_ERROR_ARGUMENT;
-    yyjson_doc *next = language == BONGO_LANG_EN_US
+L2DCatResult l2dcat_i18n_reload(L2DCatI18n *value, L2DCatLanguage language,
+    L2DCatError *error) {
+    if (!value) return L2DCAT_ERROR_ARGUMENT;
+    yyjson_doc *next = language == L2DCAT_LANG_EN_US
         ? value->fallback : load_locale(value->root, language, error);
-    if (!next) return BONGO_ERROR_FORMAT;
+    if (!next) return L2DCAT_ERROR_FORMAT;
     if (value->active && value->active != value->fallback) yyjson_doc_free(value->active);
     value->active = next;
     value->language = language;
-    return BONGO_OK;
+    return L2DCAT_OK;
 }
 
 static yyjson_val *find_value(yyjson_doc *doc, const char *key) {
@@ -82,7 +82,7 @@ static yyjson_val *find_value(yyjson_doc *doc, const char *key) {
     return value;
 }
 
-const char *bongo_i18n_get(const BongoI18n *value, const char *key,
+const char *l2dcat_i18n_get(const L2DCatI18n *value, const char *key,
     const char *fallback) {
     if (!value || !key) return fallback;
     yyjson_val *found = find_value(value->active, key);
@@ -139,7 +139,7 @@ static int compare_point(const void *left, const void *right) {
     return a < b ? -1 : a > b;
 }
 
-size_t bongo_i18n_glyph_ranges(const BongoI18n *value, uint32_t *ranges,
+size_t l2dcat_i18n_glyph_ranges(const L2DCatI18n *value, uint32_t *ranges,
     size_t capacity) {
     if (!value || !ranges || capacity < 3) return 0;
     uint32_t points[4096];

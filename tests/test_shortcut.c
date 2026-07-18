@@ -1,36 +1,36 @@
 #include "test.h"
-#include "bongo/shortcut.h"
+#include "l2dcat/shortcut.h"
 
 #include <string.h>
 
-static BongoInputEvent key(BongoInputKind kind, const char *name) {
-    BongoInputEvent event = {.kind = kind};
+static L2DCatInputEvent key(L2DCatInputKind kind, const char *name) {
+    L2DCatInputEvent event = {.kind = kind};
     snprintf(event.name, sizeof(event.name), "%s", name);
     return event;
 }
 
 void test_shortcut(void) {
-    BongoShortcutState state;
-    bongo_shortcut_init(&state);
-    BongoInputEvent control = key(BONGO_INPUT_KEY_DOWN, "ControlLeft");
-    BongoInputEvent letter = key(BONGO_INPUT_KEY_DOWN, "KeyB");
-    CHECK(!bongo_shortcut_update(&state, &control));
-    CHECK(bongo_shortcut_update(&state, &letter));
-    CHECK(bongo_shortcut_matches(&state, &letter, "Control+B"));
-    CHECK(!bongo_shortcut_matches(&state, &letter, "Control+Shift+B"));
-    CHECK(!bongo_shortcut_update(&state, &letter));
-    BongoInputEvent up = key(BONGO_INPUT_KEY_UP, "KeyB");
-    bongo_shortcut_update(&state, &up);
-    control.kind = BONGO_INPUT_KEY_UP;
-    bongo_shortcut_update(&state, &control);
-    BongoInputEvent function = key(BONGO_INPUT_KEY_DOWN, "F1");
-    CHECK(bongo_shortcut_update(&state, &function));
-    CHECK(bongo_shortcut_matches(&state, &function, "F1"));
-    BongoInputEvent comma = key(BONGO_INPUT_KEY_DOWN, "Comma");
-    up = key(BONGO_INPUT_KEY_UP, "F1");
-    bongo_shortcut_update(&state, &up);
-    control.kind = BONGO_INPUT_KEY_DOWN;
-    bongo_shortcut_update(&state, &control);
-    CHECK(bongo_shortcut_update(&state, &comma));
-    CHECK(bongo_shortcut_matches(&state, &comma, "Control+Comma"));
+    L2DCatShortcutState state;
+    l2dcat_shortcut_init(&state);
+    L2DCatInputEvent control = key(L2DCAT_INPUT_KEY_DOWN, "ControlLeft");
+    L2DCatInputEvent letter = key(L2DCAT_INPUT_KEY_DOWN, "KeyB");
+    CHECK(!l2dcat_shortcut_update(&state, &control));
+    CHECK(l2dcat_shortcut_update(&state, &letter));
+    CHECK(l2dcat_shortcut_matches(&state, &letter, "Control+B"));
+    CHECK(!l2dcat_shortcut_matches(&state, &letter, "Control+Shift+B"));
+    CHECK(!l2dcat_shortcut_update(&state, &letter));
+    L2DCatInputEvent up = key(L2DCAT_INPUT_KEY_UP, "KeyB");
+    l2dcat_shortcut_update(&state, &up);
+    control.kind = L2DCAT_INPUT_KEY_UP;
+    l2dcat_shortcut_update(&state, &control);
+    L2DCatInputEvent function = key(L2DCAT_INPUT_KEY_DOWN, "F1");
+    CHECK(l2dcat_shortcut_update(&state, &function));
+    CHECK(l2dcat_shortcut_matches(&state, &function, "F1"));
+    L2DCatInputEvent comma = key(L2DCAT_INPUT_KEY_DOWN, "Comma");
+    up = key(L2DCAT_INPUT_KEY_UP, "F1");
+    l2dcat_shortcut_update(&state, &up);
+    control.kind = L2DCAT_INPUT_KEY_DOWN;
+    l2dcat_shortcut_update(&state, &control);
+    CHECK(l2dcat_shortcut_update(&state, &comma));
+    CHECK(l2dcat_shortcut_matches(&state, &comma, "Control+Comma"));
 }

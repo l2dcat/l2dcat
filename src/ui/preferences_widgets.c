@@ -79,12 +79,12 @@ static bool toggle(struct nk_context *context, bool *value) {
     return changed;
 }
 
-void bongo_pref_section(struct nk_context *context, const char *title) {
+void l2dcat_pref_section(struct nk_context *context, const char *title) {
     nk_layout_row_dynamic(context, 34, 1);
     nk_label(context, title, NK_TEXT_LEFT);
 }
 
-bool bongo_pref_toggle(struct nk_context *context, const char *id,
+bool l2dcat_pref_toggle(struct nk_context *context, const char *id,
     const char *title, const char *detail, bool *value) {
     CardStyle saved;
     if (!card_begin(context, id, detail && detail[0] ? 78 : 58, &saved)) return false;
@@ -103,7 +103,7 @@ static void card_title(struct nk_context *context, const char *title) {
     nk_layout_row_push(context, .38f);
 }
 
-bool bongo_pref_float(struct nk_context *context, const char *id,
+bool l2dcat_pref_float(struct nk_context *context, const char *id,
     const char *title, const char *detail, float minimum, float *value,
     float maximum, float step) {
     CardStyle saved;
@@ -115,7 +115,7 @@ bool bongo_pref_float(struct nk_context *context, const char *id,
     return changed;
 }
 
-bool bongo_pref_int(struct nk_context *context, const char *id,
+bool l2dcat_pref_int(struct nk_context *context, const char *id,
     const char *title, const char *detail, int minimum, int *value,
     int maximum, int step) {
     CardStyle saved;
@@ -127,7 +127,7 @@ bool bongo_pref_int(struct nk_context *context, const char *id,
     return changed;
 }
 
-bool bongo_pref_slider(struct nk_context *context, const char *id,
+bool l2dcat_pref_slider(struct nk_context *context, const char *id,
     const char *title, const char *detail, float minimum, float *value,
     float maximum, float step) {
     CardStyle saved;
@@ -139,7 +139,7 @@ bool bongo_pref_slider(struct nk_context *context, const char *id,
     return before != *value;
 }
 
-int bongo_pref_combo(struct nk_context *context, const char *id,
+int l2dcat_pref_combo(struct nk_context *context, const char *id,
     const char *title, const char *detail, const char *const *items,
     int count, int selected) {
     CardStyle saved;
@@ -150,7 +150,7 @@ int bongo_pref_combo(struct nk_context *context, const char *id,
     return selected;
 }
 
-void bongo_pref_edit(struct nk_context *context, const char *id,
+void l2dcat_pref_edit(struct nk_context *context, const char *id,
     const char *title, const char *detail, char *value, int capacity) {
     CardStyle saved;
     if (!card_begin(context, id, 78, &saved)) return;
@@ -159,7 +159,7 @@ void bongo_pref_edit(struct nk_context *context, const char *id,
     nk_layout_row_end(context); description(context, detail); card_end(context, &saved);
 }
 
-bool bongo_pref_button(struct nk_context *context, const char *id,
+bool l2dcat_pref_button(struct nk_context *context, const char *id,
     const char *title, const char *detail, const char *button) {
     CardStyle saved;
     if (!card_begin(context, id, 78, &saved)) return false;
@@ -169,7 +169,7 @@ bool bongo_pref_button(struct nk_context *context, const char *id,
     return clicked;
 }
 
-void bongo_pref_status(struct nk_context *context, const char *id,
+void l2dcat_pref_status(struct nk_context *context, const char *id,
     const char *title, const char *detail) {
     CardStyle saved;
     if (!card_begin(context, id, 64, &saved)) return;

@@ -1,7 +1,7 @@
-#include "bongo/file.h"
-#include "bongo/platform.h"
-#include "bongo/path.h"
-#include "bongo/sha256.h"
+#include "l2dcat/file.h"
+#include "l2dcat/platform.h"
+#include "l2dcat/path.h"
+#include "l2dcat/sha256.h"
 
 #ifdef _WIN32
 #include <SDL3/SDL.h>
@@ -48,22 +48,22 @@ static bool tar_name(const unsigned char *header, char *output, size_t capacity)
 }
 
 static bool write_file(const char *path, const unsigned char *data, size_t size,
-    BongoError *error) {
-    FILE *file = bongo_file_open(path, "wb");
+    L2DCatError *error) {
+    FILE *file = l2dcat_file_open(path, "wb");
     if (!file) {
-        bongo_error_set(error, BONGO_ERROR_IO, "Cannot create embedded asset: %s", path);
+        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot create embedded asset: %s", path);
         return false;
     }
     bool ok = fwrite(data, 1, size, file) == size;
     if (fclose(file) != 0) ok = false;
-    if (!ok) bongo_error_set(error, BONGO_ERROR_IO, "Cannot write embedded asset: %s", path);
+    if (!ok) l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot write embedded asset: %s", path);
     return ok;
 }
 
 static bool current_pack(const char *marker, const char *models,
     const char expected[65]) {
-    if (!bongo_path_is_dir(models)) return false;
-    FILE *file = bongo_file_open(marker, "rb");
+    if (!l2dcat_path_is_dir(models)) return false;
+    FILE *file = l2dcat_file_open(marker, "rb");
     if (!file) return false;
     char actual[65] = {0};
     bool read = fread(actual, 1, 64, file) == 64;
@@ -72,21 +72,21 @@ static bool current_pack(const char *marker, const char *models,
 }
 
 static bool extract_tar(const unsigned char *data, size_t size, const char *target,
-    BongoError *error) {
+    L2DCatError *error) {
     size_t offset = 0;
     while (offset + 512 <= size) {
         const unsigned char *header = data + offset;
         if (zero_block(header)) return true;
-        char name[BONGO_PATH_CAP], path[BONGO_PATH_CAP];
+        char name[L2DCAT_PATH_CAP], path[L2DCAT_PATH_CAP];
         if (!tar_name(header, name, sizeof(name)) ||
-            !bongo_path_join(path, sizeof(path), target, name)) {
-            bongo_error_set(error, BONGO_ERROR_FORMAT, "Unsafe embedded asset path");
+            !l2dcat_path_join(path, sizeof(path), target, name)) {
+            l2dcat_error_set(error, L2DCAT_ERROR_FORMAT, "Unsafe embedded asset path");
             return false;
         }
         size_t file_size = octal_size(header + 124, 12);
         size_t blocks = (file_size + 511) / 512;
         if (offset + 512 + blocks * 512 > size) {
-            bongo_error_set(error, BONGO_ERROR_FORMAT, "Truncated embedded asset pack");
+            l2dcat_error_set(error, L2DCAT_ERROR_FORMAT, "Truncated embedded asset pack");
             return false;
         }
         char type = (char)header[156];
@@ -95,7 +95,7 @@ static bool extract_tar(const unsigned char *data, size_t size, const char *targ
         } else if (type == 0 || type == '0') {
             const char *slash = strrchr(path, '/');
             if (slash) {
-                char parent[BONGO_PATH_CAP];
+                char parent[L2DCAT_PATH_CAP];
                 size_t length = (size_t)(slash - path);
                 memcpy(parent, path, length); parent[length] = '\0';
                 if (!SDL_CreateDirectory(parent)) return false;
@@ -104,26 +104,26 @@ static bool extract_tar(const unsigned char *data, size_t size, const char *targ
         }
         offset += 512 + blocks * 512;
     }
-    bongo_error_set(error, BONGO_ERROR_FORMAT, "Invalid embedded asset pack");
+    l2dcat_error_set(error, L2DCAT_ERROR_FORMAT, "Invalid embedded asset pack");
     return false;
 }
 
-BongoResult bongo_platform_embedded_assets(const char *target, BongoError *error) {
-    if (!target) return BONGO_ERROR_ARGUMENT;
-    char marker[BONGO_PATH_CAP], models[BONGO_PATH_CAP];
-    bongo_path_join(marker, sizeof(marker), target, "complete");
-    bongo_path_join(models, sizeof(models), target, "assets/models");
+L2DCatResult l2dcat_platform_embedded_assets(const char *target, L2DCatError *error) {
+    if (!target) return L2DCAT_ERROR_ARGUMENT;
+    char marker[L2DCAT_PATH_CAP], models[L2DCAT_PATH_CAP];
+    l2dcat_path_join(marker, sizeof(marker), target, "complete");
+    l2dcat_path_join(models, sizeof(models), target, "assets/models");
     HRSRC resource = FindResourceW(NULL, MAKEINTRESOURCEW(101), MAKEINTRESOURCEW(10));
-    if (!resource) return BONGO_ERROR_IO;
+    if (!resource) return L2DCAT_ERROR_IO;
     HGLOBAL loaded = LoadResource(NULL, resource);
     const unsigned char *data = loaded ? LockResource(loaded) : NULL;
     DWORD size = loaded ? SizeofResource(NULL, resource) : 0;
     char digest[65];
-    if (data && size) bongo_sha256_bytes(data, size, digest);
-    if (data && size && current_pack(marker, models, digest)) return BONGO_OK;
+    if (data && size) l2dcat_sha256_bytes(data, size, digest);
+    if (data && size && current_pack(marker, models, digest)) return L2DCAT_OK;
     if (!data || !size || !SDL_CreateDirectory(target) ||
-        !extract_tar(data, size, target, error)) return BONGO_ERROR_IO;
+        !extract_tar(data, size, target, error)) return L2DCAT_ERROR_IO;
     return write_file(marker, (const unsigned char *)digest, 64, error)
-        ? BONGO_OK : BONGO_ERROR_IO;
+        ? L2DCAT_OK : L2DCAT_ERROR_IO;
 }
 #endif

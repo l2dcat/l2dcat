@@ -1,6 +1,6 @@
-# BongoCat Native
+# l2dcat Native
 
-This directory is the standalone native BongoCat desktop application. Its
+This directory is the standalone native l2dcat desktop application. Its
 source, runtime resources, tests, build files, and release packaging are all
 self-contained under `c/`.
 
@@ -25,7 +25,15 @@ ctest --test-dir c/build --output-on-failure
 ```
 
 The default build downloads pinned open-source dependencies into `c/build`.
-Set `BONGO_FETCH_DEPS=OFF` to use installed SDL3 and yyjson packages.
+Set `L2DCAT_FETCH_DEPS=OFF` to use installed SDL3 and yyjson packages.
+
+## GitHub Actions
+
+Every push, pull request, tag, and manual run executes `.github/workflows/ci.yml`.
+Cppcheck, warning-clean compilation, the 300-line policy, legacy-name scanning,
+and CTest must pass before the build matrix starts. Successful runs publish
+downloadable Windows x86-64, Linux x86-64, and macOS artifacts from the run's
+Artifacts section; no signing secret is required for these CI packages.
 
 ## Distribution
 
@@ -39,14 +47,14 @@ the application. Settings and imported models stay in the user data directory.
 and its SHA-256 protected manifest to `c/build/native-release`. A release build
 is rejected unless Cubism and the platform signing configuration are present:
 
-Set `BONGO_RELEASE_BASE_URL` and `BONGO_UPDATE_MANIFEST_BASE_URL` to infrastructure
+Set `L2DCAT_RELEASE_BASE_URL` and `L2DCAT_UPDATE_MANIFEST_BASE_URL` to infrastructure
 owned by this independent project. Both are empty by default, so the application
 never contacts an upstream or third-party update channel unless explicitly configured.
 
-- Windows: `BONGO_WINDOWS_SIGN_IDENTITY` and optionally `BONGO_SIGNTOOL`.
-- macOS: `BONGO_MACOS_SIGN_IDENTITY` and `BONGO_MACOS_NOTARY_PROFILE`.
-- Linux: `BONGO_LINUX_SIGN_KEY`, AppImage tools,
-  `BONGO_LINUX_UPDATE_PUBLIC_KEY`, and `BONGO_LINUX_UPDATE_PRIVATE_KEY`.
+- Windows: `L2DCAT_WINDOWS_SIGN_IDENTITY` and optionally `L2DCAT_SIGNTOOL`.
+- macOS: `L2DCAT_MACOS_SIGN_IDENTITY` and `L2DCAT_MACOS_NOTARY_PROFILE`.
+- Linux: `L2DCAT_LINUX_SIGN_KEY`, AppImage tools,
+  `L2DCAT_LINUX_UPDATE_PUBLIC_KEY`, and `L2DCAT_LINUX_UPDATE_PRIVATE_KEY`.
 
 Windows updates are accepted only when both the installed app and replacement
 have trusted Authenticode signatures using the same publisher key. macOS checks
@@ -72,13 +80,13 @@ experiments elsewhere in the parent directory:
 
 ```powershell
 ctest --test-dir c/build --output-on-failure
-& c/cmake/VisualAudit.ps1 -Exe c/build/BongoCat.exe `
+& c/cmake/VisualAudit.ps1 -Exe c/build/l2dcat.exe `
   -OutputDir c/build/visual-audit-full -SkipMain
-& c/cmake/SoakAudit.ps1 -Exe c/build/BongoCat.exe `
+& c/cmake/SoakAudit.ps1 -Exe c/build/l2dcat.exe `
   -OutputDir c/build/soak-audit -Mode hidden -DurationSeconds 60
-& c/cmake/DropImportAudit.ps1 -Exe c/build/BongoCat.exe `
+& c/cmake/DropImportAudit.ps1 -Exe c/build/l2dcat.exe `
   -OutputDir c/build/drop-import-audit
-& c/cmake/WindowsStyleAudit.ps1 -Exe c/build/BongoCat.exe -Mode taskbar
+& c/cmake/WindowsStyleAudit.ps1 -Exe c/build/l2dcat.exe -Mode taskbar
 ```
 
 `VisualAudit.ps1` requires a same-run idle baseline, a `cubism-native` runtime

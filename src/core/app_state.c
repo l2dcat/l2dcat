@@ -1,5 +1,5 @@
-#include "bongo/app.h"
-#include "bongo/overlay.h"
+#include "l2dcat/app.h"
+#include "l2dcat/overlay.h"
 
 #include <math.h>
 #include <string.h>
@@ -8,35 +8,35 @@ static bool stick_active(float x, float y, bool pressed) {
     return pressed || fabsf(x) > 0.001f || fabsf(y) > 0.001f;
 }
 
-static void update_hands(BongoApp *app) {
+static void update_hands(L2DCatApp *app) {
     bool left_stick = stick_active(app->left_stick_x,
         app->left_stick_y, app->left_stick_pressed);
     bool right_stick = stick_active(app->right_stick_x,
         app->right_stick_y, app->right_stick_pressed);
-    bongo_live2d_set_parameter(app->live2d, "CatParamStickShowLeftHand", left_stick);
-    bongo_live2d_set_parameter(app->live2d, "CatParamStickShowRightHand", right_stick);
-    bongo_live2d_set_parameter(app->live2d, "CatParamLeftHandDown",
-        left_stick || bongo_overlay_hand_active(app->overlay, false));
-    bongo_live2d_set_parameter(app->live2d, "CatParamRightHandDown",
-        right_stick || bongo_overlay_hand_active(app->overlay, true));
+    l2dcat_live2d_set_parameter(app->live2d, "CatParamStickShowLeftHand", left_stick);
+    l2dcat_live2d_set_parameter(app->live2d, "CatParamStickShowRightHand", right_stick);
+    l2dcat_live2d_set_parameter(app->live2d, "CatParamLeftHandDown",
+        left_stick || l2dcat_overlay_hand_active(app->overlay, false));
+    l2dcat_live2d_set_parameter(app->live2d, "CatParamRightHandDown",
+        right_stick || l2dcat_overlay_hand_active(app->overlay, true));
 }
 
-static void apply_key(BongoApp *app, const char *name, bool pressed) {
-    if (bongo_overlay_key(app->overlay, name, pressed) < 0) return;
+static void apply_key(L2DCatApp *app, const char *name, bool pressed) {
+    if (l2dcat_overlay_key(app->overlay, name, pressed) < 0) return;
     update_hands(app);
     app->dirty = true;
 }
 
-static void set_axis(BongoApp *app, const char *id, float input) {
-    BongoParameterRange range;
-    if (!bongo_live2d_parameter(app->live2d, id, &range)) return;
+static void set_axis(L2DCatApp *app, const char *id, float input) {
+    L2DCatParameterRange range;
+    if (!l2dcat_live2d_parameter(app->live2d, id, &range)) return;
     float value = input * range.maximum;
     if (value < range.minimum) value = range.minimum;
     if (value > range.maximum) value = range.maximum;
-    bongo_live2d_set_parameter(app->live2d, id, value);
+    l2dcat_live2d_set_parameter(app->live2d, id, value);
 }
 
-static void apply_gamepad(BongoApp *app, const BongoInputEvent *event) {
+static void apply_gamepad(L2DCatApp *app, const L2DCatInputEvent *event) {
     const char *id = NULL;
     if (strcmp(event->name, "LeftStickX") == 0) {
         id = "CatParamStickLX"; app->left_stick_x = event->value;
@@ -48,11 +48,11 @@ static void apply_gamepad(BongoApp *app, const BongoInputEvent *event) {
         id = "CatParamStickRY"; app->right_stick_y = event->value;
     } else if (strcmp(event->name, "LeftThumb") == 0) {
         app->left_stick_pressed = event->value > 0.0f;
-        bongo_live2d_set_parameter(app->live2d, "CatParamStickLeftDown",
+        l2dcat_live2d_set_parameter(app->live2d, "CatParamStickLeftDown",
             app->left_stick_pressed);
     } else if (strcmp(event->name, "RightThumb") == 0) {
         app->right_stick_pressed = event->value > 0.0f;
-        bongo_live2d_set_parameter(app->live2d, "CatParamStickRightDown",
+        l2dcat_live2d_set_parameter(app->live2d, "CatParamStickRightDown",
             app->right_stick_pressed);
     } else apply_key(app, event->name, event->value > 0.05f);
     if (id) set_axis(app, id, event->value);
@@ -60,7 +60,7 @@ static void apply_gamepad(BongoApp *app, const BongoInputEvent *event) {
     app->dirty = true;
 }
 
-void bongo_app_reset_gamepad(BongoApp *app) {
+void l2dcat_app_reset_gamepad(L2DCatApp *app) {
     if (!app || !app->live2d) return;
     app->left_stick_x = app->left_stick_y = 0.0f;
     app->right_stick_x = app->right_stick_y = 0.0f;
@@ -69,29 +69,29 @@ void bongo_app_reset_gamepad(BongoApp *app) {
         "CatParamStickRX", "CatParamStickRY", "CatParamStickLeftDown",
         "CatParamStickRightDown"};
     for (size_t i = 0; i < sizeof(parameters) / sizeof(parameters[0]); ++i)
-        bongo_live2d_set_parameter(app->live2d, parameters[i], 0.0f);
+        l2dcat_live2d_set_parameter(app->live2d, parameters[i], 0.0f);
     update_hands(app);
     app->dirty = true;
 }
 
-void bongo_app_apply_input(BongoApp *app, const BongoInputEvent *event) {
+void l2dcat_app_apply_input(L2DCatApp *app, const L2DCatInputEvent *event) {
     if (!app || !event || !app->live2d) return;
     switch (event->kind) {
-    case BONGO_INPUT_KEY_DOWN: apply_key(app, event->name, true); break;
-    case BONGO_INPUT_KEY_UP: apply_key(app, event->name, false); break;
-    case BONGO_INPUT_MOUSE_DOWN:
-    case BONGO_INPUT_MOUSE_UP: {
+    case L2DCAT_INPUT_KEY_DOWN: apply_key(app, event->name, true); break;
+    case L2DCAT_INPUT_KEY_UP: apply_key(app, event->name, false); break;
+    case L2DCAT_INPUT_MOUSE_DOWN:
+    case L2DCAT_INPUT_MOUSE_UP: {
         if (strcmp(event->name, "Left") != 0 && strcmp(event->name, "Right") != 0)
             break;
-        bool down = event->kind == BONGO_INPUT_MOUSE_DOWN;
+        bool down = event->kind == L2DCAT_INPUT_MOUSE_DOWN;
         const char *id = strcmp(event->name, "Left") == 0
             ? "ParamMouseLeftDown" : "ParamMouseRightDown";
-        bongo_live2d_set_parameter(app->live2d, id, down ? 1.0f : 0.0f);
+        l2dcat_live2d_set_parameter(app->live2d, id, down ? 1.0f : 0.0f);
         app->dirty = true;
         break;
     }
-    case BONGO_INPUT_GAMEPAD_BUTTON:
-    case BONGO_INPUT_GAMEPAD_AXIS: apply_gamepad(app, event); break;
+    case L2DCAT_INPUT_GAMEPAD_BUTTON:
+    case L2DCAT_INPUT_GAMEPAD_AXIS: apply_gamepad(app, event); break;
     default: break;
     }
 }

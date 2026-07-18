@@ -1,0 +1,32 @@
+if(L2DCAT_FETCH_DEPS)
+  set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+  set(SDL_STATIC ON CACHE BOOL "" FORCE)
+  set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+  set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+  set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+  set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+  set(SDL_GPU OFF CACHE BOOL "" FORCE)
+  set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
+  set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
+  set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
+  set(SDL_POWER OFF CACHE BOOL "" FORCE)
+  set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+  set(MINIAUDIO_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(MINIAUDIO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(MINIAUDIO_INSTALL OFF CACHE BOOL "" FORCE)
+  FetchContent_Declare(SDL3 URL https://github.com/libsdl-org/SDL/archive/402fc52af4e731184ad6a704068b5ccd27d8f1b8.tar.gz
+    URL_HASH SHA256=e413151af71c23d316b6076a96a999342142afa792394eaf8a542a03503fc491)
+  FetchContent_Declare(yyjson URL https://github.com/ibireme/yyjson/archive/ac8f6074e1fbc43ec496aa1404b460d08b55d7a5.tar.gz
+    URL_HASH SHA256=bfc16e407ddb303c98e333920d5e01386afa42a15e0a750251342e04b074e736)
+  FetchContent_Declare(stb URL https://github.com/nothings/stb/archive/31c1ad37456438565541f4919958214b6e762fb4.tar.gz
+    URL_HASH SHA256=e4e3bba9c572a4a4148373a914d88ea0f0d11de8cc2c66739926e7eca0223319)
+  FetchContent_Declare(miniaudio URL https://github.com/mackron/miniaudio/archive/9634bedb5b5a2ca38c1ee7108a9358a4e233f14d.tar.gz
+    URL_HASH SHA256=1a3a79b80fc6f0b0cc155e28b954a598e0ddfa2db64e2afa8466be88c476fa55)
+  FetchContent_Declare(nuklear URL https://github.com/Immediate-Mode-UI/Nuklear/archive/8109cfbabe04f8705408c5d8ab1a6cd48649ccda.tar.gz
+    URL_HASH SHA256=23e5e1b12e897f1d568eb703aa313b7224c9b75e1118764ceba477d13b8e39f4)
+  FetchContent_MakeAvailable(SDL3 yyjson stb miniaudio nuklear)
+else()
+  find_package(SDL3 CONFIG REQUIRED COMPONENTS SDL3-static)
+  find_package(yyjson CONFIG REQUIRED)
+endif()

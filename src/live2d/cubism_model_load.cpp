@@ -1,6 +1,6 @@
 #include "cubism_model.hpp"
-#include "bongo/file.h"
-#include "bongo/image.h"
+#include "l2dcat/file.h"
+#include "l2dcat/image.h"
 
 #include <Effect/CubismEyeBlink.hpp>
 #include <Motion/CubismExpressionUpdater.hpp>
@@ -12,7 +12,7 @@
 #include <cstdio>
 #include <new>
 
-namespace bongo {
+namespace l2dcat {
 
 NativeModel::NativeModel() {
     _mocConsistency = true;
@@ -27,7 +27,7 @@ NativeModel::~NativeModel() {
 }
 
 std::vector<unsigned char> NativeModel::read(const std::string &file) const {
-    FILE *stream = bongo_file_open(file.c_str(), "rb");
+    FILE *stream = l2dcat_file_open(file.c_str(), "rb");
     if (!stream || std::fseek(stream, 0, SEEK_END) != 0) {
         if (stream) std::fclose(stream);
         return {};
@@ -48,20 +48,20 @@ std::string NativeModel::path(const char *relative) const {
     return directory_ + (relative ? relative : "");
 }
 
-bool NativeModel::load(const char *directory, const char *setting_file, BongoError *error) {
+bool NativeModel::load(const char *directory, const char *setting_file, L2DCatError *error) {
     if (!directory || !setting_file) return false;
     directory_ = directory;
     if (!directory_.empty() && directory_.back() != '/' && directory_.back() != '\\')
         directory_ += '/';
     std::vector<unsigned char> json = read(path(setting_file));
     if (json.empty()) {
-        bongo_error_set(error, BONGO_ERROR_IO, "Cannot read model setting: %s", setting_file);
+        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot read model setting: %s", setting_file);
         return false;
     }
     setting_ = new(std::nothrow)
         Csm::CubismModelSettingJson(json.data(), (Csm::csmSizeInt)json.size());
     if (!setting_) {
-        bongo_error_set(error, BONGO_ERROR_MEMORY, "Cannot allocate model setting");
+        l2dcat_error_set(error, L2DCAT_ERROR_MEMORY, "Cannot allocate model setting");
         return false;
     }
     if (!load_model(error)) return false;
@@ -76,16 +76,16 @@ bool NativeModel::load(const char *directory, const char *setting_file, BongoErr
     return load_textures(error);
 }
 
-bool NativeModel::load_model(BongoError *error) {
+bool NativeModel::load_model(L2DCatError *error) {
     const char *name = setting_->GetModelFileName();
     std::vector<unsigned char> bytes = read(path(name));
     if (bytes.empty()) {
-        bongo_error_set(error, BONGO_ERROR_IO, "Cannot read moc3: %s", name);
+        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot read moc3: %s", name);
         return false;
     }
     LoadModel(bytes.data(), (Csm::csmSizeInt)bytes.size(), true);
     if (!_model) {
-        bongo_error_set(error, BONGO_ERROR_CUBISM, "Cubism rejected moc3: %s", name);
+        l2dcat_error_set(error, L2DCAT_ERROR_CUBISM, "Cubism rejected moc3: %s", name);
         return false;
     }
     return true;
@@ -154,10 +154,10 @@ void NativeModel::load_motions() {
     _motionManager->StopAllMotions();
 }
 
-bool NativeModel::load_textures(BongoError *error) {
+bool NativeModel::load_textures(L2DCatError *error) {
     textures_.assign((size_t)setting_->GetTextureCount(), 0);
     for (int i = 0; i < setting_->GetTextureCount(); ++i) {
-        textures_[(size_t)i] = bongo_image_texture(
+        textures_[(size_t)i] = l2dcat_image_texture(
             path(setting_->GetTextureFileName(i)).c_str(), nullptr, nullptr, error);
         if (!textures_[(size_t)i]) return false;
     }
@@ -173,4 +173,4 @@ void NativeModel::bind_textures() {
     renderer->IsPremultipliedAlpha(false);
 }
 
-} // namespace bongo
+} // namespace l2dcat

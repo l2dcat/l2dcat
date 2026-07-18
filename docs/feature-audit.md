@@ -20,7 +20,7 @@ a Live2D visual pass.
 - Thirty-second visible soak: 69.992 MiB, -0.004 MiB growth, 0.2071% CPU — PASS.
 - Five-minute hidden soak: 56.371 MiB peak, -3.476 MiB growth, 0.0182% CPU — PASS.
 - Thirty-second zh-CN preferences soak: 81.43 MiB, 0.246 MiB growth — PASS.
-- Desktop binary SHA-256 matches `c/build/BongoCat.exe` — PASS.
+- Desktop binary SHA-256 matches `c/build/l2dcat.exe` — PASS.
 - Cubism Native SDK under `c/vendor/CubismSdkForNative` — BLOCKED, absent.
 
 ## Models and rendering

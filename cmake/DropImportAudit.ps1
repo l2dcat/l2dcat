@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\BongoCat.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\l2dcat.exe" }
 if (-not $ModelDirectory) {
     $ModelDirectory = Join-Path $root "resources\assets\models\standard"
 }
@@ -19,7 +19,7 @@ Add-Type @'
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
-public static class BongoDropNative {
+public static class L2DCatDropNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
@@ -46,7 +46,7 @@ public static class BongoDropNative {
 }
 '@
 
-Get-Process BongoCat -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 350
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $dataRoot = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
@@ -56,13 +56,13 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -WindowStyle Normal -PassThru
 Start-Sleep -Milliseconds 1400
 $windows = [Collections.Generic.List[object]]::new()
-[BongoDropNative]::EnumWindows({
+[L2DCatDropNative]::EnumWindows({
     param($handle, $data)
     [uint32]$owner = 0
-    [void][BongoDropNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-    if ($owner -eq $process.Id -and [BongoDropNative]::IsWindowVisible($handle)) {
-        $rect = [BongoDropNative+Rect]::new()
-        if ([BongoDropNative]::GetWindowRect($handle, [ref]$rect)) {
+    [void][L2DCatDropNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+    if ($owner -eq $process.Id -and [L2DCatDropNative]::IsWindowVisible($handle)) {
+        $rect = [L2DCatDropNative+Rect]::new()
+        if ([L2DCatDropNative]::GetWindowRect($handle, [ref]$rect)) {
             $windows.Add([pscustomobject]@{
                 Handle=$handle; Area=($rect.R-$rect.L)*($rect.B-$rect.T)
             })
@@ -71,7 +71,7 @@ $windows = [Collections.Generic.List[object]]::new()
     return $true
 }, [IntPtr]::Zero) | Out-Null
 $target = ($windows | Sort-Object Area -Descending | Select-Object -First 1).Handle
-$posted = $target -and [BongoDropNative]::Drop($target, $ModelDirectory)
+$posted = $target -and [L2DCatDropNative]::Drop($target, $ModelDirectory)
 $process.WaitForExit()
 $models = @(Get-ChildItem (Join-Path $dataRoot "custom-models") `
     -Directory -ErrorAction SilentlyContinue)

@@ -1,9 +1,9 @@
-#include "bongo/common.h"
+#include "l2dcat/common.h"
 
 #include <stdarg.h>
 #include <stdio.h>
 
-void bongo_error_set(BongoError *error, BongoResult code, const char *format, ...) {
+void l2dcat_error_set(L2DCatError *error, L2DCatResult code, const char *format, ...) {
     if (!error) return;
     error->code = code;
     if (!format) {

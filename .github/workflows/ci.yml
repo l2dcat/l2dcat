@@ -1,0 +1,169 @@
+name: l2dcat CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l2dcat-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: quality / syntax-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Install quality and build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build cppcheck \
+            libgl1-mesa-dev libx11-dev libxi-dev libxfixes-dev \
+            libcurl4-openssl-dev libssl-dev
+
+      - name: Reject legacy product-name references
+        run: |
+          legacy='bon''go'
+          if grep -RIni --exclude-dir=.git --exclude-dir=build \
+              --exclude='*.png' --exclude='*.flac' "$legacy" .; then
+            echo "Legacy product-name reference found"
+            exit 1
+          fi
+
+      - name: Check source file size policy
+        run: cmake -DROOT="$GITHUB_WORKSPACE" -P cmake/CheckLines.cmake
+
+      - name: Run Cppcheck
+        shell: bash
+        run: |
+          mapfile -d '' c_files < <(find src -type f -name '*.c' -print0)
+          cppcheck --enable=warning,performance,portability \
+            --error-exitcode=1 --inline-suppr \
+            --suppress=missingIncludeSystem --suppress=unknownMacro \
+            --std=c11 -Iinclude -Isrc/ui -Isrc/runtime "${c_files[@]}"
+          mapfile -d '' cpp_files < <(find src -type f -name '*.cpp' -print0)
+          cppcheck --enable=warning,performance,portability \
+            --error-exitcode=1 --inline-suppr \
+            --suppress=missingIncludeSystem --suppress=unknownMacro \
+            --suppress=passedByValueCallback --std=c++17 \
+            -Iinclude -Isrc/ui -Isrc/runtime "${cpp_files[@]}"
+
+      - name: Configure warning-clean Linux build
+        run: |
+          cmake -S . -B build-quality -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DL2DCAT_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build build-quality --parallel 2
+
+      - name: Run native tests
+        run: ctest --test-dir build-quality --output-on-failure
+
+  build:
+    name: build / ${{ matrix.artifact }}
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: windows-x86_64
+          - os: ubuntu-latest
+            artifact: linux-x86_64
+          - os: macos-latest
+            artifact: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build libgl1-mesa-dev libx11-dev libxi-dev \
+            libxfixes-dev libcurl4-openssl-dev libssl-dev
+
+      - name: Configure Windows release
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake -S . -B build -A x64 `
+            -DL2DCAT_WARNINGS_AS_ERRORS=ON
+
+      - name: Configure Unix release
+        if: runner.os != 'Windows'
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DL2DCAT_WARNINGS_AS_ERRORS=ON
+
+      - name: Build Windows release
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake --build build --config Release --parallel 2
+
+      - name: Build Unix release
+        if: runner.os != 'Windows'
+        run: cmake --build build --parallel 2
+
+      - name: Test Windows release
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Test Unix release
+        if: runner.os != 'Windows'
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package Windows executable
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $executable = Get-ChildItem build -Recurse -Filter l2dcat.exe -File |
+            Select-Object -First 1
+          if (-not $executable) { throw "l2dcat.exe was not produced" }
+          Copy-Item -LiteralPath $executable.FullName -Destination dist/l2dcat.exe
+          (Get-FileHash dist/l2dcat.exe -Algorithm SHA256).Hash |
+            Set-Content -NoNewline dist/l2dcat.exe.sha256
+
+      - name: Package Linux application
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p package/l2dcat/assets dist
+          install -m 755 build/l2dcat package/l2dcat/l2dcat
+          cp -R resources/assets/. package/l2dcat/assets/
+          tar -C package -czf dist/l2dcat-linux-x86_64.tar.gz l2dcat
+          sha256sum dist/l2dcat-linux-x86_64.tar.gz > \
+            dist/l2dcat-linux-x86_64.tar.gz.sha256
+
+      - name: Package macOS application
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          test -d build/l2dcat.app
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/l2dcat.app dist/l2dcat-macos.zip
+          shasum -a 256 dist/l2dcat-macos.zip > \
+            dist/l2dcat-macos.zip.sha256
+
+      - name: Upload downloadable build
+        uses: actions/upload-artifact@v7
+        with:
+          name: l2dcat-${{ matrix.artifact }}-${{ github.run_number }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0

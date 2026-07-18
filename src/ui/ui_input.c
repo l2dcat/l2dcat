@@ -1,14 +1,14 @@
 #include "ui_backend.h"
 
-void bongo_ui_input_begin(BongoUIBackend *ui) {
+void l2dcat_ui_input_begin(L2DCatUIBackend *ui) {
     if (ui) nk_input_begin(&ui->context);
 }
 
-void bongo_ui_input_end(BongoUIBackend *ui) {
+void l2dcat_ui_input_end(L2DCatUIBackend *ui) {
     if (ui) nk_input_end(&ui->context);
 }
 
-static void key_event(BongoUIBackend *ui, const SDL_KeyboardEvent *event) {
+static void key_event(L2DCatUIBackend *ui, const SDL_KeyboardEvent *event) {
     bool down = event->down;
     bool control = (event->mod & SDL_KMOD_CTRL) != 0;
     struct nk_context *context = &ui->context;
@@ -46,7 +46,7 @@ static void key_event(BongoUIBackend *ui, const SDL_KeyboardEvent *event) {
     }
 }
 
-static void text_event(BongoUIBackend *ui, const char *text) {
+static void text_event(L2DCatUIBackend *ui, const char *text) {
     int length = text ? (int)SDL_strlen(text) : 0;
     while (length > 0) {
         nk_rune rune;
@@ -58,7 +58,7 @@ static void text_event(BongoUIBackend *ui, const char *text) {
     }
 }
 
-bool bongo_ui_event(BongoUIBackend *ui, const SDL_Event *event) {
+bool l2dcat_ui_event(L2DCatUIBackend *ui, const SDL_Event *event) {
     if (!ui || !event) return false;
     struct nk_context *context = &ui->context;
     switch (event->type) {

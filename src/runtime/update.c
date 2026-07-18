@@ -1,24 +1,24 @@
-#include "bongo/update.h"
-#include "bongo/file.h"
-#include "bongo/path.h"
-#include "bongo/platform.h"
-#include "bongo/sha256.h"
-#include "bongo/update_manifest.h"
+#include "l2dcat/update.h"
+#include "l2dcat/file.h"
+#include "l2dcat/path.h"
+#include "l2dcat/platform.h"
+#include "l2dcat/sha256.h"
+#include "l2dcat/update_manifest.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct BongoUpdater {
+struct L2DCatUpdater {
     SDL_Mutex *mutex;
     SDL_Thread *thread;
     bool running;
     int command;
-    char data_root[BONGO_PATH_CAP];
-    char staged[BONGO_PATH_CAP];
-    BongoUpdateManifest manifest;
-    BongoUpdateSnapshot state;
+    char data_root[L2DCAT_PATH_CAP];
+    char staged[L2DCAT_PATH_CAP];
+    L2DCatUpdateManifest manifest;
+    L2DCatUpdateSnapshot state;
 };
 
 static const char *platform_key(void) {
@@ -37,9 +37,9 @@ static const char *platform_key(void) {
 #endif
 }
 
-static void set_error(BongoUpdater *value, const BongoError *error) {
+static void set_error(L2DCatUpdater *value, const L2DCatError *error) {
     SDL_LockMutex(value->mutex);
-    value->state.status = BONGO_UPDATE_FAILED;
+    value->state.status = L2DCAT_UPDATE_FAILED;
     snprintf(value->state.message, sizeof(value->state.message), "%s",
         error && error->message[0] ? error->message : "Update failed");
     SDL_UnlockMutex(value->mutex);
@@ -48,91 +48,91 @@ static void set_error(BongoUpdater *value, const BongoError *error) {
 }
 
 static void progress(uint64_t received, uint64_t total, void *userdata) {
-    BongoUpdater *value = userdata;
+    L2DCatUpdater *value = userdata;
     SDL_LockMutex(value->mutex);
     value->state.received = received; value->state.total = total;
     SDL_UnlockMutex(value->mutex);
 }
 
-static void finish_check(BongoUpdater *value, const BongoUpdateManifest *manifest) {
+static void finish_check(L2DCatUpdater *value, const L2DCatUpdateManifest *manifest) {
     SDL_LockMutex(value->mutex);
     value->manifest = *manifest;
     snprintf(value->state.version, sizeof(value->state.version), "%s", manifest->version);
     snprintf(value->state.notes, sizeof(value->state.notes), "%s", manifest->notes);
     snprintf(value->state.published, sizeof(value->state.published), "%s", manifest->published);
-    value->state.status = bongo_version_compare(manifest->version, BONGO_VERSION) > 0
-        ? BONGO_UPDATE_AVAILABLE : BONGO_UPDATE_CURRENT;
+    value->state.status = l2dcat_version_compare(manifest->version, L2DCAT_VERSION) > 0
+        ? L2DCAT_UPDATE_AVAILABLE : L2DCAT_UPDATE_CURRENT;
     value->state.message[0] = '\0';
     SDL_UnlockMutex(value->mutex);
     SDL_Log("Update manifest %s: %s", manifest->version,
-        bongo_version_compare(manifest->version, BONGO_VERSION) > 0 ? "available" : "current");
+        l2dcat_version_compare(manifest->version, L2DCAT_VERSION) > 0 ? "available" : "current");
 }
 
-static void check_update(BongoUpdater *value) {
-    char path[BONGO_PATH_CAP]; BongoError error = {0}; BongoUpdateManifest manifest;
-    bongo_path_join(path, sizeof(path), value->data_root, "latest-native.json.part");
-    const char *override = getenv("BONGO_UPDATE_URL");
-    char default_url[BONGO_PATH_CAP];
+static void check_update(L2DCatUpdater *value) {
+    char path[L2DCAT_PATH_CAP]; L2DCatError error = {0}; L2DCatUpdateManifest manifest;
+    l2dcat_path_join(path, sizeof(path), value->data_root, "latest-native.json.part");
+    const char *override = getenv("L2DCAT_UPDATE_URL");
+    char default_url[L2DCAT_PATH_CAP];
     snprintf(default_url, sizeof(default_url), "%s%s%s.json",
-        BONGO_UPDATE_MANIFEST_BASE_URL,
-        BONGO_UPDATE_MANIFEST_BASE_URL[0] &&
-            BONGO_UPDATE_MANIFEST_BASE_URL[strlen(BONGO_UPDATE_MANIFEST_BASE_URL) - 1] == '/'
+        L2DCAT_UPDATE_MANIFEST_BASE_URL,
+        L2DCAT_UPDATE_MANIFEST_BASE_URL[0] &&
+            L2DCAT_UPDATE_MANIFEST_BASE_URL[strlen(L2DCAT_UPDATE_MANIFEST_BASE_URL) - 1] == '/'
             ? "" : "/", platform_key());
     const char *url = override && override[0] ? override :
-        BONGO_UPDATE_MANIFEST_BASE_URL[0] ? default_url : NULL;
+        L2DCAT_UPDATE_MANIFEST_BASE_URL[0] ? default_url : NULL;
     if (!url) {
-        bongo_error_set(&error, BONGO_ERROR_PLATFORM,
+        l2dcat_error_set(&error, L2DCAT_ERROR_PLATFORM,
             "Updates are not configured for this independent build");
         set_error(value, &error); return;
     }
-    BongoResult result = bongo_platform_download(url,
+    L2DCatResult result = l2dcat_platform_download(url,
         path, 1024 * 1024, NULL, NULL, &error);
-    if (result == BONGO_OK) result = bongo_update_manifest_load(path,
+    if (result == L2DCAT_OK) result = l2dcat_update_manifest_load(path,
         platform_key(), &manifest, &error);
-    bongo_file_remove(path);
-    if (result == BONGO_OK) finish_check(value, &manifest); else set_error(value, &error);
+    l2dcat_file_remove(path);
+    if (result == L2DCAT_OK) finish_check(value, &manifest); else set_error(value, &error);
 }
 
-static void download_update(BongoUpdater *value) {
-    BongoUpdateManifest manifest;
+static void download_update(L2DCatUpdater *value) {
+    L2DCatUpdateManifest manifest;
     SDL_LockMutex(value->mutex); manifest = value->manifest; SDL_UnlockMutex(value->mutex);
-    BongoError error = {0}; char hash[65] = {0};
+    L2DCatError error = {0}; char hash[65] = {0};
 #if defined(_WIN32)
-    const char *staged_name = "BongoCat-update.exe.part";
+    const char *staged_name = "l2dcat-update.exe.part";
 #elif defined(__APPLE__)
-    const char *staged_name = "BongoCat-update.app.zip.part";
+    const char *staged_name = "l2dcat-update.app.zip.part";
 #else
-    const char *staged_name = "BongoCat-update.AppImage.part";
+    const char *staged_name = "l2dcat-update.AppImage.part";
 #endif
-    bongo_path_join(value->staged, sizeof(value->staged), value->data_root,
+    l2dcat_path_join(value->staged, sizeof(value->staged), value->data_root,
         staged_name);
     uint64_t limit = manifest.size ? manifest.size + 1024 : 256ull * 1024 * 1024;
-    BongoResult result = bongo_platform_download(manifest.url, value->staged,
+    L2DCatResult result = l2dcat_platform_download(manifest.url, value->staged,
         limit, progress, value, &error);
-    if (result == BONGO_OK) result = bongo_sha256_file(value->staged, hash, &error);
-    if (result == BONGO_OK && strcmp(hash, manifest.sha256) != 0) {
-        bongo_error_set(&error, BONGO_ERROR_FORMAT, "Downloaded update SHA-256 does not match");
-        result = BONGO_ERROR_FORMAT;
+    if (result == L2DCAT_OK) result = l2dcat_sha256_file(value->staged, hash, &error);
+    if (result == L2DCAT_OK && strcmp(hash, manifest.sha256) != 0) {
+        l2dcat_error_set(&error, L2DCAT_ERROR_FORMAT, "Downloaded update SHA-256 does not match");
+        result = L2DCAT_ERROR_FORMAT;
     }
-    if (result == BONGO_OK && !bongo_platform_verify_update(value->staged,
+    if (result == L2DCAT_OK && !l2dcat_platform_verify_update(value->staged,
         manifest.version, platform_key(), hash, manifest.size,
-        manifest.signature, &error)) result = BONGO_ERROR_FORMAT;
-    if (result != BONGO_OK) {
-        bongo_file_remove(value->staged); set_error(value, &error); return;
+        manifest.signature, &error)) result = L2DCAT_ERROR_FORMAT;
+    if (result != L2DCAT_OK) {
+        l2dcat_file_remove(value->staged); set_error(value, &error); return;
     }
-    SDL_LockMutex(value->mutex); value->state.status = BONGO_UPDATE_READY;
+    SDL_LockMutex(value->mutex); value->state.status = L2DCAT_UPDATE_READY;
     value->state.message[0] = '\0'; SDL_UnlockMutex(value->mutex);
     SDL_Log("Update download verified and ready");
 }
 
 static int SDLCALL worker(void *userdata) {
-    BongoUpdater *value = userdata;
+    L2DCatUpdater *value = userdata;
     if (value->command == 1) check_update(value); else download_update(value);
     SDL_LockMutex(value->mutex); value->running = false; SDL_UnlockMutex(value->mutex);
     return 0;
 }
 
-static void reap(BongoUpdater *value) {
+static void reap(L2DCatUpdater *value) {
     SDL_Thread *thread = NULL;
     SDL_LockMutex(value->mutex);
     if (value->thread && !value->running) { thread = value->thread; value->thread = NULL; }
@@ -140,48 +140,48 @@ static void reap(BongoUpdater *value) {
     if (thread) SDL_WaitThread(thread, NULL);
 }
 
-static bool start(BongoUpdater *value, int command, BongoUpdateStatus status) {
+static bool start(L2DCatUpdater *value, int command, L2DCatUpdateStatus status) {
     if (!value) return false;
     reap(value);
     SDL_LockMutex(value->mutex);
     if (value->thread) { SDL_UnlockMutex(value->mutex); return false; }
     value->command = command; value->running = true; value->state.status = status;
     value->state.message[0] = '\0'; value->state.received = value->state.total = 0;
-    value->thread = SDL_CreateThread(worker, "bongo-update", value);
+    value->thread = SDL_CreateThread(worker, "l2dcat-update", value);
     if (!value->thread) {
-        value->running = false; value->state.status = BONGO_UPDATE_FAILED;
+        value->running = false; value->state.status = L2DCAT_UPDATE_FAILED;
         snprintf(value->state.message, sizeof(value->state.message), "%s", SDL_GetError());
     }
     bool ok = value->thread != NULL; SDL_UnlockMutex(value->mutex); return ok;
 }
 
-BongoUpdater *bongo_update_create(const char *data_root) {
+L2DCatUpdater *l2dcat_update_create(const char *data_root) {
     if (!data_root) return NULL;
-    BongoUpdater *value = calloc(1, sizeof(*value));
+    L2DCatUpdater *value = calloc(1, sizeof(*value));
     if (!value) return NULL;
     value->mutex = SDL_CreateMutex();
     if (!value->mutex) { free(value); return NULL; }
     snprintf(value->data_root, sizeof(value->data_root), "%s", data_root); return value;
 }
 
-void bongo_update_destroy(BongoUpdater *value) {
+void l2dcat_update_destroy(L2DCatUpdater *value) {
     if (!value) return;
     if (value->thread) SDL_WaitThread(value->thread, NULL);
     if (value->mutex) SDL_DestroyMutex(value->mutex);
     free(value);
 }
 
-bool bongo_update_check(BongoUpdater *value) {
-    return start(value, 1, BONGO_UPDATE_CHECKING);
+bool l2dcat_update_check(L2DCatUpdater *value) {
+    return start(value, 1, L2DCAT_UPDATE_CHECKING);
 }
 
-bool bongo_update_download(BongoUpdater *value) {
-    BongoUpdateSnapshot state; bongo_update_snapshot(value, &state);
-    return state.status == BONGO_UPDATE_AVAILABLE &&
-        start(value, 2, BONGO_UPDATE_DOWNLOADING);
+bool l2dcat_update_download(L2DCatUpdater *value) {
+    L2DCatUpdateSnapshot state; l2dcat_update_snapshot(value, &state);
+    return state.status == L2DCAT_UPDATE_AVAILABLE &&
+        start(value, 2, L2DCAT_UPDATE_DOWNLOADING);
 }
 
-void bongo_update_snapshot(BongoUpdater *value, BongoUpdateSnapshot *snapshot) {
+void l2dcat_update_snapshot(L2DCatUpdater *value, L2DCatUpdateSnapshot *snapshot) {
     if (!snapshot) return;
     memset(snapshot, 0, sizeof(*snapshot));
     if (!value) return;
@@ -189,10 +189,10 @@ void bongo_update_snapshot(BongoUpdater *value, BongoUpdateSnapshot *snapshot) {
     SDL_LockMutex(value->mutex); *snapshot = value->state; SDL_UnlockMutex(value->mutex);
 }
 
-bool bongo_update_install(BongoUpdater *value) {
-    BongoUpdateSnapshot state; bongo_update_snapshot(value, &state);
-    if (!value || state.status != BONGO_UPDATE_READY) return false;
-    BongoError error = {0};
-    if (bongo_platform_schedule_update(value->staged, &error)) return true;
+bool l2dcat_update_install(L2DCatUpdater *value) {
+    L2DCatUpdateSnapshot state; l2dcat_update_snapshot(value, &state);
+    if (!value || state.status != L2DCAT_UPDATE_READY) return false;
+    L2DCatError error = {0};
+    if (l2dcat_platform_schedule_update(value->staged, &error)) return true;
     set_error(value, &error); return false;
 }

@@ -1,13 +1,13 @@
-#ifndef BONGO_UI_BACKEND_H
-#define BONGO_UI_BACKEND_H
+#ifndef L2DCAT_UI_BACKEND_H
+#define L2DCAT_UI_BACKEND_H
 
-#include "bongo/gl_api.h"
+#include "l2dcat/gl_api.h"
 #include <SDL3/SDL.h>
 #include "nuklear_config.h"
 
-typedef struct BongoUIBackend {
+typedef struct L2DCatUIBackend {
     SDL_Window *window;
-    BongoGL gl;
+    L2DCatGL gl;
     struct nk_context context;
     struct nk_font_atlas atlas;
     struct nk_buffer commands;
@@ -37,15 +37,15 @@ typedef struct BongoUIBackend {
     bool font_probe_loaded;
     bool font_path_found;
     bool font_file_loaded;
-} BongoUIBackend;
+} L2DCatUIBackend;
 
-bool bongo_ui_init(BongoUIBackend *ui, SDL_Window *window, const char *font_path,
-    const nk_rune *glyph_ranges, BongoError *error);
-void bongo_ui_destroy(BongoUIBackend *ui);
-void bongo_ui_input_begin(BongoUIBackend *ui);
-void bongo_ui_input_end(BongoUIBackend *ui);
-bool bongo_ui_event(BongoUIBackend *ui, const SDL_Event *event);
-void bongo_ui_render(BongoUIBackend *ui);
-bool bongo_ui_frame_valid(const BongoUIBackend *ui);
+bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window, const char *font_path,
+    const nk_rune *glyph_ranges, L2DCatError *error);
+void l2dcat_ui_destroy(L2DCatUIBackend *ui);
+void l2dcat_ui_input_begin(L2DCatUIBackend *ui);
+void l2dcat_ui_input_end(L2DCatUIBackend *ui);
+bool l2dcat_ui_event(L2DCatUIBackend *ui, const SDL_Event *event);
+void l2dcat_ui_render(L2DCatUIBackend *ui);
+bool l2dcat_ui_frame_valid(const L2DCatUIBackend *ui);
 
 #endif

@@ -1,4 +1,4 @@
-#include "bongo/platform.h"
+#include "l2dcat/platform.h"
 
 #ifdef __APPLE__
 #import <Cocoa/Cocoa.h>
@@ -79,7 +79,7 @@ static int apply_update(char **argv) {
         if (!name) { [files moveItemAtPath:bundle toPath:unpack error:nil];
             [files moveItemAtPath:backup toPath:bundle error:nil]; return 1; }
         execl([name fileSystemRepresentation], [name fileSystemRepresentation],
-            "--bongo-cleanup-old", [backup fileSystemRepresentation], NULL);
+            "--l2dcat-cleanup-old", [backup fileSystemRepresentation], NULL);
         [name release];
         NSString *failed = [bundle stringByAppendingString:@".failed"];
         remove_path(files, failed);
@@ -90,39 +90,39 @@ static int apply_update(char **argv) {
     }
 }
 
-bool bongo_platform_schedule_update(const char *staged, BongoError *error) {
+bool l2dcat_platform_schedule_update(const char *staged, L2DCatError *error) {
     @autoreleasepool {
         if (!staged) return false;
         NSString *executable = [[NSBundle mainBundle] executablePath];
         NSString *bundle = [[NSBundle mainBundle] bundlePath];
         if (!executable || !bundle) {
-            bongo_error_set(error, BONGO_ERROR_PLATFORM, "Cannot locate macOS app bundle");
+            l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Cannot locate macOS app bundle");
             return false;
         }
         char parent[32]; snprintf(parent, sizeof(parent), "%ld", (long)getpid());
         pid_t child = fork();
         if (child == 0) {
             execl([executable fileSystemRepresentation], [executable fileSystemRepresentation],
-                "--bongo-apply-update", staged, [bundle fileSystemRepresentation], parent, NULL);
+                "--l2dcat-apply-update", staged, [bundle fileSystemRepresentation], parent, NULL);
             _exit(127);
         }
         if (child > 0) return true;
-        bongo_error_set(error, BONGO_ERROR_PLATFORM, "Cannot launch macOS update helper");
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Cannot launch macOS update helper");
         return false;
     }
 }
 
-bool bongo_platform_verify_update(const char *path, const char *version,
+bool l2dcat_platform_verify_update(const char *path, const char *version,
     const char *platform, const char *sha256, uint64_t size,
-    const char *signature, BongoError *error) {
+    const char *signature, L2DCatError *error) {
     (void)path; (void)version; (void)platform; (void)sha256;
     (void)size; (void)signature; (void)error; return true;
 }
 
-int bongo_platform_update_helper(int argc, char **argv) {
-    if (argc == 5 && strcmp(argv[1], "--bongo-apply-update") == 0)
+int l2dcat_platform_update_helper(int argc, char **argv) {
+    if (argc == 5 && strcmp(argv[1], "--l2dcat-apply-update") == 0)
         return apply_update(argv);
-    if (argc == 3 && strcmp(argv[1], "--bongo-cleanup-old") == 0) {
+    if (argc == 3 && strcmp(argv[1], "--l2dcat-cleanup-old") == 0) {
         @autoreleasepool {
             NSString *path = [NSString stringWithUTF8String:argv[2]];
             remove_path([NSFileManager defaultManager], path);

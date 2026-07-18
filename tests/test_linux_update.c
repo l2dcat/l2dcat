@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-int bongo_test_failures;
+int l2dcat_test_failures;
 
 static EVP_PKEY *generate_key(void) {
     EVP_PKEY_CTX *context = EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, NULL);
@@ -43,13 +43,13 @@ int main(void) {
     CHECK(der && i2d_PUBKEY(key, &cursor) == der_size);
     char signature[129];
     CHECK(key && sign_payload(key, payload, signature));
-    CHECK(bongo_linux_verify_signature(der, (size_t)der_size, payload, signature));
-    CHECK(!bongo_linux_verify_signature(der, (size_t)der_size, "tampered", signature));
+    CHECK(l2dcat_linux_verify_signature(der, (size_t)der_size, payload, signature));
+    CHECK(!l2dcat_linux_verify_signature(der, (size_t)der_size, "tampered", signature));
     signature[0] = signature[0] == '0' ? '1' : '0';
-    CHECK(!bongo_linux_verify_signature(der, (size_t)der_size, payload, signature));
+    CHECK(!l2dcat_linux_verify_signature(der, (size_t)der_size, payload, signature));
     signature[0] = 'g';
-    CHECK(!bongo_linux_verify_signature(der, (size_t)der_size, payload, signature));
+    CHECK(!l2dcat_linux_verify_signature(der, (size_t)der_size, payload, signature));
     OPENSSL_free(der);
     if (key) EVP_PKEY_free(key);
-    return bongo_test_failures ? 1 : 0;
+    return l2dcat_test_failures ? 1 : 0;
 }

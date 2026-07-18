@@ -1,30 +1,30 @@
 #include "preferences_internal.h"
 #include "preferences_widgets.h"
-#include "bongo/i18n.h"
-#include "bongo/preferences.h"
+#include "l2dcat/i18n.h"
+#include "l2dcat/preferences.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
 #include <string.h>
 
-static const char *tr(BongoApp *app, const char *key, const char *fallback) {
-    return bongo_i18n_get(app->i18n, key, fallback);
+static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
+    return l2dcat_i18n_get(app->i18n, key, fallback);
 }
 
-void bongo_preferences_import_path(BongoApp *app, SDL_Window *window,
+void l2dcat_preferences_import_path(L2DCatApp *app, SDL_Window *window,
     const char *path) {
     if (!app || !path || !path[0]) return;
-    BongoError error = {0};
-    BongoResult result = bongo_app_import_model(app, path, &error);
-    const char *message = result == BONGO_OK
+    L2DCatError error = {0};
+    L2DCatResult result = l2dcat_app_import_model(app, path, &error);
+    const char *message = result == L2DCAT_OK
         ? tr(app, "pages.preference.model.hints.importSuccess", "Model imported")
         : error.message;
     if (app->smoke) {
-        if (result != BONGO_OK) app->exit_code = 1;
+        if (result != L2DCAT_OK) app->exit_code = 1;
         return;
     }
-    SDL_ShowSimpleMessageBox(result == BONGO_OK ? SDL_MESSAGEBOX_INFORMATION :
-        SDL_MESSAGEBOX_ERROR, BONGO_NAME, message, window);
+    SDL_ShowSimpleMessageBox(result == L2DCAT_OK ? SDL_MESSAGEBOX_INFORMATION :
+        SDL_MESSAGEBOX_ERROR, L2DCAT_NAME, message, window);
 }
 
 static struct nk_color ui_color(bool dark, int light, int night) {
@@ -42,18 +42,18 @@ static void draw_text(struct nk_context *context, struct nk_command_buffer *canv
         nk_rgba(0, 0, 0, 0), color);
 }
 
-static const char *mode_label(BongoApp *app, BongoModelMode mode) {
-    if (mode == BONGO_MODE_KEYBOARD)
+static const char *mode_label(L2DCatApp *app, L2DCatModelMode mode) {
+    if (mode == L2DCAT_MODE_KEYBOARD)
         return tr(app, "native.modeKeyboard", "Keyboard");
-    if (mode == BONGO_MODE_GAMEPAD)
+    if (mode == L2DCAT_MODE_GAMEPAD)
         return tr(app, "native.modeGamepad", "Gamepad");
     return tr(app, "native.modeStandard", "Standard");
 }
 
-static void draw_model_icon(struct nk_command_buffer *canvas, BongoModelMode mode,
+static void draw_model_icon(struct nk_command_buffer *canvas, L2DCatModelMode mode,
     struct nk_rect bounds, struct nk_color color) {
     float cx = bounds.x + bounds.w * .5f, cy = bounds.y + bounds.h * .5f;
-    if (mode == BONGO_MODE_KEYBOARD) {
+    if (mode == L2DCAT_MODE_KEYBOARD) {
         struct nk_rect keyboard = nk_rect(cx - 38, cy - 20, 76, 40);
         nk_stroke_rect(canvas, keyboard, 7, 2, color);
         for (int row = 0; row < 2; ++row)
@@ -62,7 +62,7 @@ static void draw_model_icon(struct nk_command_buffer *canvas, BongoModelMode mod
                     keyboard.y + 9 + row * 13, 6, 5), 1, color);
         return;
     }
-    if (mode == BONGO_MODE_GAMEPAD) {
+    if (mode == L2DCAT_MODE_GAMEPAD) {
         nk_stroke_rect(canvas, nk_rect(cx - 42, cy - 23, 84, 46), 18, 2, color);
         nk_stroke_line(canvas, cx - 27, cy - 8, cx - 27, cy + 10, 3, color);
         nk_stroke_line(canvas, cx - 36, cy + 1, cx - 18, cy + 1, 3, color);
@@ -79,34 +79,34 @@ static void draw_model_icon(struct nk_command_buffer *canvas, BongoModelMode mod
     nk_fill_circle(canvas, nk_rect(cx + 11, cy - 5, 5, 5), color);
 }
 
-static BongoBehaviorShortcut *behavior_shortcut(BongoConfig *config,
+static L2DCatBehaviorShortcut *behavior_shortcut(L2DCatConfig *config,
     const char *id) {
     for (size_t i = 0; i < config->behavior_shortcut_count; ++i)
         if (strcmp(config->behavior_shortcuts[i].id, id) == 0)
             return &config->behavior_shortcuts[i];
-    if (config->behavior_shortcut_count >= BONGO_BEHAVIOR_CAP) return NULL;
-    BongoBehaviorShortcut *value =
+    if (config->behavior_shortcut_count >= L2DCAT_BEHAVIOR_CAP) return NULL;
+    L2DCatBehaviorShortcut *value =
         &config->behavior_shortcuts[config->behavior_shortcut_count++];
     snprintf(value->id, sizeof(value->id), "%s", id);
     return value;
 }
 
-static bool confirm_remove(BongoApp *app, const BongoModelEntry *entry) {
+static bool confirm_remove(L2DCatApp *app, const L2DCatModelEntry *entry) {
     const SDL_MessageBoxButtonData buttons[] = {
         {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, tr(app, "native.cancel", "Cancel")},
         {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, tr(app, "native.delete", "Delete")}};
-    SDL_MessageBoxData data = {SDL_MESSAGEBOX_WARNING, app->window, BONGO_NAME,
+    SDL_MessageBoxData data = {SDL_MESSAGEBOX_WARNING, app->window, L2DCAT_NAME,
         tr(app, "pages.preference.model.hints.deleteModel", "Delete this custom model?"),
         2, buttons, NULL};
     int choice = 0;
     if (!SDL_ShowMessageBox(&data, &choice) || choice != 1) return false;
-    BongoError error = {0};
-    if (bongo_app_remove_model(app, entry->id, &error) == BONGO_OK) return true;
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, BONGO_NAME, error.message, app->window);
+    L2DCatError error = {0};
+    if (l2dcat_app_remove_model(app, entry->id, &error) == L2DCAT_OK) return true;
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, L2DCAT_NAME, error.message, app->window);
     return false;
 }
 
-static bool import_card(BongoApp *app, struct nk_context *context) {
+static bool import_card(L2DCatApp *app, struct nk_context *context) {
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
     bool dark = dark_theme(context);
@@ -127,8 +127,8 @@ static bool import_card(BongoApp *app, struct nk_context *context) {
     return nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, bounds);
 }
 
-static bool model_card(BongoApp *app, struct nk_context *context,
-    BongoModelEntry *entry) {
+static bool model_card(L2DCatApp *app, struct nk_context *context,
+    L2DCatModelEntry *entry) {
     bool selected = strcmp(entry->id, app->config.current_model) == 0;
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
@@ -170,32 +170,32 @@ static bool model_card(BongoApp *app, struct nk_context *context,
     if (remove_hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, remove)) return confirm_remove(app, entry);
     if (nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, bounds) &&
-        !selected) bongo_app_select_model(app, entry->id);
+        !selected) l2dcat_app_select_model(app, entry->id);
     return false;
 }
 
-static void behavior_rows(BongoApp *app, struct nk_context *context) {
+static void behavior_rows(L2DCatApp *app, struct nk_context *context) {
     if (!app->config.model.behavior || !app->behaviors.count) return;
-    bongo_pref_section(context, tr(app, "pages.preference.model.behaviorModal.title",
+    l2dcat_pref_section(context, tr(app, "pages.preference.model.behaviorModal.title",
         "Motions and expressions"));
     for (size_t i = 0; i < app->behaviors.count; ++i) {
-        BongoBehaviorEntry *entry = &app->behaviors.entries[i];
-        BongoBehaviorShortcut *shortcut = behavior_shortcut(&app->config, entry->id);
+        L2DCatBehaviorEntry *entry = &app->behaviors.entries[i];
+        L2DCatBehaviorShortcut *shortcut = behavior_shortcut(&app->config, entry->id);
         if (!shortcut) break;
-        char id[BONGO_ID_CAP + 16];
+        char id[L2DCAT_ID_CAP + 16];
         snprintf(id, sizeof(id), "behavior-%s", entry->id);
-        bongo_pref_edit(context, id, entry->label, "", shortcut->shortcut,
+        l2dcat_pref_edit(context, id, entry->label, "", shortcut->shortcut,
             sizeof(shortcut->shortcut));
     }
 }
 
-void bongo_preferences_page_model(BongoApp *app, struct nk_context *context) {
-    bongo_pref_section(context, tr(app, "pages.preference.model.title", "Installed models"));
+void l2dcat_preferences_page_model(L2DCatApp *app, struct nk_context *context) {
+    l2dcat_pref_section(context, tr(app, "pages.preference.model.title", "Installed models"));
     float width = nk_window_get_content_region(context).w;
     int columns = width >= 690 ? 3 : width >= 450 ? 2 : 1;
     nk_layout_row_dynamic(context, 168, columns);
     if (import_card(app, context))
-        bongo_preferences_request_model_import(app->preferences);
+        l2dcat_preferences_request_model_import(app->preferences);
     for (size_t i = 0; i < app->models.count; ++i)
         if (model_card(app, context, &app->models.entries[i])) break;
     behavior_rows(app, context);

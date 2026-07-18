@@ -1,5 +1,5 @@
-#include "bongo/file.h"
-#include "bongo/platform.h"
+#include "l2dcat/file.h"
+#include "l2dcat/platform.h"
 
 #ifndef _WIN32
 #include <curl/curl.h>
@@ -11,7 +11,7 @@ typedef struct DownloadState {
     uint64_t received;
     uint64_t total;
     uint64_t limit;
-    BongoDownloadProgress progress;
+    L2DCatDownloadProgress progress;
     void *userdata;
     bool overflow;
     bool write_failed;
@@ -45,17 +45,17 @@ static int transfer(void *userdata, curl_off_t download_total,
     return 0;
 }
 
-BongoResult bongo_platform_download(const char *url, const char *destination,
-    uint64_t limit, BongoDownloadProgress progress, void *userdata, BongoError *error) {
-    if (!url || !destination) return BONGO_ERROR_ARGUMENT;
+L2DCatResult l2dcat_platform_download(const char *url, const char *destination,
+    uint64_t limit, L2DCatDownloadProgress progress, void *userdata, L2DCatError *error) {
+    if (!url || !destination) return L2DCAT_ERROR_ARGUMENT;
     if (strncmp(url, "https://", 8) != 0) {
-        bongo_error_set(error, BONGO_ERROR_FORMAT, "Update URL must use HTTPS");
-        return BONGO_ERROR_FORMAT;
+        l2dcat_error_set(error, L2DCAT_ERROR_FORMAT, "Update URL must use HTTPS");
+        return L2DCAT_ERROR_FORMAT;
     }
-    FILE *file = bongo_file_open(destination, "wb");
+    FILE *file = l2dcat_file_open(destination, "wb");
     if (!file) {
-        bongo_error_set(error, BONGO_ERROR_IO, "Cannot create update file");
-        return BONGO_ERROR_IO;
+        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot create update file");
+        return L2DCAT_ERROR_IO;
     }
     DownloadState state = {file, 0, 0, limit, progress, userdata, false, false};
     CURLcode initialized = curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -74,7 +74,7 @@ BongoResult bongo_platform_download(const char *url, const char *destination,
         curl_easy_setopt(request, CURLOPT_CONNECTTIMEOUT, 10L);
         curl_easy_setopt(request, CURLOPT_TIMEOUT, 120L);
         curl_easy_setopt(request, CURLOPT_FAILONERROR, 1L);
-        curl_easy_setopt(request, CURLOPT_USERAGENT, "BongoCat/" BONGO_VERSION);
+        curl_easy_setopt(request, CURLOPT_USERAGENT, "l2dcat/" L2DCAT_VERSION);
         curl_easy_setopt(request, CURLOPT_WRITEFUNCTION, write_data);
         curl_easy_setopt(request, CURLOPT_WRITEDATA, &state);
         curl_easy_setopt(request, CURLOPT_NOPROGRESS, 0L);
@@ -86,14 +86,14 @@ BongoResult bongo_platform_download(const char *url, const char *destination,
     curl_global_cleanup();
     bool closed = fclose(file) == 0;
     if (result == CURLE_OK && closed && !state.overflow && !state.write_failed)
-        return BONGO_OK;
-    bongo_file_remove(destination);
-    if (state.overflow) bongo_error_set(error, BONGO_ERROR_IO,
+        return L2DCAT_OK;
+    l2dcat_file_remove(destination);
+    if (state.overflow) l2dcat_error_set(error, L2DCAT_ERROR_IO,
         "Update download exceeds size limit");
-    else if (state.write_failed || !closed) bongo_error_set(error, BONGO_ERROR_IO,
+    else if (state.write_failed || !closed) l2dcat_error_set(error, L2DCAT_ERROR_IO,
         "Cannot write update download");
-    else bongo_error_set(error, BONGO_ERROR_IO, "Update download failed: %s",
+    else l2dcat_error_set(error, L2DCAT_ERROR_IO, "Update download failed: %s",
         curl_easy_strerror(result));
-    return BONGO_ERROR_IO;
+    return L2DCAT_ERROR_IO;
 }
 #endif

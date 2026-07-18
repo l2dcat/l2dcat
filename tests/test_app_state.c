@@ -1,19 +1,19 @@
 #include "test.h"
-#include "bongo/app.h"
-#include "bongo/overlay.h"
+#include "l2dcat/app.h"
+#include "l2dcat/overlay.h"
 
 #include <stdio.h>
 #include <string.h>
 
 typedef struct ParameterValue {
-    char id[BONGO_ID_CAP];
+    char id[L2DCAT_ID_CAP];
     float value;
 } ParameterValue;
 
 static ParameterValue parameters[128];
 static size_t parameter_count;
 static bool left_hand, right_hand;
-int bongo_test_failures;
+int l2dcat_test_failures;
 
 static float parameter(const char *id) {
     for (size_t i = parameter_count; i > 0; --i)
@@ -21,7 +21,7 @@ static float parameter(const char *id) {
     return -999.0f;
 }
 
-bool bongo_live2d_set_parameter(BongoLive2D *live2d, const char *id, float value) {
+bool l2dcat_live2d_set_parameter(L2DCatLive2D *live2d, const char *id, float value) {
     (void)live2d;
     if (parameter_count >= sizeof(parameters) / sizeof(parameters[0])) return false;
     snprintf(parameters[parameter_count].id,
@@ -30,15 +30,15 @@ bool bongo_live2d_set_parameter(BongoLive2D *live2d, const char *id, float value
     return true;
 }
 
-bool bongo_live2d_parameter(BongoLive2D *live2d, const char *id,
-    BongoParameterRange *range) {
+bool l2dcat_live2d_parameter(L2DCatLive2D *live2d, const char *id,
+    L2DCatParameterRange *range) {
     (void)live2d; (void)id;
     if (!range) return false;
-    *range = (BongoParameterRange){-1.0f, 1.0f, 0.0f};
+    *range = (L2DCatParameterRange){-1.0f, 1.0f, 0.0f};
     return true;
 }
 
-int bongo_overlay_key(BongoOverlay *overlay, const char *name, bool pressed) {
+int l2dcat_overlay_key(L2DCatOverlay *overlay, const char *name, bool pressed) {
     (void)overlay;
     if (strcmp(name, "KeyA") == 0 || strcmp(name, "DPadLeft") == 0)
         left_hand = pressed;
@@ -47,69 +47,69 @@ int bongo_overlay_key(BongoOverlay *overlay, const char *name, bool pressed) {
     return 0;
 }
 
-bool bongo_overlay_hand_active(const BongoOverlay *overlay, bool right) {
+bool l2dcat_overlay_hand_active(const L2DCatOverlay *overlay, bool right) {
     (void)overlay; return right ? right_hand : left_hand;
 }
 
-static BongoInputEvent input(BongoInputKind kind, const char *name, float value) {
-    BongoInputEvent event = {.kind = kind, .value = value};
+static L2DCatInputEvent input(L2DCatInputKind kind, const char *name, float value) {
+    L2DCatInputEvent event = {.kind = kind, .value = value};
     snprintf(event.name, sizeof(event.name), "%s", name);
     return event;
 }
 
 int main(void) {
-    BongoApp app = {0};
-    app.live2d = (BongoLive2D *)(uintptr_t)1;
-    app.overlay = (BongoOverlay *)(uintptr_t)1;
+    L2DCatApp app = {0};
+    app.live2d = (L2DCatLive2D *)(uintptr_t)1;
+    app.overlay = (L2DCatOverlay *)(uintptr_t)1;
 
-    BongoInputEvent event = input(BONGO_INPUT_MOUSE_DOWN, "Middle", 1.0f);
-    bongo_app_apply_input(&app, &event);
+    L2DCatInputEvent event = input(L2DCAT_INPUT_MOUSE_DOWN, "Middle", 1.0f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter_count == 0);
-    event = input(BONGO_INPUT_MOUSE_DOWN, "Left", 1.0f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_MOUSE_DOWN, "Left", 1.0f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("ParamMouseLeftDown") == 1.0f);
-    event = input(BONGO_INPUT_MOUSE_DOWN, "Right", 1.0f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_MOUSE_DOWN, "Right", 1.0f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("ParamMouseRightDown") == 1.0f);
-    event = input(BONGO_INPUT_MOUSE_UP, "Right", 0.0f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_MOUSE_UP, "Right", 0.0f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("ParamMouseRightDown") == 0.0f);
 
-    event = input(BONGO_INPUT_KEY_DOWN, "KeyA", 1.0f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_KEY_DOWN, "KeyA", 1.0f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("CatParamLeftHandDown") == 1.0f);
-    event = input(BONGO_INPUT_KEY_DOWN, "RightArrow", 1.0f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_KEY_DOWN, "RightArrow", 1.0f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("CatParamRightHandDown") == 1.0f);
-    event = input(BONGO_INPUT_KEY_UP, "KeyA", 0.0f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_KEY_UP, "KeyA", 0.0f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("CatParamLeftHandDown") == 0.0f);
-    event = input(BONGO_INPUT_KEY_UP, "RightArrow", 0.0f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_KEY_UP, "RightArrow", 0.0f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("CatParamRightHandDown") == 0.0f);
 
-    event = input(BONGO_INPUT_GAMEPAD_AXIS, "LeftStickX", 0.5f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_GAMEPAD_AXIS, "LeftStickX", 0.5f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("CatParamStickLX") == 0.5f);
     CHECK(parameter("CatParamStickShowLeftHand") == 1.0f);
     CHECK(parameter("CatParamLeftHandDown") == 1.0f);
-    event = input(BONGO_INPUT_GAMEPAD_BUTTON, "LeftThumb", 1.0f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_GAMEPAD_BUTTON, "LeftThumb", 1.0f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("CatParamStickLeftDown") == 1.0f);
-    event = input(BONGO_INPUT_GAMEPAD_AXIS, "LeftStickY", -0.5f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_GAMEPAD_AXIS, "LeftStickY", -0.5f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("CatParamStickLY") == -0.5f);
-    event = input(BONGO_INPUT_GAMEPAD_AXIS, "RightStickX", -0.75f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_GAMEPAD_AXIS, "RightStickX", -0.75f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("CatParamStickRX") == -0.75f);
-    event = input(BONGO_INPUT_GAMEPAD_AXIS, "RightStickY", 0.25f);
-    bongo_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_GAMEPAD_AXIS, "RightStickY", 0.25f);
+    l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("CatParamStickRY") == 0.25f);
 
-    bongo_app_reset_gamepad(&app);
+    l2dcat_app_reset_gamepad(&app);
     CHECK(parameter("CatParamStickLX") == 0.0f);
     CHECK(parameter("CatParamStickLeftDown") == 0.0f);
     CHECK(parameter("CatParamStickShowLeftHand") == 0.0f);
     CHECK(parameter("CatParamLeftHandDown") == 0.0f);
-    return bongo_test_failures ? 1 : 0;
+    return l2dcat_test_failures ? 1 : 0;
 }

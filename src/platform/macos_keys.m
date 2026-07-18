@@ -4,7 +4,7 @@
 
 typedef struct MacKeyName { CGKeyCode code; const char *name; } MacKeyName;
 
-const char *bongo_macos_key_name(CGKeyCode code, char output[16]) {
+const char *l2dcat_macos_key_name(CGKeyCode code, char output[16]) {
     static const MacKeyName keys[] = {
         {0,"KeyA"},{1,"KeyS"},{2,"KeyD"},{3,"KeyF"},{4,"KeyH"},{5,"KeyG"},
         {6,"KeyZ"},{7,"KeyX"},{8,"KeyC"},{9,"KeyV"},{11,"KeyB"},{12,"KeyQ"},

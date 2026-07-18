@@ -14,7 +14,7 @@
 #include <string.h>
 
 typedef struct LinuxX11State {
-    BongoPlatform *platform;
+    L2DCatPlatform *platform;
     Display *display;
     Window window;
     SDL_Thread *thread;
@@ -54,12 +54,12 @@ static const char *key_name(KeySym key, char output[16]) {
     }
 }
 
-static void push(LinuxX11State *state, BongoInputKind kind,
+static void push(LinuxX11State *state, L2DCatInputKind kind,
     const char *name, float value) {
     if (!name) return;
-    BongoInputEvent input = {.kind = kind, .timestamp_ms = SDL_GetTicks(), .value = value};
+    L2DCatInputEvent input = {.kind = kind, .timestamp_ms = SDL_GetTicks(), .value = value};
     snprintf(input.name, sizeof(input.name), "%s", name);
-    if (bongo_input_push(state->platform->input, &input)) {
+    if (l2dcat_input_push(state->platform->input, &input)) {
         SDL_Event wake = {.type = SDL_EVENT_USER}; SDL_PushEvent(&wake);
     }
 }
@@ -69,7 +69,7 @@ static void pointer(LinuxX11State *state, Display *display) {
     int root_x, root_y, window_x, window_y; unsigned int mask;
     if (XQueryPointer(display, root, &root, &child, &root_x, &root_y,
         &window_x, &window_y, &mask))
-        bongo_input_mouse(state->platform->input, root_x, root_y);
+        l2dcat_input_mouse(state->platform->input, root_x, root_y);
 }
 
 static void raw_event(LinuxX11State *state, Display *display, XIRawEvent *raw) {
@@ -77,7 +77,7 @@ static void raw_event(LinuxX11State *state, Display *display, XIRawEvent *raw) {
     if (raw->evtype == XI_RawKeyPress || raw->evtype == XI_RawKeyRelease) {
         name = key_name(XkbKeycodeToKeysym(display, (KeyCode)raw->detail, 0, 0), buffer);
         bool down = raw->evtype == XI_RawKeyPress;
-        push(state, down ? BONGO_INPUT_KEY_DOWN : BONGO_INPUT_KEY_UP,
+        push(state, down ? L2DCAT_INPUT_KEY_DOWN : L2DCAT_INPUT_KEY_UP,
             name, down ? 1.0f : 0.0f);
     } else if (raw->evtype == XI_RawButtonPress || raw->evtype == XI_RawButtonRelease) {
         if (raw->detail == 1) name = "Left";
@@ -85,7 +85,7 @@ static void raw_event(LinuxX11State *state, Display *display, XIRawEvent *raw) {
         else if (raw->detail == 3) name = "Right";
         if (name) {
             bool down = raw->evtype == XI_RawButtonPress;
-            push(state, down ? BONGO_INPUT_MOUSE_DOWN : BONGO_INPUT_MOUSE_UP,
+            push(state, down ? L2DCAT_INPUT_MOUSE_DOWN : L2DCAT_INPUT_MOUSE_UP,
                 name, down ? 1.0f : 0.0f);
         }
     } else if (raw->evtype == XI_RawMotion) pointer(state, display);
@@ -120,7 +120,7 @@ static int SDLCALL input_thread(void *userdata) {
     XCloseDisplay(display); return 0;
 }
 
-bool bongo_linux_x11_start(BongoPlatform *platform, BongoError *error) {
+bool l2dcat_linux_x11_start(L2DCatPlatform *platform, L2DCatError *error) {
     SDL_PropertiesID properties = SDL_GetWindowProperties(platform->window);
     Display *display = SDL_GetPointerProperty(properties,
         SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
@@ -132,16 +132,16 @@ bool bongo_linux_x11_start(BongoPlatform *platform, BongoError *error) {
     atomic_init(&state->running, true); atomic_init(&state->supported, false);
     platform->native = state;
     if (!display || !window) return true;
-    state->thread = SDL_CreateThread(input_thread, "bongo-x11-input", state);
+    state->thread = SDL_CreateThread(input_thread, "l2dcat-x11-input", state);
     if (!state->thread) {
-        bongo_error_set(error, BONGO_ERROR_PLATFORM, "Cannot start X11 input listener");
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Cannot start X11 input listener");
         return false;
     }
     for (int i = 0; i < 100 && !atomic_load(&state->supported); ++i) SDL_Delay(10);
     return true;
 }
 
-void bongo_linux_x11_stop(BongoPlatform *platform) {
+void l2dcat_linux_x11_stop(L2DCatPlatform *platform) {
     LinuxX11State *state = platform ? platform->native : NULL;
     if (!state) return;
     atomic_store(&state->running, false);
@@ -149,12 +149,12 @@ void bongo_linux_x11_stop(BongoPlatform *platform) {
     free(state); platform->native = NULL;
 }
 
-bool bongo_linux_x11_supported(const BongoPlatform *platform) {
+bool l2dcat_linux_x11_supported(const L2DCatPlatform *platform) {
     const LinuxX11State *state = platform ? platform->native : NULL;
     return state && atomic_load(&state->supported);
 }
 
-void bongo_linux_x11_click_through(BongoPlatform *platform, bool enabled) {
+void l2dcat_linux_x11_click_through(L2DCatPlatform *platform, bool enabled) {
     LinuxX11State *state = platform ? platform->native : NULL;
     if (!state || !state->display || !state->window) return;
     XserverRegion region = enabled ? XFixesCreateRegion(state->display, NULL, 0) : None;
@@ -173,12 +173,12 @@ static void state_message(LinuxX11State *state, const char *name, long action) {
         SubstructureRedirectMask | SubstructureNotifyMask, &event); XFlush(state->display);
 }
 
-void bongo_linux_x11_taskbar(BongoPlatform *platform, bool visible) {
+void l2dcat_linux_x11_taskbar(L2DCatPlatform *platform, bool visible) {
     LinuxX11State *state = platform ? platform->native : NULL;
     if (state && state->display) state_message(state, "_NET_WM_STATE_SKIP_TASKBAR", visible ? 0 : 1);
 }
 
-void bongo_linux_x11_begin_drag(BongoPlatform *platform) {
+void l2dcat_linux_x11_begin_drag(L2DCatPlatform *platform) {
     LinuxX11State *state = platform ? platform->native : NULL;
     if (!state || !state->display || !state->window) return;
     Window root = DefaultRootWindow(state->display), child;

@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\BongoCat.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\l2dcat.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\context-menu-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -15,7 +15,7 @@ Add-Type @'
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
-public static class BongoMenuNative {
+public static class L2DCatMenuNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
@@ -33,15 +33,15 @@ public static class BongoMenuNative {
 
 function Get-Windows([int]$ProcessId) {
     $rows = [Collections.Generic.List[object]]::new()
-    [BongoMenuNative]::EnumWindows({
+    [L2DCatMenuNative]::EnumWindows({
         param($handle, $data)
         [uint32]$owner = 0
-        [void][BongoMenuNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-        if ($owner -eq $ProcessId -and [BongoMenuNative]::IsWindowVisible($handle)) {
-            $rect = [BongoMenuNative+Rect]::new()
+        [void][L2DCatMenuNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+        if ($owner -eq $ProcessId -and [L2DCatMenuNative]::IsWindowVisible($handle)) {
+            $rect = [L2DCatMenuNative+Rect]::new()
             $class = [Text.StringBuilder]::new(64)
-            [void][BongoMenuNative]::GetClassNameW($handle, $class, 64)
-            if ([BongoMenuNative]::GetWindowRect($handle, [ref]$rect)) {
+            [void][L2DCatMenuNative]::GetClassNameW($handle, $class, 64)
+            if ([L2DCatMenuNative]::GetWindowRect($handle, [ref]$rect)) {
                 $rows.Add([pscustomobject]@{Handle=$handle; Class=$class.ToString();
                     Rect=$rect; Area=($rect.R-$rect.L)*($rect.B-$rect.T)})
             }
@@ -51,7 +51,7 @@ function Get-Windows([int]$ProcessId) {
     return $rows
 }
 
-Get-Process BongoCat -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 350
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 $process = Start-Process -FilePath $Exe -ArgumentList @("--ci-smoke", "--ci-context-menu",
@@ -60,17 +60,20 @@ $process = Start-Process -FilePath $Exe -ArgumentList @("--ci-smoke", "--ci-cont
 $deadline = [DateTime]::UtcNow.AddSeconds(2)
 do {
     Start-Sleep -Milliseconds 50
-    $menuHandle = [BongoMenuNative]::FindWindowW("#32768", $null)
+    $menuHandle = [L2DCatMenuNative]::FindWindowW("#32768", $null)
 } while ($menuHandle -eq [IntPtr]::Zero -and [DateTime]::UtcNow -lt $deadline)
 if ($menuHandle -ne [IntPtr]::Zero) {
-    $menuRect = [BongoMenuNative+Rect]::new()
-    [void][BongoMenuNative]::GetWindowRect($menuHandle, [ref]$menuRect)
-    [void][BongoMenuNative]::SetCursorPos($menuRect.L + 50, $menuRect.T + 12)
-    [BongoMenuNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
-    [BongoMenuNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+    $menuRect = [L2DCatMenuNative+Rect]::new()
+    [void][L2DCatMenuNative]::GetWindowRect($menuHandle, [ref]$menuRect)
+    [void][L2DCatMenuNative]::SetCursorPos($menuRect.L + 50, $menuRect.T + 12)
+    [L2DCatMenuNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
+    [L2DCatMenuNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
 }
-Start-Sleep -Milliseconds 700
-$visible = @(Get-Windows $process.Id | Where-Object Class -ne "#32768")
+$windowDeadline = [DateTime]::UtcNow.AddMilliseconds(2500)
+do {
+    Start-Sleep -Milliseconds 100
+    $visible = @(Get-Windows $process.Id | Where-Object Class -ne "#32768")
+} while ($visible.Count -lt 2 -and [DateTime]::UtcNow -lt $windowDeadline)
 $preferencesOpened = $visible.Count -ge 2
 $exited = $process.WaitForExit(8000)
 if (-not $exited) { Stop-Process -Id $process.Id -Force }

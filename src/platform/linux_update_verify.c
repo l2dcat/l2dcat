@@ -1,4 +1,4 @@
-#include "bongo/platform.h"
+#include "l2dcat/platform.h"
 
 #if !defined(_WIN32) && !defined(__APPLE__)
 #include "linux_update_key.h"
@@ -25,7 +25,7 @@ static bool decode_signature(const char *text, unsigned char output[64]) {
     return true;
 }
 
-bool bongo_linux_verify_signature(const unsigned char *key_data, size_t key_size,
+bool l2dcat_linux_verify_signature(const unsigned char *key_data, size_t key_size,
     const char *payload, const char *signature) {
     unsigned char decoded[64];
     if (!key_data || !key_size || !payload || !decode_signature(signature, decoded))
@@ -42,26 +42,26 @@ bool bongo_linux_verify_signature(const unsigned char *key_data, size_t key_size
     return valid;
 }
 
-bool bongo_platform_verify_update(const char *path, const char *version,
+bool l2dcat_platform_verify_update(const char *path, const char *version,
     const char *platform, const char *sha256, uint64_t size,
-    const char *signature, BongoError *error) {
+    const char *signature, L2DCatError *error) {
     (void)path;
-    if (!bongo_linux_update_key_size) {
-        bongo_error_set(error, BONGO_ERROR_FORMAT,
+    if (!l2dcat_linux_update_key_size) {
+        l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
             "Linux update public key is not configured");
         return false;
     }
     if (!signature || strlen(signature) != 128) {
-        bongo_error_set(error, BONGO_ERROR_FORMAT, "Linux update signature is invalid");
+        l2dcat_error_set(error, L2DCAT_ERROR_FORMAT, "Linux update signature is invalid");
         return false;
     }
     char payload[256];
     int length = snprintf(payload, sizeof(payload), "%s\n%s\n%s\n%llu\n",
         version, platform, sha256, (unsigned long long)size);
     bool valid = length > 0 && (size_t)length < sizeof(payload) &&
-        bongo_linux_verify_signature(bongo_linux_update_key,
-            bongo_linux_update_key_size, payload, signature);
-    if (!valid) bongo_error_set(error, BONGO_ERROR_FORMAT,
+        l2dcat_linux_verify_signature(l2dcat_linux_update_key,
+            l2dcat_linux_update_key_size, payload, signature);
+    if (!valid) l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
         "Linux update signature verification failed");
     return valid;
 }

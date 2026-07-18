@@ -1,4 +1,4 @@
-#include "bongo/platform.h"
+#include "l2dcat/platform.h"
 
 #ifdef _WIN32
 #include <stdio.h>
@@ -90,9 +90,9 @@ static int apply_update(wchar_t **arguments) {
     HANDLE parent = OpenProcess(SYNCHRONIZE, FALSE, parent_id);
     if (parent) { WaitForSingleObject(parent, 60000); CloseHandle(parent); }
     if (!same_publisher(staged, target)) return 1;
-    wchar_t backup[BONGO_PATH_CAP];
-    int backup_length = swprintf(backup, BONGO_PATH_CAP, L"%ls.old", target);
-    if (backup_length <= 0 || backup_length >= BONGO_PATH_CAP) return 1;
+    wchar_t backup[L2DCAT_PATH_CAP];
+    int backup_length = swprintf(backup, L2DCAT_PATH_CAP, L"%ls.old", target);
+    if (backup_length <= 0 || backup_length >= L2DCAT_PATH_CAP) return 1;
     DeleteFileW(backup);
     bool backed_up = false;
     for (int i = 0; i < 100 && !backed_up; ++i) {
@@ -104,12 +104,12 @@ static int apply_update(wchar_t **arguments) {
     if (!MoveFileExW(staged, target, MOVEFILE_WRITE_THROUGH)) {
         MoveFileExW(backup, target, MOVEFILE_WRITE_THROUGH); return 1;
     }
-    wchar_t self[BONGO_PATH_CAP], command[BONGO_PATH_CAP * 3 + 96];
-    if (!GetModuleFileNameW(NULL, self, BONGO_PATH_CAP)) {
+    wchar_t self[L2DCAT_PATH_CAP], command[L2DCAT_PATH_CAP * 3 + 96];
+    if (!GetModuleFileNameW(NULL, self, L2DCAT_PATH_CAP)) {
         DeleteFileW(target); MoveFileExW(backup, target, MOVEFILE_WRITE_THROUGH); return 1;
     }
     swprintf(command, sizeof(command) / sizeof(*command),
-        L"\"%ls\" --bongo-cleanup-helper \"%ls\" \"%ls\"",
+        L"\"%ls\" --l2dcat-cleanup-helper \"%ls\" \"%ls\"",
         target, self, backup);
     if (launch((wchar_t *)target, command)) return 0;
     DeleteFileW(target); MoveFileExW(backup, target, MOVEFILE_WRITE_THROUGH); return 1;
@@ -123,50 +123,50 @@ static void cleanup_helper(const wchar_t *path) {
     MoveFileExW(path, NULL, MOVEFILE_DELAY_UNTIL_REBOOT);
 }
 
-int bongo_platform_update_helper(int argc, char **argv) {
+int l2dcat_platform_update_helper(int argc, char **argv) {
     (void)argc; (void)argv;
     int count = 0; wchar_t **arguments = CommandLineToArgvW(GetCommandLineW(), &count);
     if (!arguments) return -1;
     int result = -1;
-    if (count == 5 && wcscmp(arguments[1], L"--bongo-apply-update") == 0)
+    if (count == 5 && wcscmp(arguments[1], L"--l2dcat-apply-update") == 0)
         result = apply_update(arguments);
-    else if (count == 4 && wcscmp(arguments[1], L"--bongo-cleanup-helper") == 0) {
+    else if (count == 4 && wcscmp(arguments[1], L"--l2dcat-cleanup-helper") == 0) {
         cleanup_helper(arguments[2]); cleanup_helper(arguments[3]);
     }
     LocalFree(arguments); return result;
 }
 
-bool bongo_platform_schedule_update(const char *staged, BongoError *error) {
-    wchar_t target[BONGO_PATH_CAP], helper[BONGO_PATH_CAP];
+bool l2dcat_platform_schedule_update(const char *staged, L2DCatError *error) {
+    wchar_t target[L2DCAT_PATH_CAP], helper[L2DCAT_PATH_CAP];
     wchar_t *staged_wide = wide(staged);
-    if (!staged_wide || !GetModuleFileNameW(NULL, target, BONGO_PATH_CAP)) {
+    if (!staged_wide || !GetModuleFileNameW(NULL, target, L2DCAT_PATH_CAP)) {
         free(staged_wide); return false;
     }
     if (!same_publisher(staged_wide, target)) {
-        bongo_error_set(error, BONGO_ERROR_FORMAT,
+        l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
             "Windows update must be trusted and signed by the current publisher");
         free(staged_wide); return false;
     }
-    int length = swprintf(helper, BONGO_PATH_CAP, L"%ls.update-helper.exe", staged_wide);
-    if (length <= 0 || length >= BONGO_PATH_CAP || !CopyFileW(target, helper, FALSE)) {
-        bongo_error_set(error, BONGO_ERROR_IO, "Cannot create update helper");
+    int length = swprintf(helper, L2DCAT_PATH_CAP, L"%ls.update-helper.exe", staged_wide);
+    if (length <= 0 || length >= L2DCAT_PATH_CAP || !CopyFileW(target, helper, FALSE)) {
+        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot create update helper");
         free(staged_wide); return false;
     }
-    wchar_t command[BONGO_PATH_CAP * 3 + 96];
+    wchar_t command[L2DCAT_PATH_CAP * 3 + 96];
     swprintf(command, sizeof(command) / sizeof(*command),
-        L"\"%ls\" --bongo-apply-update \"%ls\" \"%ls\" %lu",
+        L"\"%ls\" --l2dcat-apply-update \"%ls\" \"%ls\" %lu",
         helper, staged_wide, target, (unsigned long)GetCurrentProcessId());
     bool ok = launch(helper, command);
     if (!ok) {
         DeleteFileW(helper);
-        bongo_error_set(error, BONGO_ERROR_PLATFORM, "Cannot launch update helper");
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Cannot launch update helper");
     }
     free(staged_wide); return ok;
 }
 
-bool bongo_platform_verify_update(const char *path, const char *version,
+bool l2dcat_platform_verify_update(const char *path, const char *version,
     const char *platform, const char *sha256, uint64_t size,
-    const char *signature, BongoError *error) {
+    const char *signature, L2DCatError *error) {
     (void)path; (void)version; (void)platform; (void)sha256;
     (void)size; (void)signature; (void)error; return true;
 }

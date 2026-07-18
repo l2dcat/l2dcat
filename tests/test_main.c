@@ -1,6 +1,6 @@
 #include "test.h"
 
-int bongo_test_failures;
+int l2dcat_test_failures;
 
 int main(void) {
     test_config();
@@ -8,8 +8,8 @@ int main(void) {
     test_models();
     test_shortcut();
     test_update();
-    if (bongo_test_failures) {
-        fprintf(stderr, "%d checks failed\n", bongo_test_failures);
+    if (l2dcat_test_failures) {
+        fprintf(stderr, "%d checks failed\n", l2dcat_test_failures);
         return 1;
     }
     puts("all core checks passed");

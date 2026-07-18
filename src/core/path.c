@@ -1,4 +1,4 @@
-#include "bongo/path.h"
+#include "l2dcat/path.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -12,7 +12,7 @@
 #include <dirent.h>
 #endif
 
-bool bongo_path_join(char *out, size_t cap, const char *left, const char *right) {
+bool l2dcat_path_join(char *out, size_t cap, const char *left, const char *right) {
     if (!out || !cap || !left || !right) return false;
     size_t len = strlen(left);
     char sep = '/';
@@ -21,7 +21,7 @@ bool bongo_path_join(char *out, size_t cap, const char *left, const char *right)
     return count >= 0 && (size_t)count < cap;
 }
 
-const char *bongo_path_name(const char *path) {
+const char *l2dcat_path_name(const char *path) {
     if (!path) return "";
     const char *slash = strrchr(path, '/');
     const char *backslash = strrchr(path, '\\');
@@ -31,7 +31,7 @@ const char *bongo_path_name(const char *path) {
 
 static bool path_type(const char *path, bool directory) {
 #ifdef _WIN32
-    wchar_t *wide = bongo_windows_wide(path);
+    wchar_t *wide = l2dcat_windows_wide(path);
     struct _stat64 value;
     bool found = wide && _wstat64(wide, &value) == 0;
     free(wide);
@@ -44,28 +44,28 @@ static bool path_type(const char *path, bool directory) {
 #endif
 }
 
-bool bongo_path_is_file(const char *path) { return path_type(path, false); }
-bool bongo_path_is_dir(const char *path) { return path_type(path, true); }
+bool l2dcat_path_is_file(const char *path) { return path_type(path, false); }
+bool l2dcat_path_is_dir(const char *path) { return path_type(path, true); }
 
 static bool ends_with(const char *text, const char *suffix) {
     size_t a = strlen(text), b = strlen(suffix);
     return a >= b && strcmp(text + a - b, suffix) == 0;
 }
 
-bool bongo_path_find_suffix(const char *dir, const char *suffix, char *name, size_t cap) {
+bool l2dcat_path_find_suffix(const char *dir, const char *suffix, char *name, size_t cap) {
 #ifdef _WIN32
-    char pattern[BONGO_PATH_CAP];
-    if (!bongo_path_join(pattern, sizeof(pattern), dir, "*")) return false;
-    wchar_t *wide = bongo_windows_wide(pattern);
+    char pattern[L2DCAT_PATH_CAP];
+    if (!l2dcat_path_join(pattern, sizeof(pattern), dir, "*")) return false;
+    wchar_t *wide = l2dcat_windows_wide(pattern);
     WIN32_FIND_DATAW data;
     HANDLE find = wide ? FindFirstFileW(wide, &data) : INVALID_HANDLE_VALUE;
     free(wide);
     if (find == INVALID_HANDLE_VALUE) return false;
     bool found = false;
     do {
-        char filename[BONGO_PATH_CAP];
+        char filename[L2DCAT_PATH_CAP];
         if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
-            bongo_windows_utf8(data.cFileName, filename, sizeof(filename)) &&
+            l2dcat_windows_utf8(data.cFileName, filename, sizeof(filename)) &&
             ends_with(filename, suffix)) {
             snprintf(name, cap, "%s", filename);
             found = true;

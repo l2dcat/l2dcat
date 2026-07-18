@@ -1,5 +1,5 @@
 #include "ui_backend.h"
-#include "bongo/file.h"
+#include "l2dcat/file.h"
 
 #include <stddef.h>
 #include <stdlib.h>
@@ -46,8 +46,8 @@ static void clipboard_paste(nk_handle user, struct nk_text_edit *edit) {
     }
 }
 
-static bool load_font_file(BongoUIBackend *ui, const char *path) {
-    FILE *file = bongo_file_open(path, "rb");
+static bool load_font_file(L2DCatUIBackend *ui, const char *path) {
+    FILE *file = l2dcat_file_open(path, "rb");
     if (!file || fseek(file, 0, SEEK_END) != 0) {
         if (file) fclose(file);
         return false;
@@ -79,7 +79,7 @@ static bool load_font_file(BongoUIBackend *ui, const char *path) {
 #endif
 }
 
-static void release_font_file(BongoUIBackend *ui) {
+static void release_font_file(L2DCatUIBackend *ui) {
 #ifdef _WIN32
     if (ui->font_blob) UnmapViewOfFile(ui->font_blob);
     if (ui->font_mapping_handle) CloseHandle(ui->font_mapping_handle);
@@ -105,9 +105,9 @@ static bool font_has_ranges(const struct nk_font *font, const nk_rune *ranges) {
     return true;
 }
 
-static bool create_device(BongoUIBackend *ui, BongoError *error) {
-    if (!bongo_gl_load(&ui->gl, error)) return false;
-    ui->program = bongo_gl_program(&ui->gl, vertex_source, fragment_source, error);
+static bool create_device(L2DCatUIBackend *ui, L2DCatError *error) {
+    if (!l2dcat_gl_load(&ui->gl, error)) return false;
+    ui->program = l2dcat_gl_program(&ui->gl, vertex_source, fragment_source, error);
     if (!ui->program) return false;
     ui->gl.gen_vertex_arrays(1, &ui->vao);
     ui->gl.bind_vertex_array(ui->vao);
@@ -127,7 +127,7 @@ static bool create_device(BongoUIBackend *ui, BongoError *error) {
     return true;
 }
 
-static bool create_font(BongoUIBackend *ui, const char *font_path,
+static bool create_font(L2DCatUIBackend *ui, const char *font_path,
     const nk_rune *glyph_ranges) {
     nk_font_atlas_init_default(&ui->atlas);
     nk_font_atlas_begin(&ui->atlas);
@@ -167,8 +167,8 @@ static bool create_font(BongoUIBackend *ui, const char *font_path,
     return font && ui->font_texture != 0;
 }
 
-bool bongo_ui_init(BongoUIBackend *ui, SDL_Window *window, const char *font_path,
-    const nk_rune *glyph_ranges, BongoError *error) {
+bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window, const char *font_path,
+    const nk_rune *glyph_ranges, L2DCatError *error) {
     memset(ui, 0, sizeof(*ui));
     ui->window = window;
     ui->vertex_capacity = 512 * 1024;
@@ -183,7 +183,7 @@ bool bongo_ui_init(BongoUIBackend *ui, SDL_Window *window, const char *font_path
     return true;
 }
 
-void bongo_ui_destroy(BongoUIBackend *ui) {
+void l2dcat_ui_destroy(L2DCatUIBackend *ui) {
     if (!ui) return;
     nk_font_atlas_clear(&ui->atlas);
     release_font_file(ui);
@@ -199,7 +199,7 @@ void bongo_ui_destroy(BongoUIBackend *ui) {
     memset(ui, 0, sizeof(*ui));
 }
 
-static void convert(BongoUIBackend *ui) {
+static void convert(L2DCatUIBackend *ui) {
     static const struct nk_draw_vertex_layout_element layout[] = {
         {NK_VERTEX_POSITION, NK_FORMAT_FLOAT, offsetof(UIVertex, position)},
         {NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT, offsetof(UIVertex, uv)},
@@ -241,7 +241,7 @@ static void convert(BongoUIBackend *ui) {
         ui->elements, GL_STREAM_DRAW);
 }
 
-void bongo_ui_render(BongoUIBackend *ui) {
+void l2dcat_ui_render(L2DCatUIBackend *ui) {
     int width, height, pixel_width, pixel_height;
     SDL_GetWindowSize(ui->window, &width, &height);
     SDL_GetWindowSizeInPixels(ui->window, &pixel_width, &pixel_height);
@@ -285,7 +285,7 @@ void bongo_ui_render(BongoUIBackend *ui) {
     ui->last_gl_error = glGetError();
 }
 
-bool bongo_ui_frame_valid(const BongoUIBackend *ui) {
+bool l2dcat_ui_frame_valid(const L2DCatUIBackend *ui) {
     return ui && ui->last_convert_result == NK_CONVERT_SUCCESS &&
         ui->last_vertex_bytes && ui->last_element_bytes &&
         ui->last_draw_commands && ui->last_draw_elements &&
