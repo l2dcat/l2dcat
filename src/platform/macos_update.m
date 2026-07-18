@@ -3,10 +3,17 @@
 #ifdef __APPLE__
 #import <Cocoa/Cocoa.h>
 #import <Security/Security.h>
+#include <errno.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
+
+static void sleep_100ms(void) {
+    struct timespec delay = {0, 100000000L};
+    while (nanosleep(&delay, &delay) != 0 && errno == EINTR) {}
+}
 
 static bool remove_path(NSFileManager *files, NSString *path) {
     return ![files fileExistsAtPath:path] || [files removeItemAtPath:path error:nil];
@@ -59,7 +66,7 @@ static int apply_update(char **argv) {
         NSString *staged = [NSString stringWithUTF8String:argv[2]];
         NSString *bundle = [NSString stringWithUTF8String:argv[3]];
         pid_t parent = (pid_t)strtol(argv[4], NULL, 10);
-        for (int i = 0; i < 600 && kill(parent, 0) == 0; ++i) usleep(100000);
+        for (int i = 0; i < 600 && kill(parent, 0) == 0; ++i) sleep_100ms();
         NSFileManager *files = [NSFileManager defaultManager];
         NSString *unpack = [bundle stringByAppendingString:@".new"];
         NSString *backup = [bundle stringByAppendingString:@".old"];

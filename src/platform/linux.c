@@ -1,3 +1,7 @@
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include "l2dcat/platform.h"
 #include "l2dcat/path.h"
 #include "linux_internal.h"
@@ -16,10 +20,16 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <time.h>
 #include <unistd.h>
 
 static int instance_lock = -1;
 static L2DCatPlatform *active_platform;
+
+static void sleep_100ms(void) {
+    struct timespec delay = {0, 100000000L};
+    while (nanosleep(&delay, &delay) != 0 && errno == EINTR) {}
+}
 
 static void publish_instance_window(SDL_Window *window) {
     if (instance_lock < 0 || !window) return;
@@ -183,7 +193,7 @@ bool l2dcat_platform_schedule_update(const char *staged, L2DCatError *error) {
 static int apply_update(char **argv) {
     const char *staged = argv[2], *target = argv[3], *helper = argv[0];
     pid_t parent = (pid_t)strtol(argv[4], NULL, 10);
-    for (int i = 0; i < 600 && kill(parent, 0) == 0; ++i) usleep(100000);
+    for (int i = 0; i < 600 && kill(parent, 0) == 0; ++i) sleep_100ms();
     char replacement[L2DCAT_PATH_CAP], backup[L2DCAT_PATH_CAP];
     if (snprintf(replacement, sizeof(replacement), "%s.new", target) >=
         (int)sizeof(replacement) || snprintf(backup, sizeof(backup), "%s.old", target) >=
