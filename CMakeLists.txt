@@ -169,7 +169,7 @@ else()
   target_sources(l2dcat_runtime PRIVATE src/platform/linux.c src/platform/linux_menu.c
     src/platform/linux_x11.c src/platform/linux_update_verify.c src/platform/posix_http.c)
   target_link_libraries(l2dcat_runtime PRIVATE CURL::libcurl OpenSSL::Crypto
-    X11::X11 X11::Xi X11::Xfixes)
+    X11::X11 X11::Xi X11::Xfixes m)
 endif()
 
 add_executable(l2dcat src/main.c)
@@ -257,6 +257,8 @@ if(BUILD_TESTING)
   target_include_directories(l2dcat_app_state_tests PRIVATE include)
   add_test(NAME app-state COMMAND l2dcat_app_state_tests)
   if(UNIX AND NOT APPLE)
+    target_link_libraries(l2dcat_ui_tests PRIVATE m)
+    target_link_libraries(l2dcat_app_state_tests PRIVATE m)
     add_executable(l2dcat_linux_update_tests tests/test_linux_update.c
       src/platform/linux_update_verify.c)
     target_include_directories(l2dcat_linux_update_tests PRIVATE include src/platform
