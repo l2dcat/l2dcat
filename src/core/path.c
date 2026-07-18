@@ -40,7 +40,7 @@ static bool path_type(const char *path, bool directory) {
 #else
     struct stat value;
     if (!path || stat(path, &value) != 0) return false;
-    return directory ? (value.st_mode & S_IFDIR) != 0 : (value.st_mode & S_IFREG) != 0;
+    return directory ? S_ISDIR(value.st_mode) : S_ISREG(value.st_mode);
 #endif
 }
 
