@@ -141,7 +141,7 @@ static bool model_card(L2DCatApp *app, struct nk_context *context,
     struct nk_color muted = ui_color(dark, 0x667085, 0xA7AFC0);
     nk_fill_rect(canvas, bounds, 8, ui_color(dark,
         hover ? 0xF7FAFF : 0xFFFFFF, hover ? 0x222936 : 0x1B1F29));
-    nk_stroke_rect(canvas, bounds, 8, selected ? 2 : 1, border);
+    nk_stroke_rect(canvas, bounds, 8, selected ? 2.0f : 1.0f, border);
     struct nk_rect preview = nk_rect(bounds.x + 8, bounds.y + 8, bounds.w - 16, 92);
     nk_fill_rect(canvas, preview, 6, ui_color(dark, 0xEEF6FF, 0x151D2A));
     draw_model_icon(canvas, entry->mode, preview, selected ? accent : muted);

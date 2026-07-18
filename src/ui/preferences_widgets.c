@@ -87,7 +87,7 @@ void l2dcat_pref_section(struct nk_context *context, const char *title) {
 bool l2dcat_pref_toggle(struct nk_context *context, const char *id,
     const char *title, const char *detail, bool *value) {
     CardStyle saved;
-    if (!card_begin(context, id, detail && detail[0] ? 78 : 58, &saved)) return false;
+    if (!card_begin(context, id, detail && detail[0] ? 78.0f : 58.0f, &saved)) return false;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2);
     nk_layout_row_push(context, .76f); nk_label(context, title, NK_TEXT_LEFT);
     nk_layout_row_push(context, .24f); bool changed = toggle(context, value);
