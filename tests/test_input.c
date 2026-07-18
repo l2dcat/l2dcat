@@ -7,7 +7,7 @@ void test_input(void) {
     L2DCatInputState state;
     l2dcat_input_init(&state);
     L2DCatInputEvent event = {.kind = L2DCAT_INPUT_KEY_DOWN, .value = 1.0f};
-    strcpy(event.name, "KeyA");
+    memcpy(event.name, "KeyA", sizeof("KeyA"));
     CHECK(l2dcat_input_push(&state, &event));
     L2DCatInputEvent output;
     CHECK(l2dcat_input_pop(&state, &output));
@@ -29,7 +29,7 @@ void test_input(void) {
     l2dcat_input_init(&state);
     event.kind = L2DCAT_INPUT_KEY_DOWN;
     event.timestamp_ms = 100;
-    strcpy(event.name, "KeyA");
+    memcpy(event.name, "KeyA", sizeof("KeyA"));
     l2dcat_input_auto_release(&state, &event, 3000);
     CHECK(!l2dcat_input_take_release(&state, 3099, &output));
     event.timestamp_ms = 200;

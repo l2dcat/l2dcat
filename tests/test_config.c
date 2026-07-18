@@ -26,11 +26,12 @@ void test_config(void) {
     value.model.max_fps = 30;
     value.window.x = -321;
     value.app.language = L2DCAT_LANG_ZH_CN;
-    strcpy(value.current_model, "keyboard");
+    memcpy(value.current_model, "keyboard", sizeof("keyboard"));
     value.current_mode = L2DCAT_MODE_KEYBOARD;
     value.behavior_shortcut_count = 1;
-    strcpy(value.behavior_shortcuts[0].id, "keyboard:motion:Tap:0");
-    strcpy(value.behavior_shortcuts[0].shortcut, "Control+1");
+    memcpy(value.behavior_shortcuts[0].id, "keyboard:motion:Tap:0",
+        sizeof("keyboard:motion:Tap:0"));
+    memcpy(value.behavior_shortcuts[0].shortcut, "Control+1", sizeof("Control+1"));
     L2DCatError error = {0};
     const char *path = "l2dcat-\xE8\xAE\xBE\xE7\xBD\xAE.json";
     CHECK(l2dcat_config_save(path, &value, &error) == L2DCAT_OK);

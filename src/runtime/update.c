@@ -71,7 +71,7 @@ static void finish_check(L2DCatUpdater *value, const L2DCatUpdateManifest *manif
 static void check_update(L2DCatUpdater *value) {
     char path[L2DCAT_PATH_CAP]; L2DCatError error = {0}; L2DCatUpdateManifest manifest;
     l2dcat_path_join(path, sizeof(path), value->data_root, "latest-native.json.part");
-    const char *override = getenv("L2DCAT_UPDATE_URL");
+    const char *override = SDL_getenv("L2DCAT_UPDATE_URL");
     char default_url[L2DCAT_PATH_CAP];
     snprintf(default_url, sizeof(default_url), "%s%s%s.json",
         L2DCAT_UPDATE_MANIFEST_BASE_URL,

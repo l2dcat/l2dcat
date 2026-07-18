@@ -15,8 +15,8 @@ static bool readable(const char *path) {
 
 const char *l2dcat_ui_system_font(char *path, size_t capacity, bool multilingual) {
 #ifdef _WIN32
-    const char *windows = getenv("WINDIR");
-    if (!windows) windows = getenv("SystemRoot");
+    const char *windows = SDL_getenv("WINDIR");
+    if (!windows) windows = SDL_getenv("SystemRoot");
     if (windows) {
         const char *multi[] = {"Fonts/msyhl.ttc", "Fonts/msyh.ttc"};
         const char *latin[] = {"Fonts/segoeui.ttf", "Fonts/msyhl.ttc"};

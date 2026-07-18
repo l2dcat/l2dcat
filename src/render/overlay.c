@@ -279,10 +279,10 @@ void l2dcat_overlay_draw_background(L2DCatOverlay *value, bool mirror) {
 
 void l2dcat_overlay_draw_keys(L2DCatOverlay *value, bool mirror) {
     if (!value) return;
-#ifndef L2DCAT_HAS_CUBISM
-    (void)mirror;
-    return;
-#endif
+#ifdef L2DCAT_HAS_CUBISM
     draw(value, value->left, mirror, true);
     draw(value, value->right, mirror, true);
+#else
+    (void)mirror;
+#endif
 }
