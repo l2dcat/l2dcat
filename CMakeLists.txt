@@ -127,7 +127,8 @@ add_library(l2dcat_runtime STATIC
   src/ui/preferences_widgets.c
   ${L2DCAT_LIVE2D_SOURCES})
 target_include_directories(l2dcat_runtime PUBLIC include)
-target_include_directories(l2dcat_runtime PRIVATE ${stb_SOURCE_DIR} ${miniaudio_SOURCE_DIR}
+target_include_directories(l2dcat_runtime SYSTEM PRIVATE
+  ${stb_SOURCE_DIR} ${miniaudio_SOURCE_DIR}
   ${nuklear_SOURCE_DIR})
 target_link_libraries(l2dcat_runtime PUBLIC l2dcat_core SDL3::SDL3-static OpenGL::GL miniaudio)
 target_link_libraries(l2dcat_runtime PRIVATE l2dcat_warnings)
@@ -252,7 +253,7 @@ if(BUILD_TESTING)
     L2DCAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   add_test(NAME i18n COMMAND l2dcat_i18n_tests)
   add_executable(l2dcat_ui_tests tests/test_nuklear.c src/ui/nuklear_impl.c)
-  target_include_directories(l2dcat_ui_tests PRIVATE ${nuklear_SOURCE_DIR})
+  target_include_directories(l2dcat_ui_tests SYSTEM PRIVATE ${nuklear_SOURCE_DIR})
   target_link_libraries(l2dcat_ui_tests PRIVATE l2dcat_warnings)
   add_test(NAME ui COMMAND l2dcat_ui_tests)
   add_executable(l2dcat_app_state_tests tests/test_app_state.c src/core/app_state.c)

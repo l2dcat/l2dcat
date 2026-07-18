@@ -16,9 +16,9 @@ static void update_hands(L2DCatApp *app) {
     l2dcat_live2d_set_parameter(app->live2d, "CatParamStickShowLeftHand", left_stick);
     l2dcat_live2d_set_parameter(app->live2d, "CatParamStickShowRightHand", right_stick);
     l2dcat_live2d_set_parameter(app->live2d, "CatParamLeftHandDown",
-        left_stick || l2dcat_overlay_hand_active(app->overlay, false));
+        (left_stick || l2dcat_overlay_hand_active(app->overlay, false)) ? 1.0f : 0.0f);
     l2dcat_live2d_set_parameter(app->live2d, "CatParamRightHandDown",
-        right_stick || l2dcat_overlay_hand_active(app->overlay, true));
+        (right_stick || l2dcat_overlay_hand_active(app->overlay, true)) ? 1.0f : 0.0f);
 }
 
 static void apply_key(L2DCatApp *app, const char *name, bool pressed) {
