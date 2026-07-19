@@ -36,6 +36,10 @@ function(l2dcat_optimize_cubism_shaders target)
   set(output_source "${output_dir}/CubismShader_OpenGLES2.cpp")
   file(READ "${source_path}" source)
   string(REPLACE "\r\n" "\n" source "${source}")
+  # Match Pixi's Live2D texture defaults and avoid an unnecessary mip chain.
+  l2dcat_replace_cubism_text(source
+    "GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR"
+    "GL_TEXTURE_MIN_FILTER, GL_LINEAR" "linear model texture sampling")
 
   set(compile_anchor [=[
 _shaderSets[ShaderNames_MultMaskedInvertedPremultipliedAlpha]->ShaderProgram = _shaderSets[ShaderNames_NormalMaskedInvertedPremultipliedAlpha]->ShaderProgram;]=])

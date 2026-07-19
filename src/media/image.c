@@ -130,22 +130,27 @@ static unsigned int upload(const L2DCatImage *image, GLuint texture, bool mipmap
     if (created) glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     if (created) {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-            mipmapped ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+        /* Pixi's default Live2D texture source uses linear filtering without
+         * generated mipmaps. This keeps the same sharpness and saves texture
+         * memory for large model atlases. */
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        if (mipmapped && SDL_GL_ExtensionSupported(
+            "GL_EXT_texture_filter_anisotropic")) {
+            GLfloat maximum = 1.0f;
+            glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &maximum);
+            if (maximum > 1.0f)
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT,
+                    SDL_min(maximum, 8.0f));
+        }
     }
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     if (created) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, image->width,
         image->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
     else glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, image->width, image->height,
         GL_RGBA, GL_UNSIGNED_BYTE, image->pixels);
-    if (created && mipmapped) {
-        PFNGLGENERATEMIPMAPPROC generate_mipmap =
-            (PFNGLGENERATEMIPMAPPROC)SDL_GL_GetProcAddress("glGenerateMipmap");
-        if (generate_mipmap) generate_mipmap(GL_TEXTURE_2D);
-    }
     return texture;
 }
 
