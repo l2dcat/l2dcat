@@ -102,7 +102,7 @@ add_library(l2dcat_runtime STATIC
   src/media/audio.c
   src/media/image.c
   src/media/stb_image_impl.c
-  src/render/gl_api.c
+  src/platform/memory.c src/render/gl_api.c
   src/render/overlay.c
   src/runtime/app.c
   src/runtime/assets.c
@@ -157,7 +157,7 @@ if(WIN32)
   target_sources(l2dcat_runtime PRIVATE src/platform/windows_assets.c)
   target_sources(l2dcat_runtime PRIVATE src/platform/windows_http.c)
   target_sources(l2dcat_runtime PRIVATE src/platform/windows_update.c)
-  target_link_libraries(l2dcat_runtime PRIVATE crypt32 dwmapi ole32 shell32 user32 windowscodecs winhttp wintrust)
+  target_link_libraries(l2dcat_runtime PRIVATE crypt32 dwmapi ole32 psapi shell32 user32 windowscodecs winhttp wintrust)
 elseif(APPLE)
   enable_language(OBJC)
   target_sources(l2dcat_runtime PRIVATE src/platform/macos.m src/platform/macos_input.m

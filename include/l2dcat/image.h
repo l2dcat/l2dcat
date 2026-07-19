@@ -10,6 +10,7 @@ typedef struct L2DCatImage {
     int width;
     int height;
     SDL_Surface *surface;
+    bool pixels_stbi;
 } L2DCatImage;
 
 #ifdef __cplusplus

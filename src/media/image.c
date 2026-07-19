@@ -99,6 +99,7 @@ L2DCatResult l2dcat_image_load(const char *path, L2DCatImage *image, L2DCatError
     FILE *file = l2dcat_file_open(path, "rb");
     image->pixels = file ? stbi_load_from_file(file, &image->width,
         &image->height, &channels, STBI_rgb_alpha) : NULL;
+    image->pixels_stbi = image->pixels != NULL;
     if (file) fclose(file);
     if (!image->pixels) {
         l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot decode PNG: %s", path);
@@ -118,7 +119,7 @@ void l2dcat_image_free(L2DCatImage *image) {
     if (!image) return;
     if (image->surface) SDL_DestroySurface(image->surface);
     if (image->pixels) {
-        if (image->surface) stbi_image_free(image->pixels);
+        if (image->pixels_stbi) stbi_image_free(image->pixels);
         else free(image->pixels);
     }
     memset(image, 0, sizeof(*image));

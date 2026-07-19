@@ -1,4 +1,5 @@
 #include "l2dcat/file.h"
+#include "l2dcat/memory.h"
 #include "l2dcat/model.h"
 #if defined(CSM_TARGET_WIN_GL) || defined(CSM_TARGET_LINUX_GL)
 #include <GL/glew.h>
@@ -147,7 +148,23 @@ extern "C" L2DCatResult l2dcat_live2d_load(L2DCatLive2D *runtime, const char *di
         delete model;
         return error ? error->code : L2DCAT_ERROR_CUBISM;
     }
-    delete runtime->model;
+    l2dcat::NativeModel *previous = runtime->model;
+    if (previous) {
+        previous->release_textures();
+        glFinish();
+        l2dcat_platform_trim_memory();
+    }
+    if (!model->load_textures(error)) {
+        L2DCatResult result = error ? error->code : L2DCAT_ERROR_CUBISM;
+        L2DCatError restore_error = {};
+        if (previous && !previous->load_textures(&restore_error)) {
+            delete previous;
+            runtime->model = nullptr;
+        }
+        delete model;
+        return result;
+    }
+    delete previous;
     runtime->model = model;
     return L2DCAT_OK;
 }

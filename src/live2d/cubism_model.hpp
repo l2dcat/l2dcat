@@ -19,6 +19,8 @@ public:
     NativeModel();
     ~NativeModel() override;
     bool load(const char *directory, const char *setting_file, L2DCatError *error);
+    bool load_textures(L2DCatError *error);
+    void release_textures();
     void resize(int width, int height);
     bool update(float delta_seconds);
     void draw();
@@ -34,7 +36,6 @@ private:
     void load_expressions();
     void load_effects();
     void load_motions();
-    bool load_textures(L2DCatError *error);
     void bind_textures();
     std::vector<unsigned char> read(const std::string &path) const;
     std::string path(const char *relative) const;
