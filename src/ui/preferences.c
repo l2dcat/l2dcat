@@ -133,8 +133,8 @@ static void SDLCALL model_imported(void *userdata, const char *const *files,
     int filter) {
     (void)filter;
     L2DCatPreferences *value = userdata;
-    value->import_dialog_open = false;
-    if (!files || !files[0]) return;
+    value->import_dialog_open = false; value->render_dirty = true;
+    if (!files || !files[0]) { l2dcat_preferences_render(value); return; }
     for (size_t i = 0; files[i]; ++i) l2dcat_preferences_import_path(value->app, value->window, files[i]);
 }
 bool l2dcat_preferences_visible(const L2DCatPreferences *value) {

@@ -75,10 +75,10 @@ void l2dcat_preferences_import_path(L2DCatApp *app, SDL_Window *window,
         : error.message;
     if (app->smoke) {
         if (result != L2DCAT_OK) app->exit_code = 1;
-        return;
-    }
-    SDL_ShowSimpleMessageBox(result == L2DCAT_OK ? SDL_MESSAGEBOX_INFORMATION :
+    } else SDL_ShowSimpleMessageBox(result == L2DCAT_OK ? SDL_MESSAGEBOX_INFORMATION :
         SDL_MESSAGEBOX_ERROR, L2DCAT_NAME, message, window);
+    l2dcat_preferences_invalidate(app->preferences);
+    l2dcat_preferences_render(app->preferences);
 }
 
 static struct nk_color ui_color(bool dark, int light, int night) {
