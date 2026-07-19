@@ -44,7 +44,8 @@ static ModelCoverSlot *model_cover(L2DCatApp *app, const L2DCatModelEntry *entry
     }
     if (!empty) return NULL;
     L2DCatError ignored = {0};
-    empty->texture = l2dcat_image_texture(path, &empty->width, &empty->height, &ignored);
+    empty->texture = l2dcat_image_texture_thumbnail(path, 320, 192,
+        &empty->width, &empty->height, &ignored);
     if (!empty->texture) return NULL;
     empty->app = app;
     empty->generation = cover_generation;

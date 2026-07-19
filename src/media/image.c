@@ -159,6 +159,39 @@ unsigned int l2dcat_image_texture(const char *path, int *width, int *height, L2D
     return texture;
 }
 
+unsigned int l2dcat_image_texture_thumbnail(const char *path, int max_width,
+    int max_height, int *width, int *height, L2DCatError *error) {
+    L2DCatImage image;
+    if (l2dcat_image_load(path, &image, error) != L2DCAT_OK) return 0;
+    int target_width = image.width, target_height = image.height;
+    if (max_width > 0 && max_height > 0 &&
+        (target_width > max_width || target_height > max_height)) {
+        float scale = SDL_min((float)max_width / target_width,
+            (float)max_height / target_height);
+        target_width = SDL_max(1, (int)(target_width * scale + .5f));
+        target_height = SDL_max(1, (int)(target_height * scale + .5f));
+        SDL_Surface *scaled = SDL_ScaleSurface(image.surface, target_width,
+            target_height, SDL_SCALEMODE_LINEAR);
+        if (scaled) {
+            L2DCatImage thumbnail = {
+                .pixels = scaled->pixels, .width = scaled->w, .height = scaled->h};
+            GLuint texture = upload(&thumbnail, 0, false);
+            if (width) *width = thumbnail.width;
+            if (height) *height = thumbnail.height;
+            SDL_DestroySurface(scaled);
+            l2dcat_image_free(&image);
+            return texture;
+        }
+        target_width = image.width;
+        target_height = image.height;
+    }
+    GLuint texture = upload(&image, 0, false);
+    if (width) *width = target_width;
+    if (height) *height = target_height;
+    l2dcat_image_free(&image);
+    return texture;
+}
+
 unsigned int l2dcat_image_texture_mipmapped(const char *path, int *width, int *height,
     L2DCatError *error) {
     L2DCatImage image;

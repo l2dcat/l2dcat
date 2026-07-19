@@ -21,6 +21,8 @@ L2DCatResult l2dcat_image_load(const char *path, L2DCatImage *image, L2DCatError
 void l2dcat_image_free(L2DCatImage *image);
 unsigned int l2dcat_image_texture(const char *path, int *width, int *height,
     L2DCatError *error);
+unsigned int l2dcat_image_texture_thumbnail(const char *path, int max_width,
+    int max_height, int *width, int *height, L2DCatError *error);
 unsigned int l2dcat_image_texture_mipmapped(const char *path, int *width, int *height,
     L2DCatError *error);
 unsigned int l2dcat_image_composite_texture(const char *base, const char *left,

@@ -92,6 +92,27 @@ static bool has_preview_assets(const char *directory) {
     return false;
 }
 
+static bool has_cover_asset(const char *directory) {
+    const char *names[] = {"resources/cover.png", "cover.png", "cat.png", "bg.png"};
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
+        char path[L2DCAT_PATH_CAP];
+        if (l2dcat_path_join(path, sizeof(path), directory, names[i]) &&
+            l2dcat_path_is_file(path)) return true;
+    }
+    return false;
+}
+
+static bool has_background_asset(const char *directory) {
+    const char *names[] = {"resources/background.png", "background.png",
+        "bg.png", "mousebg.png", "tabletbg.png"};
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
+        char path[L2DCAT_PATH_CAP];
+        if (l2dcat_path_join(path, sizeof(path), directory, names[i]) &&
+            l2dcat_path_is_file(path)) return true;
+    }
+    return false;
+}
+
 static bool add_candidate(L2DCatImportDiscovery *discovery, const char *directory,
     const char *setting) {
     if (discovery->count >= L2DCAT_IMPORT_CANDIDATE_CAP) return false;
@@ -103,7 +124,8 @@ static bool add_candidate(L2DCatImportDiscovery *discovery, const char *director
     snprintf(candidate->setting, sizeof(candidate->setting), "%s", setting);
     snprintf(candidate->assets, sizeof(candidate->assets), "%s", directory);
     char parent[L2DCAT_PATH_CAP];
-    if (path_parent(directory, parent, sizeof(parent)) && has_preview_assets(parent))
+    if ((!has_cover_asset(directory) || !has_background_asset(directory)) &&
+        path_parent(directory, parent, sizeof(parent)) && has_preview_assets(parent))
         snprintf(candidate->assets, sizeof(candidate->assets), "%s", parent);
     candidate->mode = import_mode(candidate->assets);
     return true;

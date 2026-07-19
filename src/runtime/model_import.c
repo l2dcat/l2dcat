@@ -58,6 +58,24 @@ static bool copy_first(const char *source_dir, const char *const *names, size_t 
     return true;
 }
 
+static bool copy_preview_file(const char *source_resources, const char *source_root,
+    const char *const *names, size_t count, const char *target_resources,
+    const char *target_name) {
+    for (size_t i = 0; i < count; ++i) {
+        char source[L2DCAT_PATH_CAP];
+        if (l2dcat_path_join(source, sizeof(source), source_resources, names[i]) &&
+            l2dcat_path_is_file(source))
+            return copy_optional(source_resources, names[i], target_resources, target_name);
+    }
+    return copy_first(source_root, names, count, target_resources, target_name);
+}
+
+static bool preview_file_exists(const char *directory, const char *name) {
+    char path[L2DCAT_PATH_CAP];
+    return l2dcat_path_join(path, sizeof(path), directory, name) &&
+        l2dcat_path_is_file(path);
+}
+
 static bool copy_preview(const L2DCatImportCandidate *candidate, const char *target,
     L2DCatError *error) {
     if (strcmp(candidate->assets, candidate->directory) == 0) return true;
@@ -66,14 +84,22 @@ static bool copy_preview(const L2DCatImportCandidate *candidate, const char *tar
         candidate->assets, "resources") ||
         !l2dcat_path_join(target_resources, sizeof(target_resources), target, "resources"))
         return false;
-    if (l2dcat_path_is_dir(source_resources))
-        return l2dcat_copy_directory(source_resources, target_resources, error) == L2DCAT_OK;
-    if (!SDL_CreateDirectory(target_resources)) return false;
+    bool target_exists = l2dcat_path_is_dir(target_resources);
+    if (l2dcat_path_is_dir(source_resources) && !target_exists) {
+        if (l2dcat_copy_directory(source_resources, target_resources, error) != L2DCAT_OK)
+            return false;
+        target_exists = true;
+    }
+    if (!target_exists && !SDL_CreateDirectory(target_resources)) return false;
     const char *covers[] = {"cover.png", "cat.png", "bg.png"};
     const char *backgrounds[] = {"background.png", "bg.png", "mousebg.png",
         "tabletbg.png"};
-    bool ok = copy_first(candidate->assets, covers, 3, target_resources, "cover.png") &&
-        copy_first(candidate->assets, backgrounds, 4, target_resources, "background.png");
+    bool ok = (preview_file_exists(target_resources, "cover.png") ||
+        copy_preview_file(source_resources, candidate->assets, covers, 3,
+            target_resources, "cover.png")) &&
+        (preview_file_exists(target_resources, "background.png") ||
+        copy_preview_file(source_resources, candidate->assets, backgrounds, 4,
+            target_resources, "background.png"));
     if (!ok) l2dcat_error_set(error, L2DCAT_ERROR_IO,
         "Cannot copy model preview assets: %s", SDL_GetError());
     return ok;

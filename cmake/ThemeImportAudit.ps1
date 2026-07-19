@@ -54,6 +54,43 @@ foreach ($mode in @("standard", "keyboard", "gamepad")) {
 }
 $fixtures += [pscustomobject]@{ Name="nested-package"; Path=$package; Valid=$true; Count=3 }
 
+$localPreview = Join-Path $OutputDir "local-preview-precedence"
+$localModel = Join-Path $localPreview "model"
+New-Item -ItemType Directory -Force -Path $localPreview | Out-Null
+Copy-Item -LiteralPath $source -Destination $localModel -Recurse
+$parentResources = Join-Path $localPreview "resources"
+New-Item -ItemType Directory -Force -Path $parentResources | Out-Null
+Copy-Item (Join-Path $root "resources\assets\models\keyboard\resources\cover.png") `
+    (Join-Path $parentResources "cover.png")
+$expectedCoverHash = (Get-FileHash (Join-Path $source "resources\cover.png") -Algorithm SHA256).Hash
+$fixtures += [pscustomobject]@{ Name="local-preview-precedence"; Path=$localPreview
+    Valid=$true; Count=1; CoverHash=$expectedCoverHash }
+
+$missingLocalCover = Join-Path $OutputDir "missing-local-cover"
+$missingLocalModel = Join-Path $missingLocalCover "model"
+New-Item -ItemType Directory -Force -Path $missingLocalCover | Out-Null
+Copy-Item -LiteralPath $source -Destination $missingLocalModel -Recurse
+Remove-Item -LiteralPath (Join-Path $missingLocalModel "resources\cover.png")
+$fallbackResources = Join-Path $missingLocalCover "resources"
+New-Item -ItemType Directory -Force -Path $fallbackResources | Out-Null
+$fallbackCover = Join-Path $root "resources\assets\models\keyboard\resources\cover.png"
+Copy-Item $fallbackCover (Join-Path $fallbackResources "cover.png")
+$fallbackCoverHash = (Get-FileHash $fallbackCover -Algorithm SHA256).Hash
+$fixtures += [pscustomobject]@{ Name="missing-local-cover"; Path=$missingLocalCover
+    Valid=$true; Count=1; CoverHash=$fallbackCoverHash }
+
+$mixedPreview = Join-Path $OutputDir "mixed-preview-layout"
+$mixedModel = Join-Path $mixedPreview "model"
+New-Item -ItemType Directory -Force -Path $mixedPreview | Out-Null
+Copy-Item -LiteralPath $source -Destination $mixedModel -Recurse
+Remove-Item -LiteralPath (Join-Path $mixedModel "resources\cover.png")
+$mixedResources = Join-Path $mixedPreview "resources"
+New-Item -ItemType Directory -Force -Path $mixedResources | Out-Null
+Set-Content -LiteralPath (Join-Path $mixedResources "metadata.txt") -Value "preview"
+Copy-Item $fallbackCover (Join-Path $mixedPreview "cat.png")
+$fixtures += [pscustomobject]@{ Name="mixed-preview-layout"; Path=$mixedPreview
+    Valid=$true; Count=1; CoverHash=$fallbackCoverHash }
+
 $results = foreach ($fixture in $fixtures) {
     $data = Join-Path $OutputDir ("data-" + $fixture.Name)
     $process = Start-Process -FilePath $Exe -WorkingDirectory (Split-Path $Exe) -PassThru `
@@ -66,14 +103,20 @@ $results = foreach ($fixture in $fixtures) {
     $covers = @($models | Where-Object {
         Test-Path (Join-Path $_.FullName "resources\cover.png")
     }).Count
+    $actualCoverHash = if ($models.Count -eq 1 -and $covers -eq 1) {
+        (Get-FileHash (Join-Path $models[0].FullName "resources\cover.png") `
+            -Algorithm SHA256).Hash
+    } else { "" }
+    $coverMatches = -not $fixture.CoverHash -or $actualCoverHash -eq $fixture.CoverHash
     $passed = if ($fixture.Valid) {
         $process.ExitCode -eq 0 -and $installed -eq $fixture.Count -and
-            ($fixture.Name -ne "nested-package" -or $covers -eq 3)
+            ($fixture.Name -ne "nested-package" -or $covers -eq 3) -and $coverMatches
     } else {
         $process.ExitCode -ne 0 -and $installed -eq 0
     }
     [pscustomobject]@{ Case=$fixture.Name; ExpectedValid=$fixture.Valid
-        ExitCode=$process.ExitCode; Installed=$installed; Covers=$covers; Passed=$passed }
+        ExitCode=$process.ExitCode; Installed=$installed; Covers=$covers
+        CoverMatches=$coverMatches; Passed=$passed }
 }
 $results | Export-Csv (Join-Path $OutputDir "audit.csv") -NoTypeInformation -Encoding UTF8
 $results | Format-Table -AutoSize
