@@ -12,6 +12,38 @@ static void visible(L2DCatApp *app) {
     if (app->config.window.visible) app->dirty = true;
 }
 
+static bool run_behavior(L2DCatApp *app, L2DCatBehaviorEntry *behavior) {
+    if (behavior->kind == L2DCAT_BEHAVIOR_MOTION) {
+        bool started = l2dcat_live2d_start_motion(app->live2d,
+            behavior->group, behavior->index);
+        if (!started) return false;
+        if (behavior->sound[0]) {
+            L2DCatError error = {0};
+            l2dcat_audio_play(app->audio, behavior->sound, &error);
+        }
+    } else if (!l2dcat_live2d_set_expression(app->live2d, behavior->index)) return false;
+    app->dirty = true;
+    return true;
+}
+
+static bool behavior_shortcut(L2DCatApp *app, const L2DCatInputEvent *event) {
+    for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
+        L2DCatBehaviorShortcut *shortcut = &app->config.behavior_shortcuts[i];
+        if (!l2dcat_shortcut_matches(&app->shortcut_state, event, shortcut->shortcut)) continue;
+        for (size_t j = 0; j < app->behaviors.count; ++j)
+            if (strcmp(shortcut->id, app->behaviors.entries[j].id) == 0)
+                return run_behavior(app, &app->behaviors.entries[j]);
+    }
+    size_t limit = app->behaviors.count < 10 ? app->behaviors.count : 10;
+    for (size_t i = 0; i < limit; ++i) {
+        char alias[8];
+        snprintf(alias, sizeof(alias), "Alt+%c", i == 9 ? '0' : (char)('1' + i));
+        if (l2dcat_shortcut_matches(&app->shortcut_state, event, alias))
+            return run_behavior(app, &app->behaviors.entries[i]);
+    }
+    return false;
+}
+
 void l2dcat_app_shortcuts(L2DCatApp *app, const L2DCatInputEvent *event) {
     if (!app || !l2dcat_shortcut_update(&app->shortcut_state, event)) return;
     L2DCatShortcutOptions *shortcuts = &app->config.shortcuts;
@@ -34,26 +66,7 @@ void l2dcat_app_shortcuts(L2DCatApp *app, const L2DCatInputEvent *event) {
         app->config.window.always_on_top = !app->config.window.always_on_top;
         l2dcat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
         l2dcat_preferences_invalidate(app->preferences);
-    } else if (app->config.model.behavior) {
-        for (size_t i = 0; i < app->config.behavior_shortcut_count; ++i) {
-            L2DCatBehaviorShortcut *shortcut = &app->config.behavior_shortcuts[i];
-            if (!l2dcat_shortcut_matches(&app->shortcut_state, event, shortcut->shortcut)) continue;
-            for (size_t j = 0; j < app->behaviors.count; ++j) {
-                L2DCatBehaviorEntry *behavior = &app->behaviors.entries[j];
-                if (strcmp(shortcut->id, behavior->id) != 0) continue;
-                if (behavior->kind == L2DCAT_BEHAVIOR_MOTION) {
-                    bool started = l2dcat_live2d_start_motion(app->live2d,
-                        behavior->group, behavior->index);
-                    if (started && behavior->sound[0]) {
-                        L2DCatError error = {0};
-                        l2dcat_audio_play(app->audio, behavior->sound, &error);
-                    }
-                } else l2dcat_live2d_set_expression(app->live2d, behavior->index);
-                app->dirty = true;
-                return;
-            }
-        }
-    }
+    } else if (app->config.model.behavior) behavior_shortcut(app, event);
 }
 
 static void test_key(L2DCatApp *app, L2DCatInputKind kind, const char *name) {

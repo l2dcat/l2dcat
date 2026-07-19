@@ -33,4 +33,13 @@ void test_shortcut(void) {
     l2dcat_shortcut_update(&state, &control);
     CHECK(l2dcat_shortcut_update(&state, &comma));
     CHECK(l2dcat_shortcut_matches(&state, &comma, "Control+Comma"));
+    up = key(L2DCAT_INPUT_KEY_UP, "Comma");
+    l2dcat_shortcut_update(&state, &up);
+    control.kind = L2DCAT_INPUT_KEY_UP;
+    l2dcat_shortcut_update(&state, &control);
+    L2DCatInputEvent alt = key(L2DCAT_INPUT_KEY_DOWN, "Alt");
+    L2DCatInputEvent digit = key(L2DCAT_INPUT_KEY_DOWN, "Num1");
+    CHECK(!l2dcat_shortcut_update(&state, &alt));
+    CHECK(l2dcat_shortcut_update(&state, &digit));
+    CHECK(l2dcat_shortcut_matches(&state, &digit, "Alt+1"));
 }
