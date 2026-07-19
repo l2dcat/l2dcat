@@ -124,7 +124,7 @@ static void context_menu(L2DCatApp *app) {
         tr(app, "composables.useAppMenu.labels.preference", "Preferences"),
         tr(app, "composables.useAppMenu.labels.hideCat", "Hide Cat"),
         tr(app, "composables.useAppMenu.labels.passThrough", "Pass Through"),
-        tr(app, "pages.preference.cat.labels.alwaysOnTop", "Always on Top"),
+        tr(app, "composables.useAppMenu.labels.alwaysOnTop", "Always on top"),
         tr(app, "composables.useAppMenu.labels.windowSize", "Window Size"),
         tr(app, "composables.useAppMenu.labels.opacity", "Opacity"),
         tr(app, "composables.useAppMenu.labels.restartApp", "Restart"),

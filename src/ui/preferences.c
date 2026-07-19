@@ -45,7 +45,7 @@ static void apply_theme(L2DCatPreferences *value) {
 static bool open_window(L2DCatPreferences *value) {
     SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE |
         SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN;
-    value->window = SDL_CreateWindow(tr(value, "pages.preference.title", "Preferences"),
+    value->window = SDL_CreateWindow(L2DCAT_NAME,
         900, 640, flags);
     if (!value->window) return false;
     SDL_SetWindowMinimumSize(value->window, 720, 520);
@@ -191,7 +191,6 @@ static void draw_page(L2DCatPreferences *value, struct nk_context *context) {
     default: l2dcat_preferences_page_about(value->app, context); break;
     }
 }
-
 void l2dcat_preferences_render(L2DCatPreferences *value) {
     if (!value || !value->window) return;
     uint64_t now = SDL_GetTicksNS();
@@ -212,7 +211,7 @@ void l2dcat_preferences_render(L2DCatPreferences *value) {
     float old_group_border = context->style.window.group_border;
     context->style.window.padding = nk_vec2(0, 0);
     context->style.window.spacing = nk_vec2(0, 0);
-    if (nk_begin(context, "Preferences", nk_rect(0, 0, (float)width, (float)height),
+    if (nk_begin(context, L2DCAT_NAME, nk_rect(0, 0, (float)width, (float)height),
         NK_WINDOW_NO_SCROLLBAR)) {
         const char *menus[] = {
             tr(value, "pages.preference.cat.title", "Cat"),
@@ -220,6 +219,7 @@ void l2dcat_preferences_render(L2DCatPreferences *value) {
             tr(value, "pages.preference.model.title", "Model"),
             tr(value, "pages.preference.shortcut.title", "Shortcuts"),
             tr(value, "pages.preference.about.title", "About")};
+        static const char *page_ids[] = {"page-cat", "page-general", "page-model", "page-shortcuts", "page-about"};
         nk_layout_row_begin(context, NK_STATIC, (float)height, 2);
         nk_layout_row_push(context, 184);
         struct nk_color sidebar = dark ? nk_rgb(15, 20, 29) : nk_rgb(248, 250, 253);
@@ -236,7 +236,7 @@ void l2dcat_preferences_render(L2DCatPreferences *value) {
         context->style.window.fixed_background = nk_style_item_color(content);
         context->style.window.background = content;
         context->style.window.group_padding = nk_vec2(24, 20);
-        if (nk_group_begin(context, "page", 0)) {
+        if (nk_group_begin(context, page_ids[value->page], 0)) {
             nk_layout_row_dynamic(context, 38, 1); nk_label(context,
                 menus[value->page], NK_TEXT_LEFT);
             nk_layout_row_dynamic(context, 8, 1); nk_spacing(context, 1);

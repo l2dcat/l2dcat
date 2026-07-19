@@ -99,18 +99,6 @@ static bool menu_item(struct nk_context *context, const char *label, int index,
 
 void l2dcat_ui_sidebar(struct nk_context *context, const char *const labels[5],
     int *active_page, bool dark) {
-    struct nk_rect logo;
-    nk_layout_row_dynamic(context, 82, 1);
-    if (nk_widget(&logo, context) != NK_WIDGET_INVALID) {
-        struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-        float size = 42;
-        cat_icon(canvas, logo.x + 10, logo.y + 8, size,
-            color(dark, 0x1677FF, 0x3C89E8));
-        nk_draw_text(canvas, nk_rect(logo.x + 60, logo.y + 17, logo.w - 64, 24),
-            "l2dcat", (int)(sizeof("l2dcat") - 1), context->style.font,
-            nk_rgba(0, 0, 0, 0),
-            color(dark, 0x1F2937, 0xEEF1F6));
-    }
     for (int i = 0; i < 5; ++i)
         if (menu_item(context, labels[i], i, *active_page == i, dark))
             *active_page = i;

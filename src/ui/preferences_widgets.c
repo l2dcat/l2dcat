@@ -17,6 +17,16 @@ static struct nk_color color(bool night, int light, int dark_value) {
     return nk_rgb((value >> 16) & 255, (value >> 8) & 255, value & 255);
 }
 
+static int detail_lines(const struct nk_context *context, const char *text) {
+    if (!text || !text[0] || !context || !context->style.font) return 0;
+    float width = nk_window_get_content_region(context).w - 32.0f;
+    if (width < 160.0f) width = 160.0f;
+    float measured = context->style.font->width(context->style.font->userdata,
+        context->style.font->height, text, nk_strlen(text));
+    int lines = (int)(measured / width) + 1;
+    return lines > 3 ? 3 : lines;
+}
+
 static bool card_begin(struct nk_context *context, const char *id,
     float height, CardStyle *saved) {
     bool night = dark(context);
@@ -55,8 +65,8 @@ static void card_end(struct nk_context *context, const CardStyle *saved) {
 
 static void description(struct nk_context *context, const char *text) {
     if (!text || !text[0]) return;
-    nk_layout_row_dynamic(context, 22, 1);
-    nk_label_colored(context, text, NK_TEXT_LEFT,
+    nk_layout_row_dynamic(context, 22.0f * detail_lines(context, text), 1);
+    nk_label_colored_wrap(context, text,
         color(dark(context), 0x8C8C8C, 0x8C96A8));
 }
 
@@ -65,9 +75,12 @@ static bool toggle(struct nk_context *context, bool *value) {
     if (nk_widget(&cell, context) == NK_WIDGET_INVALID) return false;
     struct nk_rect track = nk_rect(cell.x + cell.w - 44,
         cell.y + (cell.h - 24) * .5f, 44, 24);
-    bool hover = nk_input_is_mouse_hovering_rect(&context->input, track);
+    /* Let the complete preference card toggle the setting. */
+    struct nk_rect card = nk_rect(cell.x - cell.w * (0.76f / 0.24f), cell.y - 8,
+        cell.w / 0.24f, 54);
+    bool hover = nk_input_is_mouse_hovering_rect(&context->input, card);
     bool changed = nk_input_is_mouse_click_in_rect(&context->input,
-        NK_BUTTON_LEFT, track);
+        NK_BUTTON_LEFT, card);
     if (changed) *value = !*value;
     bool night = dark(context);
     struct nk_color background = *value ? color(night, 0x1677FF, 0x1668DC) :
@@ -87,7 +100,7 @@ void l2dcat_pref_section(struct nk_context *context, const char *title) {
 bool l2dcat_pref_toggle(struct nk_context *context, const char *id,
     const char *title, const char *detail, bool *value) {
     CardStyle saved;
-    if (!card_begin(context, id, detail && detail[0] ? 78.0f : 58.0f, &saved)) return false;
+    if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return false;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2);
     nk_layout_row_push(context, .76f); nk_label(context, title, NK_TEXT_LEFT);
     nk_layout_row_push(context, .24f); bool changed = toggle(context, value);
@@ -107,7 +120,7 @@ bool l2dcat_pref_float(struct nk_context *context, const char *id,
     const char *title, const char *detail, float minimum, float *value,
     float maximum, float step) {
     CardStyle saved;
-    if (!card_begin(context, id, 78, &saved)) return false;
+    if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return false;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
     bool changed = nk_property_float(context, "#", minimum, value, maximum,
         step, step * .1f) != 0;
@@ -119,7 +132,7 @@ bool l2dcat_pref_int(struct nk_context *context, const char *id,
     const char *title, const char *detail, int minimum, int *value,
     int maximum, int step) {
     CardStyle saved;
-    if (!card_begin(context, id, 78, &saved)) return false;
+    if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return false;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
     bool changed = nk_property_int(context, "#", minimum, value, maximum,
         step, 1.0f) != 0;
@@ -131,7 +144,7 @@ bool l2dcat_pref_slider(struct nk_context *context, const char *id,
     const char *title, const char *detail, float minimum, float *value,
     float maximum, float step) {
     CardStyle saved;
-    if (!card_begin(context, id, 78, &saved)) return false;
+    if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return false;
     float before = *value;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
     nk_slider_float(context, minimum, value, maximum, step);
@@ -143,7 +156,7 @@ int l2dcat_pref_combo(struct nk_context *context, const char *id,
     const char *title, const char *detail, const char *const *items,
     int count, int selected) {
     CardStyle saved;
-    if (!card_begin(context, id, 78, &saved)) return selected;
+    if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return selected;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
     selected = nk_combo(context, items, count, selected, 32, nk_vec2(280, 220));
     nk_layout_row_end(context); description(context, detail); card_end(context, &saved);
@@ -153,7 +166,7 @@ int l2dcat_pref_combo(struct nk_context *context, const char *id,
 void l2dcat_pref_edit(struct nk_context *context, const char *id,
     const char *title, const char *detail, char *value, int capacity) {
     CardStyle saved;
-    if (!card_begin(context, id, 78, &saved)) return;
+    if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
     nk_edit_string_zero_terminated(context, NK_EDIT_FIELD, value, capacity, nk_filter_default);
     nk_layout_row_end(context); description(context, detail); card_end(context, &saved);
@@ -162,7 +175,7 @@ void l2dcat_pref_edit(struct nk_context *context, const char *id,
 bool l2dcat_pref_button(struct nk_context *context, const char *id,
     const char *title, const char *detail, const char *button) {
     CardStyle saved;
-    if (!card_begin(context, id, 78, &saved)) return false;
+    if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return false;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
     bool clicked = nk_button_label(context, button) != 0;
     nk_layout_row_end(context); description(context, detail); card_end(context, &saved);
@@ -172,7 +185,8 @@ bool l2dcat_pref_button(struct nk_context *context, const char *id,
 void l2dcat_pref_status(struct nk_context *context, const char *id,
     const char *title, const char *detail) {
     CardStyle saved;
-    if (!card_begin(context, id, 64, &saved)) return;
+    int lines = detail_lines(context, detail);
+    if (!card_begin(context, id, 64.0f + (lines > 1 ? (lines - 1) * 22.0f : 0), &saved)) return;
     nk_layout_row_dynamic(context, 24, 1); nk_label(context, title, NK_TEXT_LEFT);
     description(context, detail); card_end(context, &saved);
 }

@@ -176,6 +176,7 @@
         "hideCat": "Hide Cat",
         "showCat": "Show Cat",
         "passThrough": "Pass Through",
+        "alwaysOnTop": "Always on Top",
         "windowSize": "Window Size",
         "opacity": "Opacity",
         "restartApp": "Restart App",

@@ -102,7 +102,7 @@ L2DCatTray *l2dcat_tray_create(L2DCatApp *app, L2DCatError *error) {
         "composables.useAppMenu.labels.passThrough", "Mouse pass-through"), SDL_TRAYENTRY_CHECKBOX,
         on_pass_through, tray);
     tray->always_on_top = add(menu, l2dcat_i18n_get(app->i18n,
-        "pages.preference.cat.labels.alwaysOnTop", "Always on top"), SDL_TRAYENTRY_CHECKBOX,
+        "composables.useAppMenu.labels.alwaysOnTop", "Always on top"), SDL_TRAYENTRY_CHECKBOX,
         on_always_on_top, tray);
     add(menu, NULL, 0, NULL, tray);
     tray->preferences = add(menu, l2dcat_i18n_get(app->i18n,
@@ -136,7 +136,7 @@ void l2dcat_tray_sync(L2DCatTray *tray) {
     SDL_SetTrayEntryLabel(tray->pass_through, l2dcat_i18n_get(tray->app->i18n,
         "composables.useAppMenu.labels.passThrough", "Mouse pass-through"));
     SDL_SetTrayEntryLabel(tray->always_on_top, l2dcat_i18n_get(tray->app->i18n,
-        "pages.preference.cat.labels.alwaysOnTop", "Always on top"));
+        "composables.useAppMenu.labels.alwaysOnTop", "Always on top"));
     SDL_SetTrayEntryLabel(tray->preferences, l2dcat_i18n_get(tray->app->i18n,
         "composables.useAppMenu.labels.preference", "Preferences"));
     SDL_SetTrayEntryLabel(tray->exit, l2dcat_i18n_get(tray->app->i18n,
