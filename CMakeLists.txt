@@ -1,9 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 project(l2dcat VERSION 1.1.0 LANGUAGES C CXX)
-
 include(FetchContent)
 include(CTest)
-
 option(L2DCAT_FETCH_DEPS "Download pinned open-source dependencies" ON)
 option(L2DCAT_REQUIRE_CUBISM "Fail configuration when Cubism SDK is absent" OFF)
 option(L2DCAT_WARNINGS_AS_ERRORS "Treat native source warnings as errors" OFF)
@@ -113,6 +111,8 @@ add_library(l2dcat_runtime STATIC
   src/runtime/live2d_audit.c
   src/runtime/mouse.c
   src/runtime/model_files.c
+  src/runtime/model_import.c
+  src/runtime/model_import_discovery.c
   src/runtime/shortcuts.c
   src/runtime/tray.c
   src/runtime/update.c

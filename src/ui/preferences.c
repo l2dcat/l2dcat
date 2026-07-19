@@ -109,6 +109,7 @@ void l2dcat_preferences_close(L2DCatPreferences *value) {
     SDL_GL_MakeCurrent(value->window, value->gl_context);
     if (value->input_active) l2dcat_preferences_input_end(value);
     SDL_StopTextInput(value->window);
+    l2dcat_preferences_model_cache_clear(value->app);
     l2dcat_ui_destroy(&value->ui);
     if (value->owns_gl_context && value->gl_context)
         SDL_GL_DestroyContext(value->gl_context);
@@ -181,7 +182,6 @@ bool l2dcat_preferences_event(L2DCatPreferences *value, const SDL_Event *event) 
     value->render_dirty = true;
     return true;
 }
-
 static void draw_page(L2DCatPreferences *value, struct nk_context *context) {
     switch (value->page) {
     case 0: l2dcat_preferences_page_cat(value->app, context); break;

@@ -1,11 +1,65 @@
 #include "preferences_internal.h"
 #include "preferences_widgets.h"
 #include "l2dcat/i18n.h"
+#include "l2dcat/image.h"
+#include "l2dcat/path.h"
 #include "l2dcat/preferences.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_opengl.h>
 #include <stdio.h>
 #include <string.h>
+
+typedef struct ModelCoverSlot {
+    L2DCatApp *app;
+    char path[L2DCAT_PATH_CAP];
+    GLuint texture;
+    int width, height;
+    uint64_t generation;
+} ModelCoverSlot;
+
+static ModelCoverSlot cover_cache[L2DCAT_MODEL_CAP];
+static uint64_t cover_generation;
+
+void l2dcat_preferences_model_cache_clear(L2DCatApp *app) {
+    for (size_t i = 0; i < L2DCAT_MODEL_CAP; ++i) {
+        ModelCoverSlot *slot = &cover_cache[i];
+        if ((!app || slot->app == app) && slot->texture) glDeleteTextures(1, &slot->texture);
+        if (!app || slot->app == app) memset(slot, 0, sizeof(*slot));
+    }
+}
+
+static ModelCoverSlot *model_cover(L2DCatApp *app, const L2DCatModelEntry *entry) {
+    char path[L2DCAT_PATH_CAP];
+    if (!l2dcat_path_join(path, sizeof(path), entry->directory, "resources/cover.png") ||
+        !l2dcat_path_is_file(path)) return NULL;
+    ModelCoverSlot *empty = NULL;
+    for (size_t i = 0; i < L2DCAT_MODEL_CAP; ++i) {
+        ModelCoverSlot *slot = &cover_cache[i];
+        if (slot->texture && slot->app == app && strcmp(slot->path, path) == 0) {
+            slot->generation = cover_generation;
+            return slot;
+        }
+        if (!slot->texture && !empty) empty = slot;
+    }
+    if (!empty) return NULL;
+    L2DCatError ignored = {0};
+    empty->texture = l2dcat_image_texture(path, &empty->width, &empty->height, &ignored);
+    if (!empty->texture) return NULL;
+    empty->app = app;
+    empty->generation = cover_generation;
+    snprintf(empty->path, sizeof(empty->path), "%s", path);
+    return empty;
+}
+
+static void prune_model_covers(L2DCatApp *app) {
+    for (size_t i = 0; i < L2DCAT_MODEL_CAP; ++i) {
+        ModelCoverSlot *slot = &cover_cache[i];
+        if (slot->app != app || !slot->texture || slot->generation == cover_generation) continue;
+        glDeleteTextures(1, &slot->texture);
+        memset(slot, 0, sizeof(*slot));
+    }
+}
 
 static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
     return l2dcat_i18n_get(app->i18n, key, fallback);
@@ -144,7 +198,16 @@ static bool model_card(L2DCatApp *app, struct nk_context *context,
     nk_stroke_rect(canvas, bounds, 8, selected ? 2.0f : 1.0f, border);
     struct nk_rect preview = nk_rect(bounds.x + 8, bounds.y + 8, bounds.w - 16, 92);
     nk_fill_rect(canvas, preview, 6, ui_color(dark, 0xEEF6FF, 0x151D2A));
-    draw_model_icon(canvas, entry->mode, preview, selected ? accent : muted);
+    ModelCoverSlot *cover = model_cover(app, entry);
+    if (cover) {
+        float scale = NK_MIN(preview.w / cover->width, preview.h / cover->height);
+        struct nk_rect image_bounds = nk_rect(
+            preview.x + (preview.w - cover->width * scale) * .5f,
+            preview.y + (preview.h - cover->height * scale) * .5f,
+            cover->width * scale, cover->height * scale);
+        struct nk_image image = nk_image_id((int)cover->texture);
+        nk_draw_image(canvas, image_bounds, &image, nk_rgb(255, 255, 255));
+    } else draw_model_icon(canvas, entry->mode, preview, selected ? accent : muted);
     draw_text(context, canvas, nk_rect(bounds.x + 12, bounds.y + 108,
         bounds.w - 24, 24), entry->id, text);
     draw_text(context, canvas, nk_rect(bounds.x + 12, bounds.y + 134,
@@ -190,6 +253,8 @@ static void behavior_rows(L2DCatApp *app, struct nk_context *context) {
 }
 
 void l2dcat_preferences_page_model(L2DCatApp *app, struct nk_context *context) {
+    cover_generation++;
+    if (!cover_generation) cover_generation++;
     l2dcat_pref_section(context, tr(app, "pages.preference.model.title", "Installed models"));
     float width = nk_window_get_content_region(context).w;
     int columns = width >= 690 ? 3 : width >= 450 ? 2 : 1;
@@ -198,5 +263,6 @@ void l2dcat_preferences_page_model(L2DCatApp *app, struct nk_context *context) {
         l2dcat_preferences_request_model_import(app->preferences);
     for (size_t i = 0; i < app->models.count; ++i)
         if (model_card(app, context, &app->models.entries[i])) break;
+    prune_model_covers(app);
     behavior_rows(app, context);
 }

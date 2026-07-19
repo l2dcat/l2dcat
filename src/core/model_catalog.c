@@ -1,3 +1,4 @@
+#include "l2dcat/file.h"
 #include "l2dcat/model.h"
 #include "l2dcat/path.h"
 
@@ -17,11 +18,21 @@ void l2dcat_models_init(L2DCatModelCatalog *catalog) {
 }
 
 static L2DCatModelMode infer_mode(const char *directory) {
+    char path[L2DCAT_PATH_CAP], stored[16] = {0};
+    l2dcat_path_join(path, sizeof(path), directory, ".l2dcat-mode");
+    FILE *file = l2dcat_file_open(path, "rb");
+    if (file) {
+        size_t length = fread(stored, 1, sizeof(stored) - 1, file);
+        fclose(file);
+        stored[length] = '\0';
+        if (strcmp(stored, "gamepad") == 0) return L2DCAT_MODE_GAMEPAD;
+        if (strcmp(stored, "keyboard") == 0) return L2DCAT_MODE_KEYBOARD;
+        if (strcmp(stored, "standard") == 0) return L2DCAT_MODE_STANDARD;
+    }
     const char *name = l2dcat_path_name(directory);
     if (strcmp(name, "gamepad") == 0) return L2DCAT_MODE_GAMEPAD;
     if (strcmp(name, "keyboard") == 0) return L2DCAT_MODE_KEYBOARD;
     if (strcmp(name, "standard") == 0) return L2DCAT_MODE_STANDARD;
-    char path[L2DCAT_PATH_CAP];
     l2dcat_path_join(path, sizeof(path), directory, "resources/right-keys/East.png");
     if (l2dcat_path_is_file(path)) return L2DCAT_MODE_GAMEPAD;
     l2dcat_path_join(path, sizeof(path), directory, "resources/right-keys");

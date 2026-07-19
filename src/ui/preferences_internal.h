@@ -11,5 +11,6 @@ void l2dcat_preferences_page_shortcuts(L2DCatApp *app, struct nk_context *contex
 void l2dcat_preferences_page_about(L2DCatApp *app, struct nk_context *context);
 void l2dcat_preferences_import_path(L2DCatApp *app, SDL_Window *window,
     const char *path);
+void l2dcat_preferences_model_cache_clear(L2DCatApp *app);
 
 #endif

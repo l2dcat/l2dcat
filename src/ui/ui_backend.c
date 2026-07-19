@@ -24,7 +24,7 @@ static const char *vertex_source =
 static const char *fragment_source =
     "#version 330 core\n"
     "in vec2 FragUV;in vec4 FragColor;uniform sampler2D Texture;out vec4 OutColor;"
-    "void main(){float a=texture(Texture,FragUV).r;OutColor=vec4(FragColor.rgb,FragColor.a*a);}";
+    "void main(){OutColor=FragColor*texture(Texture,FragUV);}";
 
 static void clipboard_copy(nk_handle user, const char *text, int length) {
     (void)user;
@@ -155,6 +155,10 @@ static bool create_font(L2DCatUIBackend *ui, const char *font_path,
     glBindTexture(GL_TEXTURE_2D, ui->font_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_ONE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_ONE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_ONE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_RED);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED,
         GL_UNSIGNED_BYTE, pixels);

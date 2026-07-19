@@ -6,6 +6,7 @@ param(
     [int[]]$Pages = @(0, 1, 2, 3, 4),
     [string[]]$Live2DScenarios = @(),
     [string[]]$ExternalKeys = @(),
+    [string]$PreferenceDataRoot = "",
     [switch]$SkipPreferences,
     [switch]$SkipMain
 )
@@ -215,7 +216,9 @@ if (($Live2DScenarios.Count -or $ExternalKeys.Count) -and $SkipMain) {
 }
 
 $results = [Collections.Generic.List[object]]::new()
-$auditData = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
+$auditData = if ($PreferenceDataRoot) {
+    [IO.Path]::GetFullPath($PreferenceDataRoot)
+} else { Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks) }
 if (-not $SkipPreferences) {
     foreach ($theme in $Themes) {
         foreach ($language in $Languages) {
