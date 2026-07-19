@@ -48,7 +48,7 @@ void l2dcat_window_sync_click_through(L2DCatApp *app) {
         app->pointer_hit_dirty = false;
     }
     if (!forced && (app->left_mouse_down || app->right_mouse_down)) return;
-    if (!forced && app->pointer_known && app->pointer_hit_dirty && !app->dirty &&
+    if (!forced && app->pointer_known && app->pointer_hit_dirty &&
         (!app->pointer_hit_deadline_ns || SDL_GetTicksNS() >= app->pointer_hit_deadline_ns)) {
         float local_x, local_y;
         bool inside = l2dcat_platform_pointer_local(&app->platform,

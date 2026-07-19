@@ -16,7 +16,7 @@ static void audit_mouse(L2DCatApp *app, double x, double y) {
     fclose(file);
 }
 
-static void track_hover(L2DCatApp *app, double x, double y) {
+void l2dcat_app_track_hover(L2DCatApp *app, double x, double y) {
     int window_x, window_y, width, height;
     SDL_GetWindowPosition(app->window, &window_x, &window_y);
     SDL_GetWindowSize(app->window, &width, &height);
@@ -56,12 +56,25 @@ static void set_parameter(L2DCatApp *app, const char *id,
     l2dcat_live2d_set_parameter(app->live2d, id, value);
 }
 
+static void reconcile_button(L2DCatApp *app, bool *current, bool pressed,
+    const char *parameter) {
+    if (*current == pressed) return;
+    *current = pressed;
+    l2dcat_live2d_set_parameter(app->live2d, parameter, pressed ? 1.0f : 0.0f);
+    if (!pressed) l2dcat_window_mark_hit_dirty(app);
+    app->dirty = true;
+}
+
 void l2dcat_app_apply_mouse(L2DCatApp *app) {
     if (!app) return;
     double target_x, target_y;
     bool received = l2dcat_input_take_mouse(&app->input, &target_x, &target_y);
     float global_x = 0.0f, global_y = 0.0f;
-    (void)SDL_GetGlobalMouseState(&global_x, &global_y);
+    SDL_MouseButtonFlags buttons = SDL_GetGlobalMouseState(&global_x, &global_y);
+    reconcile_button(app, &app->left_mouse_down,
+        (buttons & SDL_BUTTON_LMASK) != 0, "ParamMouseLeftDown");
+    reconcile_button(app, &app->right_mouse_down,
+        (buttons & SDL_BUTTON_RMASK) != 0, "ParamMouseRightDown");
     if (!received || target_x != global_x || target_y != global_y) {
         target_x = global_x;
         target_y = global_y;
@@ -70,7 +83,7 @@ void l2dcat_app_apply_mouse(L2DCatApp *app) {
         app->pointer_y != target_y;
     if (moved) {
         audit_mouse(app, target_x, target_y);
-        track_hover(app, target_x, target_y);
+        l2dcat_app_track_hover(app, target_x, target_y);
         l2dcat_mouse_target(&app->mouse_tracking, target_x, target_y);
     }
     l2dcat_window_sync_click_through(app);

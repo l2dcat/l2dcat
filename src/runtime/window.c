@@ -205,11 +205,10 @@ bool l2dcat_window_geometry_self_test(L2DCatApp *app) {
     app->config.window.hide_delay_seconds = 0.0f;
     app->config.window.pass_through = false;
     app->config.window.opacity_percent = 100.0f;
-    l2dcat_input_mouse(&app->input, x + 10, y + 10); l2dcat_app_apply_mouse(app);
+    l2dcat_app_track_hover(app, x + 10, y + 10);
     l2dcat_app_update_hover(app, SDL_GetTicksNS() + 1);
     bool hidden = app->hover_hidden && SDL_GetWindowOpacity(app->window) < 0.02f;
-    l2dcat_input_mouse(&app->input, bounds.x - 10, bounds.y - 10);
-    l2dcat_app_apply_mouse(app);
+    l2dcat_app_track_hover(app, bounds.x - 10, bounds.y - 10);
     bool restored = !app->hover_hidden &&
         SDL_fabsf(SDL_GetWindowOpacity(app->window) - 1.0f) < 0.02f;
     app->config.window.width = 320; app->config.window.height = 240;
@@ -267,22 +266,16 @@ bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
         l2dcat_window_mark_hit_dirty(app);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         event->button.button == SDL_BUTTON_LEFT) {
-        app->left_mouse_down = true;
         begin_drag_candidate(app, &event->button);
-    } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
-        event->button.button == SDL_BUTTON_RIGHT) {
-        app->right_mouse_down = true;
     } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
         resize_by_pointer(app, event);
         update_drag_candidate(app, &event->motion);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_LEFT) {
-        app->left_mouse_down = false;
         l2dcat_window_mark_hit_dirty(app);
         app->drag_candidate = false;
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_RIGHT) {
-        app->right_mouse_down = false;
         l2dcat_window_mark_hit_dirty(app);
         if (app->resize_gesture) app->resize_gesture = false;
         else context_menu(app);

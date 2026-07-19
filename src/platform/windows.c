@@ -143,26 +143,9 @@ void l2dcat_platform_shutdown(L2DCatPlatform *platform) {
     platform->native = NULL;
 }
 
-static void update_extended_style(HWND hwnd, LONG_PTR add, LONG_PTR remove) {
-    LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-    SetWindowLongPtrW(hwnd, GWL_EXSTYLE, (style | add) & ~remove);
-    SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE |
-        SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-}
-
-void l2dcat_platform_set_click_through(L2DCatPlatform *platform, bool enabled) {
-    update_extended_style(native_window(platform), enabled ? WS_EX_TRANSPARENT : 0,
-        enabled ? 0 : WS_EX_TRANSPARENT);
-}
-
 void l2dcat_platform_set_always_on_top(L2DCatPlatform *platform, bool enabled) {
     SetWindowPos(native_window(platform), enabled ? HWND_TOPMOST : HWND_NOTOPMOST,
         0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-}
-
-void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
-    update_extended_style(native_window(platform), visible ? WS_EX_APPWINDOW : WS_EX_TOOLWINDOW,
-        visible ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW);
 }
 
 void l2dcat_platform_begin_drag(L2DCatPlatform *platform) {

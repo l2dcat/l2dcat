@@ -25,6 +25,7 @@ const char *l2dcat_gamepad_button_name(Uint8 button);
 void l2dcat_gamepads_set_enabled(L2DCatApp *app, bool enabled);
 void l2dcat_app_reset_gamepad(L2DCatApp *app);
 void l2dcat_app_apply_mouse(L2DCatApp *app);
+void l2dcat_app_track_hover(L2DCatApp *app, double x, double y);
 void l2dcat_app_update_hover(L2DCatApp *app, uint64_t now);
 L2DCatResult l2dcat_copy_directory(const char *source, const char *target,
     L2DCatError *error);
