@@ -1,10 +1,96 @@
 #include "l2dcat/file.h"
 #include "l2dcat/image.h"
 
+#ifdef _WIN32
+#define COBJMACROS
+#include <objbase.h>
+#include <wincodec.h>
+#include <windows.h>
+#endif
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
 #include <stb_image.h>
+#include <stdlib.h>
 #include <string.h>
+
+#define L2DCAT_LIVE2D_TEXTURE_LIMIT 4096
+
+#ifdef _WIN32
+static wchar_t *wide_path(const char *path) {
+    int count = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+        path, -1, NULL, 0);
+    wchar_t *wide = count > 0 ? malloc((size_t)count * sizeof(*wide)) : NULL;
+    if (wide && !MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+        path, -1, wide, count)) {
+        free(wide); return NULL;
+    }
+    return wide;
+}
+
+static bool wic_texture_image(const char *path, L2DCatImage *image) {
+    memset(image, 0, sizeof(*image));
+    HRESULT initialized = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+    bool uninitialize = initialized == S_OK || initialized == S_FALSE;
+    if (FAILED(initialized) && initialized != RPC_E_CHANGED_MODE) return false;
+    IWICImagingFactory *factory = NULL;
+    IWICBitmapDecoder *decoder = NULL;
+    IWICBitmapFrameDecode *frame = NULL;
+    IWICBitmapScaler *scaler = NULL;
+    IWICFormatConverter *converter = NULL;
+    wchar_t *wide = wide_path(path);
+    HRESULT result = wide ? CoCreateInstance(&CLSID_WICImagingFactory, NULL,
+        CLSCTX_INPROC_SERVER, &IID_IWICImagingFactory, (void **)&factory) : E_FAIL;
+    if (SUCCEEDED(result)) result = IWICImagingFactory_CreateDecoderFromFilename(factory,
+        wide, NULL, GENERIC_READ, WICDecodeMetadataCacheOnDemand, &decoder);
+    if (SUCCEEDED(result)) result = IWICBitmapDecoder_GetFrame(decoder, 0, &frame);
+    UINT source_width = 0, source_height = 0;
+    if (SUCCEEDED(result)) result = IWICBitmapFrameDecode_GetSize(frame,
+        &source_width, &source_height);
+    UINT target_width = source_width, target_height = source_height;
+    if (source_width > L2DCAT_LIVE2D_TEXTURE_LIMIT ||
+        source_height > L2DCAT_LIVE2D_TEXTURE_LIMIT) {
+        if (source_width >= source_height) {
+            target_width = L2DCAT_LIVE2D_TEXTURE_LIMIT;
+            target_height = (UINT)((uint64_t)source_height * target_width / source_width);
+        } else {
+            target_height = L2DCAT_LIVE2D_TEXTURE_LIMIT;
+            target_width = (UINT)((uint64_t)source_width * target_height / source_height);
+        }
+        if (!target_width) target_width = 1;
+        if (!target_height) target_height = 1;
+        if (SUCCEEDED(result)) result = IWICImagingFactory_CreateBitmapScaler(factory, &scaler);
+        if (SUCCEEDED(result)) result = IWICBitmapScaler_Initialize(scaler,
+            (IWICBitmapSource *)frame, target_width, target_height,
+            WICBitmapInterpolationModeFant);
+    }
+    IWICBitmapSource *source = scaler ? (IWICBitmapSource *)scaler :
+        (IWICBitmapSource *)frame;
+    if (SUCCEEDED(result))
+        result = IWICImagingFactory_CreateFormatConverter(factory, &converter);
+    if (SUCCEEDED(result)) result = IWICFormatConverter_Initialize(converter, source,
+        &GUID_WICPixelFormat32bppRGBA, WICBitmapDitherTypeNone, NULL, 0,
+        WICBitmapPaletteTypeCustom);
+    size_t stride = (size_t)target_width * 4;
+    size_t bytes = stride * target_height;
+    unsigned char *pixels = bytes <= UINT_MAX ? malloc(bytes) : NULL;
+    if (SUCCEEDED(result) && pixels) result = IWICFormatConverter_CopyPixels(converter,
+        NULL, (UINT)stride, (UINT)bytes, pixels);
+    bool ok = SUCCEEDED(result) && pixels;
+    if (ok) {
+        image->pixels = pixels;
+        image->width = (int)target_width;
+        image->height = (int)target_height;
+    } else free(pixels);
+    if (converter) IWICFormatConverter_Release(converter);
+    if (scaler) IWICBitmapScaler_Release(scaler);
+    if (frame) IWICBitmapFrameDecode_Release(frame);
+    if (decoder) IWICBitmapDecoder_Release(decoder);
+    if (factory) IWICImagingFactory_Release(factory);
+    free(wide);
+    if (uninitialize) CoUninitialize();
+    return ok;
+}
+#endif
 
 L2DCatResult l2dcat_image_load(const char *path, L2DCatImage *image, L2DCatError *error) {
     if (!path || !image) return L2DCAT_ERROR_ARGUMENT;
@@ -31,7 +117,10 @@ L2DCatResult l2dcat_image_load(const char *path, L2DCatImage *image, L2DCatError
 void l2dcat_image_free(L2DCatImage *image) {
     if (!image) return;
     if (image->surface) SDL_DestroySurface(image->surface);
-    if (image->pixels) stbi_image_free(image->pixels);
+    if (image->pixels) {
+        if (image->surface) stbi_image_free(image->pixels);
+        else free(image->pixels);
+    }
     memset(image, 0, sizeof(*image));
 }
 
@@ -72,7 +161,12 @@ unsigned int l2dcat_image_texture(const char *path, int *width, int *height, L2D
 unsigned int l2dcat_image_texture_mipmapped(const char *path, int *width, int *height,
     L2DCatError *error) {
     L2DCatImage image;
+#ifdef _WIN32
+    if (!wic_texture_image(path, &image) &&
+        l2dcat_image_load(path, &image, error) != L2DCAT_OK) return 0;
+#else
     if (l2dcat_image_load(path, &image, error) != L2DCAT_OK) return 0;
+#endif
     GLuint texture = upload(&image, 0, true);
     if (width) *width = image.width;
     if (height) *height = image.height;
