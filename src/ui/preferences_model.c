@@ -1,5 +1,6 @@
 #include "preferences_internal.h"
 #include "preferences_widgets.h"
+#include "ui_backend.h"
 #include "l2dcat/i18n.h"
 #include "l2dcat/image.h"
 #include "l2dcat/path.h"
@@ -22,6 +23,7 @@ static ModelCoverSlot cover_cache[L2DCAT_MODEL_CAP];
 static uint64_t cover_generation;
 
 void l2dcat_preferences_model_cache_clear(L2DCatApp *app) {
+    l2dcat_preferences_remove_dialog_clear(app);
     for (size_t i = 0; i < L2DCAT_MODEL_CAP; ++i) {
         ModelCoverSlot *slot = &cover_cache[i];
         if ((!app || slot->app == app) && slot->texture) glDeleteTextures(1, &slot->texture);
@@ -146,26 +148,15 @@ static L2DCatBehaviorShortcut *behavior_shortcut(L2DCatConfig *config,
     return value;
 }
 
-static bool confirm_remove(L2DCatApp *app, const L2DCatModelEntry *entry) {
-    const SDL_MessageBoxButtonData buttons[] = {
-        {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, tr(app, "native.cancel", "Cancel")},
-        {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, tr(app, "native.delete", "Delete")}};
-    SDL_MessageBoxData data = {SDL_MESSAGEBOX_WARNING, app->window, L2DCAT_NAME,
-        tr(app, "pages.preference.model.hints.deleteModel", "Delete this custom model?"),
-        2, buttons, NULL};
-    int choice = 0;
-    if (!SDL_ShowMessageBox(&data, &choice) || choice != 1) return false;
-    L2DCatError error = {0};
-    if (l2dcat_app_remove_model(app, entry->id, &error) == L2DCAT_OK) return true;
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, L2DCAT_NAME, error.message, app->window);
-    return false;
-}
-
 static bool import_card(L2DCatApp *app, struct nk_context *context) {
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
     bool dark = dark_theme(context);
-    bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
+    bool interactive = !l2dcat_preferences_remove_dialog_active(app);
+    bool hover = interactive &&
+        nk_input_is_mouse_hovering_rect(&context->input, bounds);
+    if (hover) l2dcat_ui_cursor_hover_rect(context, bounds,
+        L2DCAT_UI_CURSOR_POINTER);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     struct nk_color accent = ui_color(dark, 0x1677FF, 0x3C89E8);
     nk_fill_rect(canvas, bounds, 8, ui_color(dark,
@@ -179,7 +170,8 @@ static bool import_card(L2DCatApp *app, struct nk_context *context) {
         "Import model directory");
     draw_text(context, canvas, nk_rect(bounds.x + 12, bounds.y + 100,
         bounds.w - 24, 28), label, accent);
-    return nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, bounds);
+    return interactive && nk_input_is_mouse_click_in_rect(&context->input,
+        NK_BUTTON_LEFT, bounds);
 }
 
 static bool model_card(L2DCatApp *app, struct nk_context *context,
@@ -188,7 +180,11 @@ static bool model_card(L2DCatApp *app, struct nk_context *context,
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
     bool dark = dark_theme(context);
-    bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
+    bool interactive = !l2dcat_preferences_remove_dialog_active(app);
+    bool hover = interactive &&
+        nk_input_is_mouse_hovering_rect(&context->input, bounds);
+    if (hover) l2dcat_ui_cursor_hover_rect(context, bounds,
+        L2DCAT_UI_CURSOR_POINTER);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     struct nk_color accent = ui_color(dark, 0x1677FF, 0x3C89E8);
     struct nk_color border = selected ? accent : ui_color(dark, 0xD9DEE9, 0x343C4C);
@@ -220,20 +216,26 @@ static bool model_card(L2DCatApp *app, struct nk_context *context,
             status.w - 19, status.h), tr(app, "native.selected", "Selected"), accent);
     }
     struct nk_rect remove = nk_rect(bounds.x + bounds.w - 38, bounds.y + 8, 30, 30);
-    bool remove_hover = !entry->preset &&
+    bool remove_hover = interactive && !entry->preset &&
         nk_input_is_mouse_hovering_rect(&context->input, remove);
     if (!entry->preset) {
-        nk_fill_rect(canvas, remove, 6, ui_color(dark,
-            remove_hover ? 0xFFF1F0 : 0xFFFFFF, remove_hover ? 0x3A2023 : 0x252B38));
+        if (remove_hover) nk_fill_rect(canvas, remove, 6,
+            ui_color(dark, 0xFFF1F0, 0x3A2023));
         struct nk_color danger = ui_color(dark, 0xCF1322, 0xFF7875);
         nk_stroke_line(canvas, remove.x + 9, remove.y + 9,
             remove.x + 21, remove.y + 21, 2, danger);
         nk_stroke_line(canvas, remove.x + 21, remove.y + 9,
             remove.x + 9, remove.y + 21, 2, danger);
     }
+    if (remove_hover) l2dcat_ui_cursor_hover_rect(context, remove,
+        L2DCAT_UI_CURSOR_POINTER);
     if (remove_hover && nk_input_is_mouse_click_in_rect(&context->input,
-        NK_BUTTON_LEFT, remove)) return confirm_remove(app, entry);
-    if (nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, bounds) &&
+        NK_BUTTON_LEFT, remove)) {
+        l2dcat_preferences_remove_dialog_open(app, entry->id);
+        return false;
+    }
+    if (interactive && nk_input_is_mouse_click_in_rect(&context->input,
+        NK_BUTTON_LEFT, bounds) &&
         !selected) l2dcat_app_select_model(app, entry->id);
     return false;
 }
@@ -266,4 +268,5 @@ void l2dcat_preferences_page_model(L2DCatApp *app, struct nk_context *context) {
         if (model_card(app, context, &app->models.entries[i])) break;
     prune_model_covers(app);
     behavior_rows(app, context);
+    l2dcat_preferences_remove_dialog_draw(app, context);
 }

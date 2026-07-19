@@ -1,4 +1,5 @@
 #include "preferences_widgets.h"
+#include "ui_backend.h"
 
 typedef struct CardStyle {
     struct nk_style_item background;
@@ -79,6 +80,8 @@ static bool toggle(struct nk_context *context, bool *value) {
     struct nk_rect card = nk_rect(cell.x - cell.w * (0.76f / 0.24f), cell.y - 8,
         cell.w / 0.24f, 54);
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, card);
+    if (hover) l2dcat_ui_cursor_hover_rect(context, card,
+        L2DCAT_UI_CURSOR_POINTER);
     bool changed = nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, card);
     if (changed) *value = !*value;
@@ -122,6 +125,7 @@ bool l2dcat_pref_float(struct nk_context *context, const char *id,
     CardStyle saved;
     if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return false;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
+    l2dcat_ui_cursor_hover_widget(context, L2DCAT_UI_CURSOR_POINTER);
     bool changed = nk_property_float(context, "#", minimum, value, maximum,
         step, step * .1f) != 0;
     nk_layout_row_end(context); description(context, detail); card_end(context, &saved);
@@ -134,6 +138,7 @@ bool l2dcat_pref_int(struct nk_context *context, const char *id,
     CardStyle saved;
     if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return false;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
+    l2dcat_ui_cursor_hover_widget(context, L2DCAT_UI_CURSOR_POINTER);
     bool changed = nk_property_int(context, "#", minimum, value, maximum,
         step, 1.0f) != 0;
     nk_layout_row_end(context); description(context, detail); card_end(context, &saved);
@@ -147,6 +152,7 @@ bool l2dcat_pref_slider(struct nk_context *context, const char *id,
     if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return false;
     float before = *value;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
+    l2dcat_ui_cursor_hover_widget(context, L2DCAT_UI_CURSOR_POINTER);
     nk_slider_float(context, minimum, value, maximum, step);
     nk_layout_row_end(context); description(context, detail); card_end(context, &saved);
     return before != *value;
@@ -158,7 +164,19 @@ int l2dcat_pref_combo(struct nk_context *context, const char *id,
     CardStyle saved;
     if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return selected;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
-    selected = nk_combo(context, items, count, selected, 32, nk_vec2(280, 220));
+    if (selected < 0 || selected >= count) selected = 0;
+    l2dcat_ui_cursor_hover_widget(context, L2DCAT_UI_CURSOR_POINTER);
+    if (count > 0 && nk_combo_begin_label(context, items[selected], nk_vec2(280, 220))) {
+        nk_layout_row_dynamic(context, 32, 1);
+        for (int index = 0; index < count; ++index) {
+            l2dcat_ui_cursor_hover_widget(context, L2DCAT_UI_CURSOR_POINTER);
+            if (nk_combo_item_label(context, items[index], NK_TEXT_LEFT)) {
+                selected = index;
+                nk_combo_close(context);
+            }
+        }
+        nk_combo_end(context);
+    }
     nk_layout_row_end(context); description(context, detail); card_end(context, &saved);
     return selected;
 }
@@ -168,6 +186,7 @@ void l2dcat_pref_edit(struct nk_context *context, const char *id,
     CardStyle saved;
     if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
+    l2dcat_ui_cursor_hover_widget(context, L2DCAT_UI_CURSOR_TEXT);
     nk_edit_string_zero_terminated(context, NK_EDIT_FIELD, value, capacity, nk_filter_default);
     nk_layout_row_end(context); description(context, detail); card_end(context, &saved);
 }
@@ -177,6 +196,7 @@ bool l2dcat_pref_button(struct nk_context *context, const char *id,
     CardStyle saved;
     if (!card_begin(context, id, 56.0f + detail_lines(context, detail) * 22.0f, &saved)) return false;
     nk_layout_row_begin(context, NK_DYNAMIC, 30, 2); card_title(context, title);
+    l2dcat_ui_cursor_hover_widget(context, L2DCAT_UI_CURSOR_POINTER);
     bool clicked = nk_button_label(context, button) != 0;
     nk_layout_row_end(context); description(context, detail); card_end(context, &saved);
     return clicked;

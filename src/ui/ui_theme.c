@@ -1,4 +1,5 @@
 #include "ui_theme.h"
+#include "ui_backend.h"
 
 static struct nk_color color(bool dark, int light, int night) {
     int value = dark ? night : light;
@@ -109,5 +110,6 @@ bool l2dcat_ui_nav_button(struct nk_context *context, const char *label,
     style.text_normal = active ? nk_rgb(255, 255, 255) : text;
     style.text_hover = active ? nk_rgb(255, 255, 255) : accent;
     style.text_active = nk_rgb(255, 255, 255);
+    l2dcat_ui_cursor_hover_widget(context, L2DCAT_UI_CURSOR_POINTER);
     return nk_button_label_styled(context, &style, label) != 0;
 }

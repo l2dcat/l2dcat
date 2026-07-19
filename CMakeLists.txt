@@ -119,12 +119,12 @@ add_library(l2dcat_runtime STATIC
   src/runtime/window.c
   src/runtime/window_hit.c
   src/ui/nuklear_impl.c
-  src/ui/ui_backend.c
+  src/ui/ui_backend.c src/ui/ui_cursor.c
   src/ui/ui_font.c
   src/ui/ui_input.c
   src/ui/ui_sidebar.c
   src/ui/ui_theme.c
-  src/ui/preferences.c
+  src/ui/preferences.c src/ui/preferences_dialog.c
   src/ui/preferences_model.c
   src/ui/preferences_pages.c
   src/ui/preferences_widgets.c

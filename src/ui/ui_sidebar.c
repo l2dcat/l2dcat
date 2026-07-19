@@ -1,4 +1,5 @@
 #include "ui_sidebar.h"
+#include "ui_backend.h"
 
 #include <string.h>
 
@@ -83,6 +84,8 @@ static bool menu_item(struct nk_context *context, const char *label, int index,
     enum nk_widget_layout_states state = nk_widget(&bounds, context);
     if (state == NK_WIDGET_INVALID) return false;
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
+    if (hover) l2dcat_ui_cursor_hover_rect(context, bounds,
+        L2DCAT_UI_CURSOR_POINTER);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     if (active || hover) nk_fill_rect(canvas, bounds, 12,
         color(dark, active ? 0xE8F1FF : 0xF1F5F9,

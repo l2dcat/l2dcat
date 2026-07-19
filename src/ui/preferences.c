@@ -110,7 +110,7 @@ void l2dcat_preferences_close(L2DCatPreferences *value) {
     if (value->input_active) l2dcat_preferences_input_end(value);
     SDL_StopTextInput(value->window);
     l2dcat_preferences_model_cache_clear(value->app);
-    l2dcat_ui_destroy(&value->ui);
+    l2dcat_ui_cursor_destroy(&value->ui); l2dcat_ui_destroy(&value->ui);
     if (value->owns_gl_context && value->gl_context)
         SDL_GL_DestroyContext(value->gl_context);
     SDL_DestroyWindow(value->window);
@@ -201,7 +201,7 @@ void l2dcat_preferences_render(L2DCatPreferences *value) {
     apply_theme(value);
     int width, height;
     SDL_GetWindowSize(value->window, &width, &height);
-    struct nk_context *context = &value->ui.context;
+    struct nk_context *context = &value->ui.context; l2dcat_ui_cursor_begin(&value->ui);
     bool dark = resolved_theme(value) != 0;
     struct nk_vec2 old_padding = context->style.window.padding;
     struct nk_vec2 old_group_padding = context->style.window.group_padding;
@@ -276,7 +276,7 @@ void l2dcat_preferences_render(L2DCatPreferences *value) {
         }
         if (!l2dcat_ui_frame_valid(&value->ui)) value->app->exit_code = 1;
     }
-    SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
+    SDL_GL_MakeCurrent(value->app->window, value->app->gl_context); l2dcat_ui_cursor_apply(&value->ui);
     if (value->import_requested && !value->import_dialog_open) {
         value->import_requested = false;
         value->import_dialog_open = true;
