@@ -59,7 +59,8 @@ void l2dcat_app_shortcuts(L2DCatApp *app, const L2DCatInputEvent *event) {
         l2dcat_preferences_invalidate(app->preferences);
     } else if (l2dcat_shortcut_matches(&app->shortcut_state, event, shortcuts->pass_through)) {
         app->config.window.pass_through = !app->config.window.pass_through;
-        l2dcat_platform_set_click_through(&app->platform, app->config.window.pass_through);
+        l2dcat_window_mark_hit_dirty(app);
+        l2dcat_window_sync_click_through(app);
         l2dcat_preferences_invalidate(app->preferences);
     } else if (l2dcat_shortcut_matches(&app->shortcut_state, event,
         shortcuts->always_on_top)) {

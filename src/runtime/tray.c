@@ -4,6 +4,7 @@
 #include "l2dcat/i18n.h"
 #include "l2dcat/path.h"
 #include "l2dcat/preferences.h"
+#include "runtime.h"
 
 #include <SDL3/SDL.h>
 #include <stdlib.h>
@@ -36,8 +37,8 @@ static void on_pass_through(void *userdata, SDL_TrayEntry *entry) {
     (void)entry;
     L2DCatTray *tray = userdata;
     tray->app->config.window.pass_through = !tray->app->config.window.pass_through;
-    l2dcat_platform_set_click_through(&tray->app->platform,
-        tray->app->config.window.pass_through);
+    l2dcat_window_mark_hit_dirty(tray->app);
+    l2dcat_window_sync_click_through(tray->app);
     l2dcat_tray_sync(tray);
     l2dcat_preferences_invalidate(tray->app->preferences);
 }

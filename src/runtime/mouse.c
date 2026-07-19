@@ -22,15 +22,18 @@ static void track_hover(L2DCatApp *app, double x, double y) {
     SDL_GetWindowSize(app->window, &width, &height);
     bool inside = x >= window_x && x <= window_x + width &&
         y >= window_y && y <= window_y + height;
+    app->pointer_known = true;
+    app->pointer_x = x;
+    app->pointer_y = y;
+    l2dcat_window_mark_hit_dirty(app);
     if (inside == app->hover_inside) return;
     app->hover_inside = inside;
     app->hover_deadline_ns = inside ? SDL_GetTicksNS() +
         (uint64_t)(app->config.window.hide_delay_seconds * 1000000000.0) : 0;
     if (!inside && app->hover_hidden) {
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
-        l2dcat_platform_set_click_through(&app->platform,
-            app->config.window.pass_through);
         app->hover_hidden = false;
+        l2dcat_window_sync_click_through(app);
     }
 }
 
@@ -38,8 +41,8 @@ void l2dcat_app_update_hover(L2DCatApp *app, uint64_t now) {
     if (!app->config.window.hide_on_hover || !app->hover_inside || app->hover_hidden ||
         !app->hover_deadline_ns || now < app->hover_deadline_ns) return;
     SDL_SetWindowOpacity(app->window, 0.0f);
-    l2dcat_platform_set_click_through(&app->platform, true);
     app->hover_hidden = true;
+    l2dcat_window_sync_click_through(app);
 }
 
 static void set_parameter(L2DCatApp *app, const char *id,
@@ -57,11 +60,20 @@ void l2dcat_app_apply_mouse(L2DCatApp *app) {
     if (!app) return;
     double target_x, target_y;
     bool received = l2dcat_input_take_mouse(&app->input, &target_x, &target_y);
-    if (received) {
+    float global_x = 0.0f, global_y = 0.0f;
+    (void)SDL_GetGlobalMouseState(&global_x, &global_y);
+    if (!received || target_x != global_x || target_y != global_y) {
+        target_x = global_x;
+        target_y = global_y;
+    }
+    bool moved = !app->pointer_known || app->pointer_x != target_x ||
+        app->pointer_y != target_y;
+    if (moved) {
         audit_mouse(app, target_x, target_y);
         track_hover(app, target_x, target_y);
         l2dcat_mouse_target(&app->mouse_tracking, target_x, target_y);
     }
+    l2dcat_window_sync_click_through(app);
     uint64_t now = SDL_GetTicksNS();
     float elapsed = app->mouse_last_ns
         ? (float)((now - app->mouse_last_ns) / 1000000000.0) : 1.0f / 60.0f;

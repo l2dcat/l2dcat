@@ -45,6 +45,8 @@ L2DCatResult l2dcat_platform_init(L2DCatPlatform *platform, SDL_Window *window,
     L2DCatInputState *input, L2DCatError *error);
 void l2dcat_platform_shutdown(L2DCatPlatform *platform);
 void l2dcat_platform_set_click_through(L2DCatPlatform *platform, bool enabled);
+bool l2dcat_platform_pointer_local(L2DCatPlatform *platform, double screen_x,
+    double screen_y, float *local_x, float *local_y);
 void l2dcat_platform_set_always_on_top(L2DCatPlatform *platform, bool enabled);
 void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible);
 void l2dcat_platform_begin_drag(L2DCatPlatform *platform);

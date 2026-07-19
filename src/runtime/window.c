@@ -53,7 +53,7 @@ void l2dcat_window_apply(L2DCatApp *app) {
     SDL_SetWindowSize(app->window, value->width, value->height);
     if (value->x || value->y) SDL_SetWindowPosition(app->window, value->x, value->y);
     value->visible ? SDL_ShowWindow(app->window) : SDL_HideWindow(app->window);
-    l2dcat_platform_set_click_through(&app->platform, value->pass_through);
+    l2dcat_window_sync_click_through(app);
     l2dcat_platform_set_always_on_top(&app->platform, value->always_on_top);
     l2dcat_platform_set_taskbar(&app->platform, value->taskbar_visible);
 }
@@ -86,6 +86,7 @@ static void resize_by_pointer(L2DCatApp *app, const SDL_Event *event) {
     app->config.window.width = (int)(app->config.window.width * factor);
     app->config.window.height = (int)(app->config.window.height * factor);
     SDL_SetWindowSize(app->window, app->config.window.width, app->config.window.height);
+    l2dcat_window_mark_hit_dirty(app);
 }
 
 static void begin_drag_candidate(L2DCatApp *app, const SDL_MouseButtonEvent *event) {
@@ -115,6 +116,7 @@ static void set_scale(L2DCatApp *app, float scale) {
     app->config.window.width = (int)(app->config.window.width * factor);
     app->config.window.height = (int)(app->config.window.height * factor);
     SDL_SetWindowSize(app->window, app->config.window.width, app->config.window.height);
+    l2dcat_window_mark_hit_dirty(app);
 }
 
 static void context_menu(L2DCatApp *app) {
@@ -140,7 +142,8 @@ void l2dcat_window_menu_action(L2DCatApp *app, L2DCatMenuAction action) {
         app->config.window.visible = false; SDL_HideWindow(app->window);
     } else if (action == L2DCAT_MENU_PASS_THROUGH) {
         app->config.window.pass_through = !app->config.window.pass_through;
-        l2dcat_platform_set_click_through(&app->platform, app->config.window.pass_through);
+        l2dcat_window_mark_hit_dirty(app);
+        l2dcat_window_sync_click_through(app);
     } else if (action == L2DCAT_MENU_ALWAYS_ON_TOP) {
         app->config.window.always_on_top = !app->config.window.always_on_top;
         l2dcat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
@@ -226,13 +229,13 @@ bool l2dcat_window_geometry_self_test(L2DCatApp *app) {
     gesture = gesture && !app->resize_gesture;
     SDL_SetModState(old_modifiers);
     app->config.window = backup;
-    l2dcat_platform_set_click_through(&app->platform, backup.pass_through);
+    l2dcat_window_sync_click_through(app);
     l2dcat_platform_set_always_on_top(&app->platform, backup.always_on_top);
     l2dcat_platform_set_taskbar(&app->platform, backup.taskbar_visible);
     SDL_SetWindowOpacity(app->window, backup.opacity_percent / 100.0f);
     SDL_SetWindowSize(app->window, original_width, original_height);
     SDL_SetWindowPosition(app->window, original_x, original_y);
-    SDL_SyncWindow(app->window);
+    SDL_SyncWindow(app->window); l2dcat_window_mark_hit_dirty(app);
     return clamped && scaled && opacity && hidden && restored && gesture;
 }
 
@@ -256,21 +259,31 @@ bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
         SDL_GetWindowSizeInPixels(app->window,
             &app->resize_pixel_width, &app->resize_pixel_height);
         app->resize_pending = true;
+        l2dcat_window_mark_hit_dirty(app);
     } else if (event->type == SDL_EVENT_WINDOW_MOVED) {
         app->config.window.x = event->window.data1;
         app->config.window.y = event->window.data2;
         clamp_to_display(app);
+        l2dcat_window_mark_hit_dirty(app);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         event->button.button == SDL_BUTTON_LEFT) {
+        app->left_mouse_down = true;
         begin_drag_candidate(app, &event->button);
+    } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
+        event->button.button == SDL_BUTTON_RIGHT) {
+        app->right_mouse_down = true;
     } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
         resize_by_pointer(app, event);
         update_drag_candidate(app, &event->motion);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_LEFT) {
+        app->left_mouse_down = false;
+        l2dcat_window_mark_hit_dirty(app);
         app->drag_candidate = false;
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_RIGHT) {
+        app->right_mouse_down = false;
+        l2dcat_window_mark_hit_dirty(app);
         if (app->resize_gesture) app->resize_gesture = false;
         else context_menu(app);
     }

@@ -70,6 +70,15 @@ void l2dcat_platform_shutdown(L2DCatPlatform *platform) {
 void l2dcat_platform_set_click_through(L2DCatPlatform *platform, bool enabled) {
     [native_window(platform) setIgnoresMouseEvents:enabled];
 }
+bool l2dcat_platform_pointer_local(L2DCatPlatform *platform, double screen_x,
+    double screen_y, float *local_x, float *local_y) {
+    int x, y, width, height;
+    if (!platform || !local_x || !local_y ||
+        !SDL_GetWindowPosition(platform->window, &x, &y) ||
+        !SDL_GetWindowSize(platform->window, &width, &height)) return false;
+    *local_x = (float)(screen_x - x); *local_y = (float)(screen_y - y);
+    return *local_x >= 0 && *local_x < width && *local_y >= 0 && *local_y < height;
+}
 void l2dcat_platform_set_always_on_top(L2DCatPlatform *platform, bool enabled) {
     [native_window(platform) setLevel:enabled ? NSFloatingWindowLevel : NSNormalWindowLevel];
 }

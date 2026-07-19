@@ -84,6 +84,9 @@ void l2dcat_app_apply_input(L2DCatApp *app, const L2DCatInputEvent *event) {
         if (strcmp(event->name, "Left") != 0 && strcmp(event->name, "Right") != 0)
             break;
         bool down = event->kind == L2DCAT_INPUT_MOUSE_DOWN;
+        if (strcmp(event->name, "Left") == 0) app->left_mouse_down = down;
+        else app->right_mouse_down = down;
+        if (!down) app->pointer_hit_dirty = true;
         const char *id = strcmp(event->name, "Left") == 0
             ? "ParamMouseLeftDown" : "ParamMouseRightDown";
         l2dcat_live2d_set_parameter(app->live2d, id, down ? 1.0f : 0.0f);

@@ -111,9 +111,38 @@ bool NativeModel::start_motion(const char *group, int index) {
     std::string key = std::string(group) + "_" + std::to_string(index);
     auto found = motions_.find(key);
     if (found == motions_.end()) return false;
+    if (lock_motions_.find(key) != lock_motions_.end())
+        return toggle_lock_motion(key, found->second);
     constexpr int priority = 2;
     if (!_motionManager->ReserveMotion(priority)) return false;
     _motionManager->StartMotionPriority(found->second, false, priority);
+    return true;
+}
+
+bool NativeModel::toggle_lock_motion(const std::string &key,
+    Csm::ACubismMotion *motion) {
+    LockMotion &lock = lock_motions_.at(key);
+    if (lock.enabled) {
+        _motionManager->StopAllMotions();
+        _motionManager->UpdateMotion(_model, 0.0f);
+        for (size_t i = 0; i < lock.parameters.size(); ++i) {
+            int parameter = lock.parameters[i];
+            float value = lock.initial_values[i];
+            pending_parameter_values_[(size_t)parameter] = value;
+            pending_parameters_[(size_t)parameter] = 1;
+        }
+        lock.initial_values.clear();
+        lock.enabled = false;
+        external_parameters_dirty_ = true;
+        return true;
+    }
+    constexpr int priority = 2;
+    if (!_motionManager->ReserveMotion(priority)) return false;
+    lock.initial_values.reserve(lock.parameters.size());
+    for (int parameter : lock.parameters)
+        lock.initial_values.push_back(_model->GetParameterValue(parameter));
+    lock.enabled = true;
+    _motionManager->StartMotionPriority(motion, false, priority);
     return true;
 }
 

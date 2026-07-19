@@ -32,16 +32,25 @@ public:
 
 private:
     using MotionMap = std::map<std::string, Csm::ACubismMotion *>;
+    struct LockMotion {
+        std::vector<int> parameters;
+        std::vector<float> initial_values;
+        bool enabled = false;
+    };
     bool load_model(L2DCatError *error);
     void load_expressions();
     void load_effects();
     void load_motions();
+    void load_lock_motion(const std::string &key,
+        const std::vector<unsigned char> &bytes);
+    bool toggle_lock_motion(const std::string &key, Csm::ACubismMotion *motion);
     void bind_textures();
     std::vector<unsigned char> read(const std::string &path) const;
     std::string path(const char *relative) const;
 
     Csm::CubismModelSettingJson *setting_ = nullptr;
     MotionMap motions_;
+    std::map<std::string, LockMotion> lock_motions_;
     MotionMap expressions_;
     std::vector<std::string> expression_names_;
     std::vector<GLuint> textures_;

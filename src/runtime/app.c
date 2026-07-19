@@ -6,7 +6,6 @@
 #include "l2dcat/overlay.h"
 #include "l2dcat/preferences.h"
 #include "l2dcat/tray.h"
-
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -237,6 +236,7 @@ static void render(L2DCatApp *app) {
     l2dcat_frame_audit(app, width, height);
     SDL_GL_SwapWindow(app->window);
     app->dirty = false;
+    l2dcat_window_sync_click_through(app); l2dcat_window_schedule_hit_check(app);
 }
 
 static void loop(L2DCatApp *app) {

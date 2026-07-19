@@ -38,6 +38,7 @@ bool l2dcat_app_select_model(L2DCatApp *app, const char *id) {
     int pixel_width = app->config.window.width, pixel_height = app->config.window.height;
     if (app->window) SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
     l2dcat_live2d_resize(app->live2d, pixel_width, pixel_height);
+    l2dcat_window_mark_hit_dirty(app);
     app->dirty = true;
     return true;
 }

@@ -4,6 +4,7 @@
 #include "l2dcat/i18n.h"
 #include "l2dcat/preferences.h"
 #include "l2dcat/tray.h"
+#include "../runtime/runtime.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -16,8 +17,8 @@ static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
 static void restore_hover(L2DCatApp *app) {
     if (!app->hover_hidden) return;
     SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
-    l2dcat_platform_set_click_through(&app->platform, app->config.window.pass_through);
     app->hover_hidden = false;
+    l2dcat_window_sync_click_through(app);
 }
 
 void l2dcat_preferences_page_cat(L2DCatApp *app, struct nk_context *context) {
@@ -61,8 +62,10 @@ void l2dcat_preferences_page_cat(L2DCatApp *app, struct nk_context *context) {
     if (l2dcat_pref_toggle(context, "pass-through", tr(app,
         "pages.preference.cat.labels.passThrough", "Pass Through"), tr(app,
         "pages.preference.cat.hints.passThrough", "Allow clicks to pass through the window."),
-        &window->pass_through))
-        l2dcat_platform_set_click_through(&app->platform, window->pass_through);
+        &window->pass_through)) {
+        l2dcat_window_mark_hit_dirty(app);
+        l2dcat_window_sync_click_through(app);
+    }
     if (l2dcat_pref_toggle(context, "always-top", tr(app,
         "pages.preference.cat.labels.alwaysOnTop", "Always on Top"), tr(app,
         "pages.preference.cat.hints.alwaysOnTop", "Keep the cat above other windows."),
@@ -89,6 +92,7 @@ void l2dcat_preferences_page_cat(L2DCatApp *app, struct nk_context *context) {
         window->width = (int)(window->width * factor);
         window->height = (int)(window->height * factor);
         SDL_SetWindowSize(app->window, window->width, window->height);
+        l2dcat_window_mark_hit_dirty(app);
         app->dirty = true;
     }
     float old_radius = window->radius_percent;

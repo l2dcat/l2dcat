@@ -67,12 +67,15 @@ int main(void) {
     CHECK(parameter_count == 0);
     event = input(L2DCAT_INPUT_MOUSE_DOWN, "Left", 1.0f);
     l2dcat_app_apply_input(&app, &event);
+    CHECK(app.left_mouse_down);
     CHECK(parameter("ParamMouseLeftDown") == 1.0f);
     event = input(L2DCAT_INPUT_MOUSE_DOWN, "Right", 1.0f);
     l2dcat_app_apply_input(&app, &event);
+    CHECK(app.right_mouse_down);
     CHECK(parameter("ParamMouseRightDown") == 1.0f);
     event = input(L2DCAT_INPUT_MOUSE_UP, "Right", 0.0f);
     l2dcat_app_apply_input(&app, &event);
+    CHECK(!app.right_mouse_down && app.pointer_hit_dirty);
     CHECK(parameter("ParamMouseRightDown") == 0.0f);
 
     event = input(L2DCAT_INPUT_KEY_DOWN, "KeyA", 1.0f);

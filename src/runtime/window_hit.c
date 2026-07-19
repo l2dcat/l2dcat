@@ -28,9 +28,47 @@ bool l2dcat_window_visible_at_pointer(L2DCatApp *app, float x, float y) {
     return pixel[3] > 8;
 }
 
+void l2dcat_window_mark_hit_dirty(L2DCatApp *app) {
+    if (!app) return;
+    app->pointer_hit_dirty = true;
+    app->pointer_hit_deadline_ns = 0;
+}
+
+void l2dcat_window_schedule_hit_check(L2DCatApp *app) {
+    if (!app || app->pointer_hit_dirty || !app->pointer_known) return;
+    app->pointer_hit_dirty = true;
+    app->pointer_hit_deadline_ns = SDL_GetTicksNS() + 100000000ull;
+}
+
+void l2dcat_window_sync_click_through(L2DCatApp *app) {
+    if (!app || !app->window) return;
+    bool forced = app->config.window.pass_through || app->hover_hidden;
+    if (!forced && !l2dcat_platform_global_input_supported()) {
+        app->pointer_transparent = false;
+        app->pointer_hit_dirty = false;
+    }
+    if (!forced && (app->left_mouse_down || app->right_mouse_down)) return;
+    if (!forced && app->pointer_known && app->pointer_hit_dirty && !app->dirty &&
+        (!app->pointer_hit_deadline_ns || SDL_GetTicksNS() >= app->pointer_hit_deadline_ns)) {
+        float local_x, local_y;
+        bool inside = l2dcat_platform_pointer_local(&app->platform,
+            app->pointer_x, app->pointer_y, &local_x, &local_y);
+        app->pointer_transparent = inside && !l2dcat_window_visible_at_pointer(app,
+            local_x, local_y);
+        app->pointer_hit_dirty = false;
+        app->pointer_hit_deadline_ns = 0;
+    }
+    bool enabled = forced || (app->pointer_known && app->pointer_transparent);
+    if (app->click_through_valid && app->click_through_applied == enabled) return;
+    l2dcat_platform_set_click_through(&app->platform, enabled);
+    app->click_through_applied = enabled;
+    app->click_through_valid = true;
+}
+
 void l2dcat_window_apply_pending_resize(L2DCatApp *app) {
     if (!app || !app->resize_pending) return;
     app->resize_pending = false;
     l2dcat_live2d_resize(app->live2d,
         app->resize_pixel_width, app->resize_pixel_height);
+    l2dcat_window_mark_hit_dirty(app);
 }
