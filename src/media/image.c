@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define L2DCAT_LIVE2D_TEXTURE_LIMIT 4096
+#define L2DCAT_LIVE2D_TEXTURE_LIMIT 2048
 
 #ifdef _WIN32
 static wchar_t *wide_path(const char *path) {
