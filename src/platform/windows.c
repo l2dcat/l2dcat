@@ -1,4 +1,5 @@
 #include "l2dcat/platform.h"
+#include "windows_borderless.h"
 #include "windows_keys.h"
 
 #ifdef _WIN32
@@ -121,10 +122,7 @@ L2DCatResult l2dcat_platform_init(L2DCatPlatform *platform, SDL_Window *window,
         return L2DCAT_ERROR_PLATFORM;
     }
     HWND hwnd = native_window(platform);
-    LONG_PTR style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-    style &= ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU |
-        WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
-    SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_POPUP);
+    l2dcat_windows_borderless_install(hwnd);
     MARGINS margins = {-1, -1, -1, -1};
     DwmExtendFrameIntoClientArea(hwnd, &margins);
     SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE |
@@ -135,6 +133,8 @@ L2DCatResult l2dcat_platform_init(L2DCatPlatform *platform, SDL_Window *window,
 void l2dcat_platform_shutdown(L2DCatPlatform *platform) {
     WindowsState *state = platform ? platform->native : NULL;
     if (!state) return;
+    HWND window = native_window(platform);
+    if (window) l2dcat_windows_borderless_uninstall(window);
     if (state->thread_id) PostThreadMessageW(state->thread_id, WM_QUIT, 0, 0);
     if (state->thread) WaitForSingleObject(state->thread, 3000);
     if (state->thread) CloseHandle(state->thread);

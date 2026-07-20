@@ -153,7 +153,7 @@ target_compile_definitions(l2dcat_runtime PRIVATE
 
 if(WIN32)
   enable_language(RC)
-  target_sources(l2dcat_runtime PRIVATE src/platform/windows.c src/platform/windows_pointer.c)
+  target_sources(l2dcat_runtime PRIVATE src/platform/windows.c src/platform/windows_borderless.c src/platform/windows_pointer.c)
   target_sources(l2dcat_runtime PRIVATE src/platform/windows_assets.c)
   target_sources(l2dcat_runtime PRIVATE src/platform/windows_http.c)
   target_sources(l2dcat_runtime PRIVATE src/platform/windows_update.c)
