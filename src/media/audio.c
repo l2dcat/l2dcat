@@ -47,7 +47,13 @@ L2DCatResult l2dcat_audio_play(L2DCatAudio *audio, const char *path, L2DCatError
         return L2DCAT_ERROR_IO;
     }
     audio->sound_ready = true;
-    ma_sound_start(&audio->sound);
+    result = ma_sound_start(&audio->sound);
+    if (result != MA_SUCCESS) {
+        l2dcat_audio_stop(audio);
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM,
+            "Cannot start motion sound: %s", path);
+        return L2DCAT_ERROR_PLATFORM;
+    }
     return L2DCAT_OK;
 }
 
