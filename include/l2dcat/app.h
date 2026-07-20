@@ -71,7 +71,11 @@ typedef struct L2DCatApp {
     double pointer_x, pointer_y;
     bool resize_gesture;
     bool resize_pending;
+    bool wheel_animation_active;
     int resize_pixel_width, resize_pixel_height;
+    uint64_t wheel_animation_ns;
+    float wheel_opacity_target, wheel_scale_target;
+    float wheel_center_x, wheel_center_y;
     bool drag_candidate;
     float drag_start_x, drag_start_y;
     float left_stick_x, left_stick_y;

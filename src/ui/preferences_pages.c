@@ -88,6 +88,7 @@ void l2dcat_preferences_page_cat(L2DCatApp *app, struct nk_context *context) {
         "pages.preference.cat.hints.windowSize", "Resize with the edge or Shift + right drag."),
         10.0f, &window->scale_percent, 500.0f, 1.0f);
     if (old_scale != window->scale_percent && old_scale > 0.0f) {
+        l2dcat_window_cancel_wheel_animation(app);
         float factor = window->scale_percent / old_scale;
         window->width = (int)(window->width * factor);
         window->height = (int)(window->height * factor);
@@ -104,6 +105,7 @@ void l2dcat_preferences_page_cat(L2DCatApp *app, struct nk_context *context) {
     l2dcat_pref_slider(context, "opacity", tr(app,
         "pages.preference.cat.labels.opacity", "Opacity"), "",
         10.0f, &window->opacity_percent, 100.0f, 1.0f);
+    if (old_opacity != window->opacity_percent) l2dcat_window_cancel_wheel_animation(app);
     if (old_opacity != window->opacity_percent && !app->hover_hidden)
         SDL_SetWindowOpacity(app->window, window->opacity_percent / 100.0f);
 }

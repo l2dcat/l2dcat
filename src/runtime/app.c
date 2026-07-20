@@ -166,7 +166,7 @@ static bool initialize(L2DCatApp *app, int argc, char **argv, L2DCatError *error
         ci_failure(app, &shortcut_error);
     }
     if (app->smoke_menu && (!l2dcat_window_menu_self_test(app) ||
-        !l2dcat_window_geometry_self_test(app) || !l2dcat_tray_self_test(app->tray))) {
+        !l2dcat_window_geometry_self_test(app) || !l2dcat_window_wheel_self_test(app) || !l2dcat_tray_self_test(app->tray))) {
         L2DCatError menu_error = {0};
         l2dcat_error_set(&menu_error, L2DCAT_ERROR_PLATFORM, "Context menu action self-test failed");
         ci_failure(app, &menu_error);
@@ -244,6 +244,7 @@ static void loop(L2DCatApp *app) {
         bool preferences = l2dcat_preferences_visible(app->preferences);
         int wait_ms = preferences ? 16 : app->config.window.visible
             ? L2DCAT_FRAME_WAIT(app) : 250;
+        if (app->wheel_animation_active && wait_ms > 16) wait_ms = 16;
         l2dcat_preferences_input_begin(app->preferences);
         SDL_Event event;
         if (SDL_WaitEventTimeout(&event, wait_ms)) {
@@ -253,10 +254,9 @@ static void loop(L2DCatApp *app) {
         l2dcat_window_apply_pending_resize(app);
         l2dcat_preferences_input_end(app->preferences);
         drain_input(app);
-        uint64_t now = SDL_GetTicksNS();
+        uint64_t now = SDL_GetTicksNS(); l2dcat_window_update_wheel_animation(app, now);
         l2dcat_app_update_hover(app, now);
-        if (app->config.window.visible) update_model(app, now);
-        else app->last_frame_ns = now;
+        if (app->config.window.visible) update_model(app, now); else app->last_frame_ns = now;
         if (app->config.window.visible && app->dirty) render(app);
         l2dcat_preferences_render(app->preferences);
         l2dcat_tray_sync(app->tray);

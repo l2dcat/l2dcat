@@ -76,6 +76,7 @@ static void clamp_to_display(L2DCatApp *app) {
 static void resize_by_pointer(L2DCatApp *app, const SDL_Event *event) {
     if (!(event->motion.state & SDL_BUTTON_RMASK) || !(SDL_GetModState() & SDL_KMOD_SHIFT))
         return;
+    l2dcat_window_cancel_wheel_animation(app);
     app->resize_gesture = true;
     float delta = (event->motion.xrel + event->motion.yrel) * 0.5f;
     float old_scale = app->config.window.scale_percent;
@@ -90,6 +91,7 @@ static void resize_by_pointer(L2DCatApp *app, const SDL_Event *event) {
 }
 
 static void begin_drag_candidate(L2DCatApp *app, const SDL_MouseButtonEvent *event) {
+    l2dcat_window_cancel_wheel_animation(app);
     app->drag_candidate = l2dcat_window_visible_at_pointer(app, event->x, event->y);
     app->drag_start_x = event->x;
     app->drag_start_y = event->y;
@@ -109,6 +111,7 @@ static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
 }
 
 static void set_scale(L2DCatApp *app, float scale) {
+    l2dcat_window_cancel_wheel_animation(app);
     float old = app->config.window.scale_percent;
     if (old <= 0.0f || old == scale) return;
     float factor = scale / old;
@@ -152,6 +155,7 @@ void l2dcat_window_menu_action(L2DCatApp *app, L2DCatMenuAction action) {
         set_scale(app, scales[action - L2DCAT_MENU_SCALE_50]);
     } else if (action >= L2DCAT_MENU_OPACITY_25 && action <= L2DCAT_MENU_OPACITY_100) {
         const float values[] = {25, 50, 75, 100};
+        l2dcat_window_cancel_wheel_animation(app);
         app->config.window.opacity_percent = values[action - L2DCAT_MENU_OPACITY_25];
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
     } else if (action == L2DCAT_MENU_RESTART) {
@@ -270,6 +274,8 @@ bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
     } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
         resize_by_pointer(app, event);
         update_drag_candidate(app, &event->motion);
+    } else if (event->type == SDL_EVENT_MOUSE_WHEEL) {
+        l2dcat_window_wheel(app, &event->wheel);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_LEFT) {
         l2dcat_window_mark_hit_dirty(app);
