@@ -191,6 +191,19 @@ try {
         ($frameRows | Measure-Object -Property visible_pixels -Minimum).Minimum
     } else { 0 }
     $uniqueRenderWidths = @($frameRows.width | Select-Object -Unique).Count
+    $maxNormalizedRenderWidthStep = 0.0
+    for ($index = 1; $index -lt $frameRows.Count; $index++) {
+        $step = [Math]::Abs([double]$frameRows[$index].width -
+            [double]$frameRows[$index - 1].width)
+        $elapsed = ([double]$frameRows[$index].ticks_ns -
+            [double]$frameRows[$index - 1].ticks_ns) / 1000000.0
+        if ($elapsed -gt 0) {
+            $normalized = $step * 16.6667 / $elapsed
+            if ($normalized -gt $maxNormalizedRenderWidthStep) {
+                $maxNormalizedRenderWidthStep = $normalized
+            }
+        }
+    }
     $process.Refresh()
     $final = $samples[$samples.Count - 1]
     $opacitySamples | Export-Csv (Join-Path $OutputDir "opacity-samples.csv") -NoTypeInformation
@@ -211,6 +224,14 @@ try {
     }
     $centerX = ($initial.L + $initial.R) / 2.0
     $centerY = ($initial.T + $initial.B) / 2.0
+    $maximumCenterDriftX = ($samples | ForEach-Object {
+        [Math]::Abs($_.CenterX - $centerX) } | Measure-Object -Maximum).Maximum
+    $maximumCenterDriftY = ($samples | ForEach-Object {
+        [Math]::Abs($_.CenterY - $centerY) } | Measure-Object -Maximum).Maximum
+    $initialArea = ($initial.R - $initial.L) * ($initial.B - $initial.T)
+    $finalArea = $final.Width * $final.Height
+    $frameAreaRatio = if ($initialArea -gt 0) { $finalArea / [double]$initialArea } else { 1.0 }
+    $allowedWorkingSetGrowthMB = 64.0 * [Math]::Max(1.0, $frameAreaRatio)
     $result = [ordered]@{
         OpacityAvailable=$opacityAvailable; OpacityAlpha=$alpha
         InitialWidth=$initial.R-$initial.L; FinalWidth=$final.Width
@@ -220,6 +241,8 @@ try {
         MaxNormalizedWidthStep=$maxNormalizedWidthStep
         CenterDriftX=[Math]::Abs($final.CenterX-$centerX)
         CenterDriftY=[Math]::Abs($final.CenterY-$centerY)
+        MaximumCenterDriftX=$maximumCenterDriftX
+        MaximumCenterDriftY=$maximumCenterDriftY
         BurstCount=$BurstCount
         BurstDelayMs=$BurstDelayMs
         GlobalControl=$GlobalControl.IsPresent
@@ -227,10 +250,13 @@ try {
         ForegroundSeparated=(-not $GlobalControl -or $foregroundSeparated)
         PeakWorkingSetMB=$peakWorkingSet / 1MB
         WorkingSetGrowthMB=($peakWorkingSet-$initialWorkingSet) / 1MB
+        FrameAreaRatio=$frameAreaRatio
+        AllowedWorkingSetGrowthMB=$allowedWorkingSetGrowthMB
         ScaleCpuMs=$process.TotalProcessorTime.TotalMilliseconds-$initialCpu
         VisibleFramePixels=$visiblePixels
         CapturedRenderFrames=$frameRows.Count
         UniqueRenderWidths=$uniqueRenderWidths
+        MaxNormalizedRenderWidthStep=$maxNormalizedRenderWidthStep
         MinimumFramePixels=[int]$minimumFramePixels
         WithinWorkArea=(-not $AtEdge -or -not $workAreaAvailable -or
             ($final.CenterX-$final.Width/2 -ge $workArea.L -and
@@ -238,19 +264,24 @@ try {
             $final.CenterX+$final.Width/2 -le $workArea.R -and
             $final.CenterY+$final.Height/2 -le $workArea.B))
     }
+    $shortBurst = $BurstCount -le 3
     $directionPassed = if ($ScaleDelta -gt 0) {
         $final.Width -gt $result.InitialWidth -and $final.Height -gt $result.InitialHeight -and
-            $final.Width -le $result.InitialWidth * 1.2
+            (-not $shortBurst -or $final.Width -le $result.InitialWidth * 1.2)
     } else {
         $final.Width -lt $result.InitialWidth -and $final.Height -lt $result.InitialHeight -and
-            $final.Width -ge $result.InitialWidth * 0.8
+            (-not $shortBurst -or $final.Width -ge $result.InitialWidth * 0.8)
     }
     $centerPassed = $AtEdge -or
-        ($result.CenterDriftX -le 2 -and $result.CenterDriftY -le 2)
+        ($result.MaximumCenterDriftX -le 2 -and $result.MaximumCenterDriftY -le 2)
     $animationPassed = $uniqueWidths -ge 4 -or $uniqueRenderWidths -ge 4
+    $smoothnessPassed = if ($frameRows.Count -ge 2) {
+        $maxNormalizedRenderWidthStep -le 8
+    } else { $maxNormalizedWidthStep -le 8 }
     $result.Passed = $opacityAvailable -and $alpha -lt 255 -and $directionPassed -and
-        $animationPassed -and $maxNormalizedWidthStep -le 8 -and $centerPassed -and
-        $result.WithinWorkArea -and $result.WorkingSetGrowthMB -le 64 -and
+        $animationPassed -and $smoothnessPassed -and $centerPassed -and
+        $result.WithinWorkArea -and
+        $result.WorkingSetGrowthMB -le $result.AllowedWorkingSetGrowthMB -and
         $result.ScaleCpuMs -le 1000 -and $result.ForegroundSeparated -and
         $result.VisibleFramePixels -ge 100 -and $result.CapturedRenderFrames -ge 2 -and
         $result.MinimumFramePixels -ge 100

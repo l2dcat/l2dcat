@@ -80,7 +80,6 @@ typedef struct L2DCatApp {
     int resize_pixel_width, resize_pixel_height;
     uint64_t wheel_animation_ns, wheel_input_ns, wheel_event_ns;
     float wheel_opacity_target, wheel_scale_target;
-    float wheel_opacity_start, wheel_scale_start;
     float wheel_center_x, wheel_center_y;
     float wheel_geometry_scale;
     int wheel_base_width, wheel_base_height;

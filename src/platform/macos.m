@@ -90,9 +90,15 @@ void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
 
 bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
     int x, int y, int width, int height) {
-    if (!platform || !platform->window ||
+    if (!platform || !platform->window) return false;
+    int current_width, current_height;
+    if ((!SDL_GetWindowSize(platform->window, &current_width, &current_height) ||
+        current_width != width || current_height != height) &&
         !SDL_SetWindowSize(platform->window, width, height)) return false;
-    SDL_SetWindowPosition(platform->window, x, y);
+    int current_x, current_y;
+    if (!SDL_GetWindowPosition(platform->window, &current_x, &current_y) ||
+        current_x != x || current_y != y)
+        SDL_SetWindowPosition(platform->window, x, y);
     return true;
 }
 void l2dcat_platform_begin_drag(L2DCatPlatform *platform) {
