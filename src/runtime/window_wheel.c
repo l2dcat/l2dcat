@@ -66,7 +66,7 @@ void l2dcat_window_wheel(L2DCatApp *app, const SDL_MouseWheelEvent *event) {
     float old_scale_target = app->wheel_scale_target;
     bool control = (SDL_GetModState() & SDL_KMOD_CTRL) != 0 ||
         l2dcat_input_control_down(&app->input);
-    if (control) {
+    if (!control) {
         float minimum = SDL_max(10.0f,
             app->config.window.scale_percent - WHEEL_SCALE_TARGET_LEAD);
         float maximum = SDL_min(500.0f,
@@ -168,7 +168,7 @@ bool l2dcat_window_wheel_self_test(L2DCatApp *app) {
     SDL_GetWindowPosition(app->window, &original_x, &original_y);
     SDL_GetWindowSize(app->window, &original_width, &original_height);
     SDL_Keymod modifiers = SDL_GetModState();
-    SDL_SetModState(modifiers & ~SDL_KMOD_CTRL);
+    SDL_SetModState(modifiers | SDL_KMOD_CTRL);
     app->config.window.opacity_percent = 80.0f;
     app->config.window.scale_percent = 100.0f;
     l2dcat_window_cancel_wheel_animation(app);
@@ -178,7 +178,7 @@ bool l2dcat_window_wheel_self_test(L2DCatApp *app) {
     for (int i = 1; i <= 30; ++i)
         l2dcat_window_update_wheel_animation(app, started + i * 16666667ull);
     bool opacity = SDL_fabsf(app->config.window.opacity_percent - 75.0f) < 0.1f;
-    SDL_SetModState(modifiers | SDL_KMOD_CTRL);
+    SDL_SetModState(modifiers & ~SDL_KMOD_CTRL);
     wheel.y = 1.0f; l2dcat_window_wheel(app, &wheel);
     started = app->wheel_animation_ns;
     for (int i = 1; i <= 8; ++i)
@@ -231,7 +231,7 @@ bool l2dcat_window_wheel_self_test(L2DCatApp *app) {
     l2dcat_window_wheel(app, &wheel);
     bool minimum = !app->wheel_animation_active;
     l2dcat_window_cancel_wheel_animation(app);
-    SDL_SetModState(modifiers & ~SDL_KMOD_CTRL);
+    SDL_SetModState(modifiers | SDL_KMOD_CTRL);
     app->config.window.opacity_percent = 100.0f;
     wheel.y = 1.0f;
     l2dcat_window_wheel(app, &wheel);

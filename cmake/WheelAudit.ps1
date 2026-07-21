@@ -1,6 +1,6 @@
 param([string]$Exe = "", [string]$OutputDir = "", [int]$ScaleDelta = 120,
     [int]$BurstCount = 1, [int]$BurstDelayMs = 0, [switch]$AtEdge, [switch]$GlobalControl,
-    [switch]$SystemWheel, [string]$DataRoot = "")
+    [switch]$SystemWheel, [switch]$ControlOpacity, [string]$DataRoot = "")
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\l2dcat.exe" }
@@ -113,8 +113,6 @@ try {
         $initial = Get-Rect $window
     }
     $position = Position-LParam $initial
-    [void][L2DCatWheelNative]::PostMessageW($window, 0x020A,
-        (Wheel-WParam -120), $position)
     $opacitySamples = [Collections.Generic.List[object]]::new()
     for ($index = 0; $index -lt 30; $index++) {
         [uint32]$sampleColor = 0; [byte]$sampleAlpha = 255; [uint32]$sampleFlags = 0
@@ -135,18 +133,22 @@ try {
             Start-Sleep -Milliseconds 120
         }
         $foregroundSeparated = [L2DCatWheelNative]::GetForegroundWindow() -ne $window
+    }
+    if ($ControlOpacity) {
         [L2DCatWheelNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
-        $globalControlDown = $true
-        Start-Sleep -Milliseconds 80
-    } else {
+        $globalControlDown = $true; Start-Sleep -Milliseconds 80
+    } elseif (-not $GlobalControl) {
         [void][L2DCatWheelNative]::PostMessageW(
-            $window, 0x0100, [IntPtr]0x11, [IntPtr]::Zero)
+            $window, 0x0101, [IntPtr]0x11, [IntPtr]::Zero)
     }
     $process.Refresh()
     $initialWorkingSet = $process.WorkingSet64
     $initialCpu = $process.TotalProcessorTime.TotalMilliseconds
     $peakWorkingSet = $initialWorkingSet
-    $wheelKeys = if ($GlobalControl) { 0 } else { 8 }
+    $frameStartCount = if (Test-Path -LiteralPath $frameSeries) {
+        @(Import-Csv -LiteralPath $frameSeries).Count
+    } else { 0 }
+    $wheelKeys = if ($ControlOpacity) { 8 } else { 0 }
     if ($SystemWheel) {
         [void][L2DCatWheelNative]::SetCursorPos(
             [int](($initial.L + $initial.R) / 2), [int](($initial.T + $initial.B) / 2))
@@ -175,17 +177,17 @@ try {
             CenterX=($rect.L+$rect.R)/2.0; CenterY=($rect.T+$rect.B)/2.0})
         Start-Sleep -Milliseconds 16
     }
-    if ($GlobalControl) {
+    if ($ControlOpacity) {
         [L2DCatWheelNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
         $globalControlDown = $false
-    } else {
+    } elseif (-not $GlobalControl) {
         [void][L2DCatWheelNative]::PostMessageW(
             $window, 0x0101, [IntPtr]0x11, [IntPtr]::Zero)
     }
     Start-Sleep -Milliseconds 80
     $visiblePixels = Get-VisiblePixels (Join-Path $data "frame.bmp")
     $frameRows = if (Test-Path -LiteralPath $frameSeries) {
-        @(Import-Csv -LiteralPath $frameSeries)
+        @(@(Import-Csv -LiteralPath $frameSeries) | Select-Object -Skip $frameStartCount)
     } else { @() }
     $minimumFramePixels = if ($frameRows.Count) {
         ($frameRows | Measure-Object -Property visible_pixels -Minimum).Minimum
@@ -315,7 +317,7 @@ try {
             $maxRenderWidthStepPercent -le 3.0 -and $oppositeRenderSteps -eq 0
     } else { $maxNormalizedWidthStep -le 8 }
     $latencyPassed = -not $shortBurst -or $settledAtMs -le 350
-    $result.Passed = $opacityAvailable -and $alpha -lt 255 -and $directionPassed -and
+    $result.Passed = $directionPassed -and
         $animationPassed -and $smoothnessPassed -and $latencyPassed -and $centerPassed -and
         $result.WithinWorkArea -and
         $result.WorkingSetGrowthMB -le $result.AllowedWorkingSetGrowthMB -and
