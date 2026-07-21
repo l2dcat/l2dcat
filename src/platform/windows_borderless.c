@@ -26,6 +26,8 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
         return TRUE;
     } else if (message == WM_MENUSELECT && menu_preview) {
         UINT id = LOWORD(wparam), flags = HIWORD(wparam);
+        if (flags == 0xffff && !lparam) return CallWindowProcW(
+            original ? original : DefWindowProcW, window, message, wparam, lparam);
         L2DCatMenuAction action = !(flags & (MF_POPUP | MF_SEPARATOR)) && id
             ? (L2DCatMenuAction)id : L2DCAT_MENU_NONE;
         menu_preview(menu_preview_userdata, action);
