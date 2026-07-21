@@ -106,6 +106,11 @@ void l2dcat_platform_set_always_on_top(L2DCatPlatform *platform, bool enabled) {
 void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
     l2dcat_linux_x11_taskbar(platform, visible);
 }
+void l2dcat_platform_raise_window(SDL_Window *window) {
+    if (!window) return;
+    SDL_ShowWindow(window);
+    SDL_RaiseWindow(window);
+}
 
 bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
     int x, int y, int width, int height) {

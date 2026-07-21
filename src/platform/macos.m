@@ -87,6 +87,15 @@ void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
     [NSApp setActivationPolicy:visible ? NSApplicationActivationPolicyRegular :
         NSApplicationActivationPolicyAccessory];
 }
+void l2dcat_platform_raise_window(SDL_Window *window) {
+    if (!window) return;
+    SDL_ShowWindow(window);
+    SDL_RaiseWindow(window);
+    NSWindow *native = (__bridge NSWindow *)SDL_GetPointerProperty(
+        SDL_GetWindowProperties(window), SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
+    [NSApp activateIgnoringOtherApps:YES];
+    [native makeKeyAndOrderFront:nil];
+}
 
 bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
     int x, int y, int width, int height) {

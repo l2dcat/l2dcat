@@ -29,10 +29,10 @@ L2DCatMenuAction l2dcat_linux_context_menu(L2DCatPlatform *platform,
     SDL_MessageBoxButtonData buttons[] = {
         {0, L2DCAT_MENU_PREFERENCES, labels->preferences}, {0, L2DCAT_MENU_HIDE, labels->hide},
         {0, L2DCAT_MENU_PASS_THROUGH, pass}, {0, L2DCAT_MENU_ALWAYS_ON_TOP, top},
-        {0, -1, labels->window_size}, {0, -2, labels->opacity},
+        {0, -1, labels->window_size}, {0, -2, labels->opacity}, {0, -3, labels->model},
         {0, L2DCAT_MENU_RESTART, labels->restart}, {0, L2DCAT_MENU_EXIT, labels->exit}};
     SDL_MessageBoxData data = {SDL_MESSAGEBOX_INFORMATION, platform->window,
-        L2DCAT_NAME, L2DCAT_NAME, 8, buttons, NULL};
+        L2DCAT_NAME, L2DCAT_NAME, 9, buttons, NULL};
     int selected = 0;
     if (!SDL_ShowMessageBox(&data, &selected)) return L2DCAT_MENU_NONE;
     if (selected == -1) {
@@ -42,6 +42,17 @@ L2DCatMenuAction l2dcat_linux_context_menu(L2DCatPlatform *platform,
     if (selected == -2) {
         const int values[] = {25,50,75,100};
         return submenu(platform->window, labels->opacity, values, 4, L2DCAT_MENU_OPACITY_25);
+    }
+    if (selected == -3 && labels->model_count) {
+        SDL_MessageBoxButtonData model_buttons[L2DCAT_MODEL_CAP];
+        for (size_t i = 0; i < labels->model_count; ++i)
+            model_buttons[i] = (SDL_MessageBoxButtonData){0,
+                L2DCAT_MENU_MODEL_FIRST + (int)i, labels->model_names[i]};
+        SDL_MessageBoxData models = {SDL_MESSAGEBOX_INFORMATION, platform->window,
+            labels->model, labels->model, (int)labels->model_count, model_buttons, NULL};
+        int model = -1;
+        return SDL_ShowMessageBox(&models, &model) && model >= 0
+            ? (L2DCatMenuAction)model : L2DCAT_MENU_NONE;
     }
     return (L2DCatMenuAction)selected;
 }

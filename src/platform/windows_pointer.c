@@ -46,6 +46,22 @@ void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
         visible ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW, true);
 }
 
+void l2dcat_platform_raise_window(SDL_Window *window) {
+    if (!window) return;
+    SDL_ShowWindow(window);
+    HWND handle = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window),
+        SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+    if (!handle) { SDL_RaiseWindow(window); return; }
+    if (IsIconic(handle)) ShowWindow(handle, SW_RESTORE);
+    HWND foreground = GetForegroundWindow();
+    DWORD foreground_thread = foreground ? GetWindowThreadProcessId(foreground, NULL) : 0;
+    DWORD current_thread = GetCurrentThreadId();
+    bool attached = foreground_thread && foreground_thread != current_thread &&
+        AttachThreadInput(current_thread, foreground_thread, TRUE);
+    BringWindowToTop(handle); SetForegroundWindow(handle); SetActiveWindow(handle);
+    if (attached) AttachThreadInput(current_thread, foreground_thread, FALSE);
+}
+
 bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
     int x, int y, int width, int height) {
     if (!platform || !platform->window) return false;

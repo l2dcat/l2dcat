@@ -231,7 +231,8 @@ L2DCatMenuAction l2dcat_platform_context_menu(L2DCatPlatform *platform,
     const L2DCatMenuLabels *labels) {
     if (!platform || !labels) return L2DCAT_MENU_NONE;
     HMENU menu = CreatePopupMenu(), sizes = CreatePopupMenu(), opacity = CreatePopupMenu();
-    if (!menu || !sizes || !opacity) return L2DCAT_MENU_NONE;
+    HMENU models = CreatePopupMenu();
+    if (!menu || !sizes || !opacity || !models) return L2DCAT_MENU_NONE;
     menu_text(menu, MF_STRING, L2DCAT_MENU_PREFERENCES, labels->preferences);
     menu_text(menu, MF_STRING, L2DCAT_MENU_HIDE, labels->hide);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
@@ -242,25 +243,36 @@ L2DCatMenuAction l2dcat_platform_context_menu(L2DCatPlatform *platform,
     const int scales[] = {50, 75, 100, 125, 150, 200};
     for (int i = 0; i < 6; ++i) {
         wchar_t label[16]; swprintf(label, 16, L"%d%%", scales[i]);
-        AppendMenuW(sizes, MF_STRING, L2DCAT_MENU_SCALE_50 + i, label);
+        UINT flags = MF_STRING | (SDL_fabsf(labels->scale_percent - scales[i]) < .5f ? MF_CHECKED : 0);
+        AppendMenuW(sizes, flags, L2DCAT_MENU_SCALE_50 + i, label);
     }
     const int opacities[] = {25, 50, 75, 100};
     for (int i = 0; i < 4; ++i) {
         wchar_t label[16]; swprintf(label, 16, L"%d%%", opacities[i]);
-        AppendMenuW(opacity, MF_STRING, L2DCAT_MENU_OPACITY_25 + i, label);
+        UINT flags = MF_STRING | (SDL_fabsf(labels->opacity_percent - opacities[i]) < .5f ? MF_CHECKED : 0);
+        AppendMenuW(opacity, flags, L2DCAT_MENU_OPACITY_25 + i, label);
     }
+    for (size_t i = 0; i < labels->model_count; ++i)
+        menu_text(models, MF_STRING | (i == labels->current_model ? MF_CHECKED : 0),
+            L2DCAT_MENU_MODEL_FIRST + i, labels->model_names[i]);
     wchar_t *size_label = wide(labels->window_size), *opacity_label = wide(labels->opacity);
+    wchar_t *model_label = wide(labels->model);
     AppendMenuW(menu, MF_POPUP, (UINT_PTR)sizes, size_label ? size_label : L"");
     AppendMenuW(menu, MF_POPUP, (UINT_PTR)opacity, opacity_label ? opacity_label : L"");
-    free(size_label); free(opacity_label);
+    AppendMenuW(menu, MF_POPUP | (labels->model_count ? 0 : MF_GRAYED),
+        (UINT_PTR)models, model_label ? model_label : L"");
+    free(size_label); free(opacity_label); free(model_label);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
     menu_text(menu, MF_STRING, L2DCAT_MENU_RESTART, labels->restart);
     menu_text(menu, MF_STRING, L2DCAT_MENU_EXIT, labels->exit);
     POINT point; GetCursorPos(&point);
     HWND window = native_window(platform);
     SetForegroundWindow(window);
+    l2dcat_windows_menu_preview(labels->preview, labels->preview_userdata);
     UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
         point.x, point.y, 0, window, NULL);
+    l2dcat_windows_menu_preview(NULL, NULL);
+    if (labels->restore) labels->restore(labels->preview_userdata, (L2DCatMenuAction)command);
     DestroyMenu(menu);
     return (L2DCatMenuAction)command;
 }

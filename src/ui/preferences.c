@@ -3,6 +3,7 @@
 #include "l2dcat/i18n.h"
 #include "l2dcat/file.h"
 #include "l2dcat/path.h"
+#include "l2dcat/platform.h"
 #include "preferences_internal.h"
 #include "ui_backend.h"
 #include "ui_font.h"
@@ -45,8 +46,7 @@ static void apply_theme(L2DCatPreferences *value) {
 static bool open_window(L2DCatPreferences *value) {
     SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE |
         SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_HIDDEN;
-    value->window = SDL_CreateWindow(L2DCAT_NAME,
-        900, 640, flags);
+    value->window = SDL_CreateWindow(L2DCAT_NAME, 900, 640, flags);
     if (!value->window) return false;
     SDL_SetWindowMinimumSize(value->window, 720, 520);
     value->gl_context = value->app->gl_context;
@@ -80,7 +80,7 @@ static bool open_window(L2DCatPreferences *value) {
     SDL_GL_SetSwapInterval(1);
     SDL_StartTextInput(value->window);
     SDL_ShowWindow(value->window);
-    SDL_RaiseWindow(value->window);
+    l2dcat_platform_raise_window(value->window);
     value->render_dirty = true;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     return true;

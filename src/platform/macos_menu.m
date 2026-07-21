@@ -58,6 +58,14 @@ L2DCatMenuAction l2dcat_macos_context_menu(L2DCatPlatform *platform,
         labels->always_on_top_checked);
     add_scale_menu(menu, target, labels->window_size, false);
     add_scale_menu(menu, target, labels->opacity, true);
+    NSMenuItem *modelRoot = [[NSMenuItem alloc] initWithTitle:text(labels->model)
+        action:nil keyEquivalent:@""];
+    NSMenu *models = [[NSMenu alloc] initWithTitle:text(labels->model)];
+    for (size_t i = 0; i < labels->model_count; ++i)
+        add_item(models, target, labels->model_names[i], L2DCAT_MENU_MODEL_FIRST + i,
+            i == labels->current_model);
+    [modelRoot setSubmenu:models]; [menu addItem:modelRoot];
+    [models release]; [modelRoot release];
     [menu addItem:[NSMenuItem separatorItem]];
     add_item(menu, target, labels->restart, L2DCAT_MENU_RESTART, false);
     add_item(menu, target, labels->exit, L2DCAT_MENU_EXIT, false);

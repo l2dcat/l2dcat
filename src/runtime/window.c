@@ -3,6 +3,7 @@
 #include "l2dcat/preferences.h"
 
 #include <SDL3/SDL_opengl.h>
+#include <stdio.h>
 
 static bool set_gl_attributes(void) {
 #ifdef __APPLE__
@@ -78,7 +79,40 @@ static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
     return l2dcat_i18n_get(app->i18n, key, fallback);
 }
 
+typedef struct MenuPreview { L2DCatApp *app; char model[L2DCAT_ID_CAP];
+    float scale, opacity; } MenuPreview;
+static void menu_preview(void *userdata, L2DCatMenuAction action) {
+    MenuPreview *state = userdata; L2DCatApp *app = state->app;
+    if (action >= L2DCAT_MENU_MODEL_FIRST &&
+        (size_t)(action - L2DCAT_MENU_MODEL_FIRST) < app->models.count)
+        l2dcat_app_select_model(app, app->models.entries[action - L2DCAT_MENU_MODEL_FIRST].id);
+    else if (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_SCALE_200)
+        l2dcat_window_set_scale(app, (float[]){50,75,100,125,150,200}[action-L2DCAT_MENU_SCALE_50]);
+    else if (action >= L2DCAT_MENU_OPACITY_25 && action <= L2DCAT_MENU_OPACITY_100) {
+        app->config.window.opacity_percent = (float[]){25,50,75,100}[action-L2DCAT_MENU_OPACITY_25];
+        SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
+    }
+}
+static void menu_restore(void *userdata, L2DCatMenuAction selected) {
+    MenuPreview *state = userdata; L2DCatApp *app = state->app;
+    l2dcat_app_select_model(app, state->model);
+    l2dcat_window_set_scale(app, state->scale);
+    app->config.window.opacity_percent = state->opacity;
+    SDL_SetWindowOpacity(app->window, state->opacity / 100.0f);
+    (void)selected;
+}
+
 static void context_menu(L2DCatApp *app) {
+    MenuPreview preview = {app, "", app->config.window.scale_percent,
+        app->config.window.opacity_percent};
+    snprintf(preview.model, sizeof(preview.model), "%s", app->config.current_model);
+    const char *model_names[L2DCAT_MODEL_CAP];
+    size_t current_model = app->models.count;
+    for (size_t i = 0; i < app->models.count; ++i) {
+        model_names[i] = app->models.entries[i].id;
+        if (strcmp(app->models.entries[i].id, app->config.current_model) == 0)
+            current_model = i;
+    }
     L2DCatMenuLabels labels = {
         tr(app, "composables.useAppMenu.labels.preference", "Preferences"),
         tr(app, "composables.useAppMenu.labels.hideCat", "Hide Cat"),
@@ -86,9 +120,13 @@ static void context_menu(L2DCatApp *app) {
         tr(app, "composables.useAppMenu.labels.alwaysOnTop", "Always on top"),
         tr(app, "composables.useAppMenu.labels.windowSize", "Window Size"),
         tr(app, "composables.useAppMenu.labels.opacity", "Opacity"),
+        tr(app, "composables.useAppMenu.labels.model", "Model"),
         tr(app, "composables.useAppMenu.labels.restartApp", "Restart"),
         tr(app, "composables.useAppMenu.labels.quitApp", "Exit"),
-        app->config.window.pass_through, app->config.window.always_on_top};
+        model_names, app->models.count, current_model,
+        app->config.window.scale_percent, app->config.window.opacity_percent,
+        app->config.window.pass_through, app->config.window.always_on_top,
+        menu_preview, menu_restore, &preview};
     L2DCatMenuAction action = l2dcat_platform_context_menu(&app->platform, &labels);
     l2dcat_window_menu_action(app, action);
 }
@@ -115,6 +153,10 @@ void l2dcat_window_menu_action(L2DCatApp *app, L2DCatMenuAction action) {
         l2dcat_window_cancel_wheel_animation(app);
         app->config.window.opacity_percent = values[action - L2DCAT_MENU_OPACITY_25];
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
+    } else if (action >= L2DCAT_MENU_MODEL_FIRST &&
+        (size_t)(action - L2DCAT_MENU_MODEL_FIRST) < app->models.count) {
+        l2dcat_app_select_model(app,
+            app->models.entries[action - L2DCAT_MENU_MODEL_FIRST].id);
     } else if (action == L2DCAT_MENU_RESTART) {
         app->restart_requested = true; app->running = false;
     } else if (action == L2DCAT_MENU_EXIT) app->running = false;

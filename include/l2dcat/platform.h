@@ -29,13 +29,20 @@ typedef enum L2DCatMenuAction {
     L2DCAT_MENU_OPACITY_75,
     L2DCAT_MENU_OPACITY_100,
     L2DCAT_MENU_RESTART,
-    L2DCAT_MENU_EXIT
+    L2DCAT_MENU_EXIT,
+    L2DCAT_MENU_MODEL_FIRST = 1000
 } L2DCatMenuAction;
+typedef void (*L2DCatMenuPreview)(void *userdata, L2DCatMenuAction action);
 
 typedef struct L2DCatMenuLabels {
     const char *preferences, *hide, *pass_through, *always_on_top;
-    const char *window_size, *opacity, *restart, *exit;
+    const char *window_size, *opacity, *model, *restart, *exit;
+    const char *const *model_names;
+    size_t model_count, current_model;
+    float scale_percent, opacity_percent;
     bool pass_through_checked, always_on_top_checked;
+    L2DCatMenuPreview preview, restore;
+    void *preview_userdata;
 } L2DCatMenuLabels;
 
 typedef void (*L2DCatDownloadProgress)(uint64_t received, uint64_t total,
@@ -49,6 +56,7 @@ bool l2dcat_platform_pointer_local(L2DCatPlatform *platform, double screen_x,
     double screen_y, float *local_x, float *local_y);
 void l2dcat_platform_set_always_on_top(L2DCatPlatform *platform, bool enabled);
 void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible);
+void l2dcat_platform_raise_window(SDL_Window *window);
 bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
     int x, int y, int width, int height);
 void l2dcat_platform_begin_drag(L2DCatPlatform *platform);

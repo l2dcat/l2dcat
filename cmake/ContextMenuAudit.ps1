@@ -61,7 +61,7 @@ Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 350
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 $process = Start-Process -FilePath $Exe -ArgumentList @("--ci-smoke", "--ci-context-menu",
-    "--ci-language=$Language", "--ci-exit-ms=4500", "--data-root=$data") -WorkingDirectory (Split-Path $Exe) `
+    "--ci-language=$Language", "--ci-exit-ms=8000", "--data-root=$data") -WorkingDirectory (Split-Path $Exe) `
     -WindowStyle Normal -PassThru
 $deadline = [DateTime]::UtcNow.AddSeconds(2)
 do {
@@ -95,7 +95,7 @@ do {
     $visible = @(Get-Windows $process.Id | Where-Object Class -ne "#32768")
 } while ($visible.Count -lt 2 -and [DateTime]::UtcNow -lt $windowDeadline)
 $preferencesOpened = $visible.Count -ge 2
-$exited = $process.WaitForExit(12000)
+$exited = $process.WaitForExit(20000)
 if (-not $exited) { Stop-Process -Id $process.Id -Force }
 $exitCode = if ($exited) { $process.ExitCode } else { -1 }
 $locale = Get-Content -Raw -Encoding utf8 (Join-Path $root "resources\assets\locales\zh-CN.json") |
@@ -103,7 +103,7 @@ $locale = Get-Content -Raw -Encoding utf8 (Join-Path $root "resources\assets\loc
 $menuLabels = $locale.composables.useAppMenu.labels
 $expected = @($menuLabels.preference, $menuLabels.hideCat, $menuLabels.passThrough,
     $menuLabels.alwaysOnTop, $menuLabels.windowSize, $menuLabels.opacity,
-    $menuLabels.restartApp, $menuLabels.quitApp)
+    $menuLabels.model, $menuLabels.restartApp, $menuLabels.quitApp)
 $labelsMatch = $Language -ne "zh-CN" -or (($labels -join "|") -eq ($expected -join "|"))
 $passed = $menuHandle -ne [IntPtr]::Zero -and $preferencesOpened -and $exitCode -eq 0 -and $labelsMatch
 $result = [pscustomobject]@{MenuFound=($menuHandle-ne[IntPtr]::Zero); Labels=$labels

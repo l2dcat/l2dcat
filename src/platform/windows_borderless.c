@@ -2,6 +2,8 @@
 
 #ifdef _WIN32
 static const wchar_t original_proc_property[] = L"l2dcat.BorderlessWindowProc";
+static L2DCatMenuPreview menu_preview;
+static void *menu_preview_userdata;
 
 static LONG_PTR borderless_style(LONG_PTR style) {
     return (style & ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU |
@@ -22,9 +24,16 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
         return 0;
     } else if (message == WM_NCACTIVATE) {
         return TRUE;
+    } else if (message == WM_MENUSELECT && menu_preview) {
+        UINT id = LOWORD(wparam), flags = HIWORD(wparam);
+        if (!(flags & MF_POPUP) && id) menu_preview(menu_preview_userdata, (L2DCatMenuAction)id);
     }
     return CallWindowProcW(original ? original : DefWindowProcW,
         window, message, wparam, lparam);
+}
+
+void l2dcat_windows_menu_preview(L2DCatMenuPreview preview, void *userdata) {
+    menu_preview = preview; menu_preview_userdata = userdata;
 }
 
 void l2dcat_windows_borderless_install(HWND window) {

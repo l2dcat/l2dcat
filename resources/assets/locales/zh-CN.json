@@ -180,7 +180,8 @@
         "windowSize": "大小",
         "opacity": "透明度",
         "restartApp": "重启",
-        "quitApp": "退出应用"
+        "quitApp": "退出",
+        "model": "模型"
       }
     }
   },
