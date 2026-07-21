@@ -67,6 +67,11 @@ void l2dcat_window_sync_click_through(L2DCatApp *app) {
 
 void l2dcat_window_apply_pending_resize(L2DCatApp *app) {
     if (!app || !app->resize_pending) return;
+    if (app->wheel_animation_active) {
+        l2dcat_live2d_reshape(app->live2d,
+            app->resize_pixel_width, app->resize_pixel_height);
+        return;
+    }
     app->resize_pending = false;
     l2dcat_live2d_resize(app->live2d,
         app->resize_pixel_width, app->resize_pixel_height);

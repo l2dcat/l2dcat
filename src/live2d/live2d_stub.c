@@ -25,6 +25,9 @@ void l2dcat_live2d_resize(L2DCatLive2D *live2d, int width, int height) {
     live2d->width = width;
     live2d->height = height;
 }
+void l2dcat_live2d_reshape(L2DCatLive2D *live2d, int width, int height) {
+    l2dcat_live2d_resize(live2d, width, height);
+}
 
 bool l2dcat_live2d_update(L2DCatLive2D *live2d, float delta_seconds) {
     (void)live2d; (void)delta_seconds; return false;

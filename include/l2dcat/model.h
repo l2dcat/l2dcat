@@ -55,6 +55,7 @@ void l2dcat_live2d_destroy(L2DCatLive2D *live2d);
 L2DCatResult l2dcat_live2d_load(L2DCatLive2D *live2d, const char *model_dir,
     const char *setting_file, L2DCatError *error);
 void l2dcat_live2d_resize(L2DCatLive2D *live2d, int width, int height);
+void l2dcat_live2d_reshape(L2DCatLive2D *live2d, int width, int height);
 bool l2dcat_live2d_update(L2DCatLive2D *live2d, float delta_seconds);
 void l2dcat_live2d_draw(L2DCatLive2D *live2d);
 void l2dcat_live2d_set_mirror(L2DCatLive2D *live2d, bool mirror);

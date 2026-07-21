@@ -172,6 +172,9 @@ extern "C" L2DCatResult l2dcat_live2d_load(L2DCatLive2D *runtime, const char *di
 extern "C" void l2dcat_live2d_resize(L2DCatLive2D *runtime, int width, int height) {
     if (runtime && runtime->model) runtime->model->resize(width, height);
 }
+extern "C" void l2dcat_live2d_reshape(L2DCatLive2D *runtime, int width, int height) {
+    if (runtime && runtime->model) runtime->model->reshape(width, height);
+}
 extern "C" bool l2dcat_live2d_update(L2DCatLive2D *runtime, float elapsed) {
     return runtime && runtime->model && runtime->model->update(elapsed);
 }

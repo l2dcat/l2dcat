@@ -80,6 +80,8 @@ bool NativeModel::load(const char *directory, const char *setting_file, L2DCatEr
     _modelMatrix->SetupFromLayout(layout);
     _model->SaveParameters();
     CreateRenderer((Csm::csmUint32)width_, (Csm::csmUint32)height_);
+    renderer_width_ = width_;
+    renderer_height_ = height_;
     return true;
 }
 

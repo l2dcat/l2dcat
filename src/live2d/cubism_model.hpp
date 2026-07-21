@@ -22,6 +22,7 @@ public:
     bool load_textures(L2DCatError *error);
     void release_textures();
     void resize(int width, int height);
+    void reshape(int width, int height);
     bool update(float delta_seconds);
     void draw();
     void set_mirror(bool mirror);
@@ -63,6 +64,8 @@ private:
     std::string directory_;
     int width_ = 612;
     int height_ = 354;
+    int renderer_width_ = 0;
+    int renderer_height_ = 0;
     bool motion_updated_ = false;
     bool mirror_ = false;
     bool external_parameters_dirty_ = false;

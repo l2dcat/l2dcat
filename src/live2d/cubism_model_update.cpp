@@ -11,13 +11,19 @@
 namespace l2dcat {
 
 void NativeModel::resize(int width, int height) {
-    if (width <= 0 || height <= 0 || (width == width_ && height == height_)) return;
+    if (width <= 0 || height <= 0) return;
     width_ = width;
     height_ = height;
-    if (!_model) return;
+    if (!_model || (width == renderer_width_ && height == renderer_height_)) return;
     DeleteRenderer();
     CreateRenderer((Csm::csmUint32)width_, (Csm::csmUint32)height_);
+    renderer_width_ = width_;
+    renderer_height_ = height_;
     bind_textures();
+}
+
+void NativeModel::reshape(int width, int height) {
+    if (width > 0 && height > 0) { width_ = width; height_ = height; }
 }
 
 template<typename Getter>

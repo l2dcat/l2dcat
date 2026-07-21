@@ -60,7 +60,14 @@ try {
     $position = Position-LParam $initial
     [void][L2DCatWheelNative]::PostMessageW($window, 0x020A,
         (Wheel-WParam -120), $position)
-    Start-Sleep -Milliseconds 500
+    $opacitySamples = [Collections.Generic.List[object]]::new()
+    for ($index = 0; $index -lt 30; $index++) {
+        [uint32]$sampleColor = 0; [byte]$sampleAlpha = 255; [uint32]$sampleFlags = 0
+        [void][L2DCatWheelNative]::GetLayeredWindowAttributes(
+            $window, [ref]$sampleColor, [ref]$sampleAlpha, [ref]$sampleFlags)
+        $opacitySamples.Add([pscustomobject]@{Index=$index; Alpha=$sampleAlpha})
+        Start-Sleep -Milliseconds 16
+    }
     [uint32]$color = 0; [byte]$alpha = 255; [uint32]$flags = 0
     $opacityAvailable = [L2DCatWheelNative]::GetLayeredWindowAttributes(
         $window, [ref]$color, [ref]$alpha, [ref]$flags)
@@ -77,6 +84,8 @@ try {
     }
     [void][L2DCatWheelNative]::PostMessageW($window, 0x0101, [IntPtr]0x11, [IntPtr]::Zero)
     $final = $samples[$samples.Count - 1]
+    $opacitySamples | Export-Csv (Join-Path $OutputDir "opacity-samples.csv") -NoTypeInformation
+    $samples | Export-Csv (Join-Path $OutputDir "scale-samples.csv") -NoTypeInformation
     $uniqueWidths = @($samples.Width | Select-Object -Unique).Count
     $centerX = ($initial.L + $initial.R) / 2.0
     $centerY = ($initial.T + $initial.B) / 2.0
@@ -90,7 +99,7 @@ try {
     }
     $result.Passed = $opacityAvailable -and $alpha -lt 255 -and
         $final.Width -gt $result.InitialWidth -and $final.Height -gt $result.InitialHeight -and
-        $uniqueWidths -ge 3 -and $result.CenterDriftX -le 2 -and $result.CenterDriftY -le 2
+        $uniqueWidths -ge 10 -and $result.CenterDriftX -le 2 -and $result.CenterDriftY -le 2
     $result | ConvertTo-Json | Set-Content (Join-Path $OutputDir "result.json")
     [pscustomobject]$result | Format-List
     if (-not $result.Passed) { exit 1 }
