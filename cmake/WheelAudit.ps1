@@ -1,4 +1,5 @@
-param([string]$Exe = "", [string]$OutputDir = "", [int]$ScaleDelta = 120)
+param([string]$Exe = "", [string]$OutputDir = "", [int]$ScaleDelta = 120,
+    [int]$BurstCount = 1, [switch]$AtEdge)
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\l2dcat.exe" }
@@ -17,6 +18,10 @@ public static class L2DCatWheelNative {
         IntPtr h, uint message, IntPtr wparam, IntPtr lparam);
     [DllImport("user32.dll")] public static extern bool GetLayeredWindowAttributes(
         IntPtr h, out uint color, out byte alpha, out uint flags);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(
+        IntPtr h, IntPtr after, int x, int y, int width, int height, uint flags);
+    [DllImport("user32.dll")] public static extern bool SystemParametersInfoW(
+        uint action, uint parameter, out Rect value, uint update);
 }
 '@
 
@@ -57,6 +62,16 @@ try {
     $window = Wait-Window $process
     Start-Sleep -Milliseconds 400
     $initial = Get-Rect $window
+    $workArea = [L2DCatWheelNative+Rect]::new()
+    $workAreaAvailable = [L2DCatWheelNative]::SystemParametersInfoW(
+        0x0030, 0, [ref]$workArea, 0)
+    if ($AtEdge -and $workAreaAvailable) {
+        [void][L2DCatWheelNative]::SetWindowPos($window, [IntPtr]::Zero,
+            $workArea.R - ($initial.R - $initial.L),
+            $workArea.B - ($initial.B - $initial.T), 0, 0, 0x0015)
+        Start-Sleep -Milliseconds 100
+        $initial = Get-Rect $window
+    }
     $position = Position-LParam $initial
     [void][L2DCatWheelNative]::PostMessageW($window, 0x020A,
         (Wheel-WParam -120), $position)
@@ -73,24 +88,45 @@ try {
         $window, [ref]$color, [ref]$alpha, [ref]$flags)
 
     [void][L2DCatWheelNative]::PostMessageW($window, 0x0100, [IntPtr]0x11, [IntPtr]::Zero)
-    [void][L2DCatWheelNative]::PostMessageW($window, 0x020A,
-        (Wheel-WParam $ScaleDelta 8), $position)
+    $process.Refresh()
+    $initialWorkingSet = $process.WorkingSet64
+    $initialCpu = $process.TotalProcessorTime.TotalMilliseconds
+    $peakWorkingSet = $initialWorkingSet
+    for ($index = 0; $index -lt [Math]::Max(1, $BurstCount); $index++) {
+        [void][L2DCatWheelNative]::PostMessageW($window, 0x020A,
+            (Wheel-WParam $ScaleDelta 8), $position)
+    }
     $samples = [Collections.Generic.List[object]]::new()
+    $sampleClock = [Diagnostics.Stopwatch]::StartNew()
     for ($index = 0; $index -lt 30; $index++) {
         $rect = Get-Rect $window
-        $samples.Add([pscustomobject]@{Width=$rect.R-$rect.L; Height=$rect.B-$rect.T
+        $process.Refresh()
+        if ($process.WorkingSet64 -gt $peakWorkingSet) {
+            $peakWorkingSet = $process.WorkingSet64
+        }
+        $samples.Add([pscustomobject]@{ElapsedMs=$sampleClock.Elapsed.TotalMilliseconds
+            Width=$rect.R-$rect.L; Height=$rect.B-$rect.T
             CenterX=($rect.L+$rect.R)/2.0; CenterY=($rect.T+$rect.B)/2.0})
         Start-Sleep -Milliseconds 16
     }
     [void][L2DCatWheelNative]::PostMessageW($window, 0x0101, [IntPtr]0x11, [IntPtr]::Zero)
+    $process.Refresh()
     $final = $samples[$samples.Count - 1]
     $opacitySamples | Export-Csv (Join-Path $OutputDir "opacity-samples.csv") -NoTypeInformation
     $samples | Export-Csv (Join-Path $OutputDir "scale-samples.csv") -NoTypeInformation
     $uniqueWidths = @($samples.Width | Select-Object -Unique).Count
     $maxWidthStep = 0
+    $maxNormalizedWidthStep = 0.0
     for ($index = 1; $index -lt $samples.Count; $index++) {
         $step = [Math]::Abs($samples[$index].Width - $samples[$index - 1].Width)
         if ($step -gt $maxWidthStep) { $maxWidthStep = $step }
+        $elapsed = $samples[$index].ElapsedMs - $samples[$index - 1].ElapsedMs
+        if ($elapsed -gt 0) {
+            $normalized = $step * 16.6667 / $elapsed
+            if ($normalized -gt $maxNormalizedWidthStep) {
+                $maxNormalizedWidthStep = $normalized
+            }
+        }
     }
     $centerX = ($initial.L + $initial.R) / 2.0
     $centerY = ($initial.T + $initial.B) / 2.0
@@ -100,18 +136,32 @@ try {
         InitialHeight=$initial.B-$initial.T; FinalHeight=$final.Height
         UniqueAnimatedWidths=$uniqueWidths
         MaxAnimatedWidthStep=$maxWidthStep
+        MaxNormalizedWidthStep=$maxNormalizedWidthStep
         CenterDriftX=[Math]::Abs($final.CenterX-$centerX)
         CenterDriftY=[Math]::Abs($final.CenterY-$centerY)
+        BurstCount=$BurstCount
+        PeakWorkingSetMB=$peakWorkingSet / 1MB
+        WorkingSetGrowthMB=($peakWorkingSet-$initialWorkingSet) / 1MB
+        ScaleCpuMs=$process.TotalProcessorTime.TotalMilliseconds-$initialCpu
+        WithinWorkArea=(-not $AtEdge -or -not $workAreaAvailable -or
+            ($final.CenterX-$final.Width/2 -ge $workArea.L -and
+            $final.CenterY-$final.Height/2 -ge $workArea.T -and
+            $final.CenterX+$final.Width/2 -le $workArea.R -and
+            $final.CenterY+$final.Height/2 -le $workArea.B))
     }
     $directionPassed = if ($ScaleDelta -gt 0) {
-        $final.Width -gt $result.InitialWidth -and $final.Height -gt $result.InitialHeight
+        $final.Width -gt $result.InitialWidth -and $final.Height -gt $result.InitialHeight -and
+            $final.Width -le $result.InitialWidth * 1.2
     } else {
         $final.Width -lt $result.InitialWidth -and $final.Height -lt $result.InitialHeight -and
             $final.Width -ge $result.InitialWidth * 0.8
     }
+    $centerPassed = $AtEdge -or
+        ($result.CenterDriftX -le 2 -and $result.CenterDriftY -le 2)
     $result.Passed = $opacityAvailable -and $alpha -lt 255 -and $directionPassed -and
-        $uniqueWidths -ge 6 -and $maxWidthStep -le 8 -and
-        $result.CenterDriftX -le 2 -and $result.CenterDriftY -le 2
+        $uniqueWidths -ge 6 -and $maxNormalizedWidthStep -le 8 -and $centerPassed -and
+        $result.WithinWorkArea -and $result.WorkingSetGrowthMB -le 64 -and
+        $result.ScaleCpuMs -le 1000
     $result | ConvertTo-Json | Set-Content (Join-Path $OutputDir "result.json")
     [pscustomobject]$result | Format-List
     if (-not $result.Passed) { exit 1 }

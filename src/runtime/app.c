@@ -251,10 +251,10 @@ static void loop(L2DCatApp *app) {
             handle_event(app, &event);
             while (SDL_PollEvent(&event)) handle_event(app, &event);
         }
-        l2dcat_window_apply_pending_resize(app);
         l2dcat_preferences_input_end(app->preferences);
         drain_input(app);
         uint64_t now = SDL_GetTicksNS(); l2dcat_window_update_wheel_animation(app, now);
+        l2dcat_window_apply_pending_resize(app);
         l2dcat_app_update_hover(app, now);
         if (app->config.window.visible) update_model(app, now); else app->last_frame_ns = now;
         if (app->config.window.visible && app->dirty) render(app);

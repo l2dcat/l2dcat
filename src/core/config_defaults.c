@@ -35,7 +35,7 @@ void l2dcat_config_validate(L2DCatConfig *config) {
     if (config->model.max_fps < 1) config->model.max_fps = 1;
     if (config->model.max_fps > 240) config->model.max_fps = 240;
     config->window.scale_percent = clampf(config->window.scale_percent, 10.0f, 500.0f);
-    config->window.opacity_percent = clampf(config->window.opacity_percent, 0.0f, 100.0f);
+    config->window.opacity_percent = clampf(config->window.opacity_percent, 10.0f, 100.0f);
     config->window.radius_percent = clampf(config->window.radius_percent, 0.0f, 50.0f);
     config->window.hide_delay_seconds = clampf(config->window.hide_delay_seconds, 0.0f, 60.0f);
     if (config->window.width < 64) config->window.width = 64;

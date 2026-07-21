@@ -23,6 +23,9 @@ void test_config(void) {
     CHECK(value.model.max_fps == 240);
     CHECK(value.window.scale_percent == 10.0f);
     CHECK(value.window.opacity_percent == 100.0f);
+    value.window.opacity_percent = -1.0f;
+    l2dcat_config_validate(&value);
+    CHECK(value.window.opacity_percent == 10.0f);
 
     value.model.max_fps = 30;
     value.window.x = -321;
