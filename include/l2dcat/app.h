@@ -47,6 +47,7 @@ typedef struct L2DCatApp {
     bool smoke_taskbar_visible;
     bool smoke_context_menu;
     bool smoke_frame_audited;
+    bool smoke_frame_series;
     bool restart_requested;
     int smoke_language;
     int smoke_theme;
@@ -73,7 +74,7 @@ typedef struct L2DCatApp {
     bool resize_pending;
     bool wheel_animation_active;
     int resize_pixel_width, resize_pixel_height;
-    uint64_t wheel_animation_ns;
+    uint64_t wheel_animation_ns, wheel_input_ns;
     float wheel_opacity_target, wheel_scale_target;
     float wheel_opacity_start, wheel_scale_start;
     float wheel_center_x, wheel_center_y;

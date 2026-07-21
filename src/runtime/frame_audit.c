@@ -7,6 +7,33 @@
 #include <stdlib.h>
 #include <string.h>
 
+static unsigned visible_pixels(const unsigned char *pixels,
+    int width, int height, size_t pitch) {
+    unsigned visible = 0;
+    for (int y = 0; y < height; y += 4) {
+        const unsigned char *row = pixels + (size_t)y * pitch;
+        for (int x = 0; x < width; x += 4) {
+            const unsigned char *pixel = row + (size_t)x * 4;
+            if ((unsigned)pixel[0] + pixel[1] + pixel[2] > 60) visible++;
+        }
+    }
+    return visible;
+}
+
+static void record_frame(L2DCatApp *app, const unsigned char *pixels,
+    int width, int height, size_t pitch) {
+    if (!app->smoke_frame_series) return;
+    char path[L2DCAT_PATH_CAP];
+    l2dcat_path_join(path, sizeof(path), app->data_root, "frame-series.csv");
+    bool header = !l2dcat_path_is_file(path);
+    FILE *file = l2dcat_file_open(path, "ab");
+    if (!file) return;
+    if (header) fputs("ticks_ns,width,height,visible_pixels\n", file);
+    fprintf(file, "%llu,%d,%d,%u\n", (unsigned long long)SDL_GetTicksNS(),
+        width, height, visible_pixels(pixels, width, height, pitch));
+    fclose(file);
+}
+
 void l2dcat_frame_audit(L2DCatApp *app, int width, int height) {
     if (!app || !app->smoke || width < 2 || height < 2) return;
     char path[L2DCAT_PATH_CAP];
@@ -34,6 +61,7 @@ void l2dcat_frame_audit(L2DCatApp *app, int width, int height) {
     unsigned char *pixels = malloc(bytes), *row = malloc(pitch);
     if (!pixels || !row) { free(pixels); free(row); return; }
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    record_frame(app, pixels, width, height, pitch);
     for (int y = 0; y < height / 2; ++y) {
         unsigned char *top = pixels + (size_t)y * pitch;
         unsigned char *bottom = pixels + (size_t)(height - 1 - y) * pitch;

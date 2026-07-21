@@ -6,6 +6,7 @@
 #define WHEEL_SCALE_TARGET_LEAD 15.0f
 #define WHEEL_OPACITY_ANIMATION_NS 220000000ull
 #define WHEEL_SCALE_ANIMATION_NS 420000000ull
+#define WHEEL_GESTURE_IDLE_NS 300000000ull
 
 static float wheel_delta(const SDL_MouseWheelEvent *event) {
     float value = event ? event->y : 0.0f;
@@ -29,6 +30,7 @@ static bool initialize_targets(L2DCatApp *app) {
     app->wheel_base_width = width;
     app->wheel_base_height = height;
     app->wheel_animation_ns = SDL_GetTicksNS();
+    app->wheel_input_ns = app->wheel_animation_ns;
     return true;
 }
 
@@ -58,25 +60,26 @@ void l2dcat_window_wheel(L2DCatApp *app, const SDL_MouseWheelEvent *event) {
     bool control = (SDL_GetModState() & SDL_KMOD_CTRL) != 0 ||
         l2dcat_input_control_down(&app->input);
     if (control) {
-        float current = app->config.window.scale_percent;
-        float minimum = SDL_max(10.0f, current - WHEEL_SCALE_TARGET_LEAD);
-        float maximum = SDL_min(500.0f, current + WHEEL_SCALE_TARGET_LEAD);
+        float minimum = SDL_max(10.0f,
+            app->wheel_geometry_scale - WHEEL_SCALE_TARGET_LEAD);
+        float maximum = SDL_min(500.0f,
+            app->wheel_geometry_scale + WHEEL_SCALE_TARGET_LEAD);
         app->wheel_scale_target = SDL_clamp(app->wheel_scale_target +
             delta * WHEEL_SCALE_STEP, minimum, maximum);
     } else {
         app->wheel_opacity_target = SDL_clamp(app->wheel_opacity_target +
             delta * WHEEL_OPACITY_STEP, 10.0f, 100.0f);
     }
+    uint64_t input_ns = SDL_GetTicksNS();
     if (old_opacity_target == app->wheel_opacity_target &&
-        old_scale_target == app->wheel_scale_target) return;
-    if (SDL_fabsf(app->wheel_opacity_target - app->config.window.opacity_percent) < 0.001f &&
-        SDL_fabsf(app->wheel_scale_target - app->config.window.scale_percent) < 0.001f) {
-        app->wheel_animation_active = false;
+        old_scale_target == app->wheel_scale_target) {
+        if (app->wheel_animation_active) app->wheel_input_ns = input_ns;
         return;
     }
     app->wheel_opacity_start = app->config.window.opacity_percent;
     app->wheel_scale_start = app->config.window.scale_percent;
-    app->wheel_animation_ns = SDL_GetTicksNS();
+    app->wheel_animation_ns = input_ns;
+    app->wheel_input_ns = input_ns;
     app->wheel_animation_active = true;
     app->dirty = true;
 }
@@ -115,12 +118,19 @@ void l2dcat_window_update_wheel_animation(L2DCatApp *app, uint64_t now) {
         app->wheel_opacity_target, progress);
     float scale = interpolate(app->wheel_scale_start,
         app->wheel_scale_target, progress);
+    bool changed = SDL_fabsf(opacity - app->config.window.opacity_percent) > 0.001f ||
+        SDL_fabsf(scale - app->config.window.scale_percent) > 0.001f;
     app->config.window.opacity_percent = opacity;
     if (!app->hover_hidden) SDL_SetWindowOpacity(app->window, opacity / 100.0f);
     apply_scale(app, scale);
-    app->wheel_animation_active = progress < 1.0f;
-    app->dirty = true;
-    l2dcat_preferences_invalidate(app->preferences);
+    bool reached = progress >= 1.0f &&
+        SDL_fabsf(app->config.window.opacity_percent - app->wheel_opacity_target) < 0.001f &&
+        SDL_fabsf(app->config.window.scale_percent - app->wheel_scale_target) < 0.001f;
+    bool recent_input = now >= app->wheel_input_ns &&
+        now - app->wheel_input_ns < WHEEL_GESTURE_IDLE_NS;
+    app->wheel_animation_active = !reached || recent_input;
+    if (changed || !app->wheel_animation_active) app->dirty = true;
+    if (changed) l2dcat_preferences_invalidate(app->preferences);
 }
 
 void l2dcat_window_cancel_wheel_animation(L2DCatApp *app) {
@@ -164,7 +174,11 @@ bool l2dcat_window_wheel_self_test(L2DCatApp *app) {
     l2dcat_window_wheel(app, &wheel);
     wheel.y = -1.0f;
     l2dcat_window_wheel(app, &wheel);
-    bool reversal = !app->wheel_animation_active;
+    started = app->wheel_animation_ns;
+    for (int i = 1; i <= 30; ++i)
+        l2dcat_window_update_wheel_animation(app, started + i * 16666667ull);
+    bool reversal = !app->wheel_animation_active &&
+        SDL_fabsf(app->config.window.scale_percent - 100.0f) < 0.1f;
     wheel.y = 1.0f;
     wheel.direction = SDL_MOUSEWHEEL_FLIPPED;
     l2dcat_window_wheel(app, &wheel);

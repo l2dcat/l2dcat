@@ -48,8 +48,8 @@ void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
 
 void l2dcat_platform_set_geometry(L2DCatPlatform *platform,
     int x, int y, int width, int height) {
-    HWND window = native_window(platform);
-    if (window) SetWindowPos(window, NULL, x, y, width, height,
-        SWP_NOZORDER | SWP_NOACTIVATE);
+    if (!platform || !platform->window) return;
+    SDL_SetWindowSize(platform->window, width, height);
+    SDL_SetWindowPosition(platform->window, x, y);
 }
 #endif

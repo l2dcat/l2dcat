@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 static void parse_arguments(L2DCatApp *app, int argc, char **argv) {
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--ci-smoke") == 0) app->smoke = true;
@@ -24,6 +23,7 @@ static void parse_arguments(L2DCatApp *app, int argc, char **argv) {
         else if (strcmp(argv[i], "--ci-taskbar-visible") == 0)
             app->smoke_taskbar_visible = true;
         else if (strcmp(argv[i], "--ci-context-menu") == 0) app->smoke_context_menu = true;
+        else if (strcmp(argv[i], "--ci-frame-series") == 0) app->smoke_frame_series = true;
         else if (strncmp(argv[i], "--ci-preference-page=", 21) == 0) {
             int page = atoi(argv[i] + 21);
             if (page >= 0 && page < 5) app->smoke_preference_page = page;

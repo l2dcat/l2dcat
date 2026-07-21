@@ -1,6 +1,6 @@
 param([string]$Exe = "", [string]$OutputDir = "", [int]$ScaleDelta = 120,
-    [int]$BurstCount = 1, [switch]$AtEdge, [switch]$GlobalControl,
-    [string]$DataRoot = "")
+    [int]$BurstCount = 1, [int]$BurstDelayMs = 0, [switch]$AtEdge, [switch]$GlobalControl,
+    [switch]$SystemWheel, [string]$DataRoot = "")
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\l2dcat.exe" }
@@ -29,6 +29,9 @@ public static class L2DCatWheelNative {
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);
     [DllImport("user32.dll")] public static extern void keybd_event(
         byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] public static extern void mouse_event(
+        uint flags, uint x, uint y, int data, UIntPtr extraInfo);
 }
 '@
 
@@ -85,7 +88,7 @@ Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
 $data = if ($DataRoot) { [IO.Path]::GetFullPath($DataRoot) } else {
     Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 }
-$process = Start-Process $Exe -ArgumentList @("--ci-smoke", "--ci-exit-ms=9000",
+$process = Start-Process $Exe -ArgumentList @("--ci-smoke", "--ci-frame-series", "--ci-exit-ms=9000",
     "--data-root=$data") -WorkingDirectory (Split-Path $Exe) -PassThru
 $globalControlDown = $false
 try {
@@ -137,9 +140,27 @@ try {
     $initialCpu = $process.TotalProcessorTime.TotalMilliseconds
     $peakWorkingSet = $initialWorkingSet
     $wheelKeys = if ($GlobalControl) { 0 } else { 8 }
+    if ($SystemWheel) {
+        [void][L2DCatWheelNative]::SetCursorPos(
+            [int](($initial.L + $initial.R) / 2), [int](($initial.T + $initial.B) / 2))
+        Start-Sleep -Milliseconds 80
+    }
+    $frameSeries = Join-Path $data "frame-series.csv"
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        try {
+            if ([IO.File]::Exists($frameSeries)) { [IO.File]::Delete($frameSeries) }
+            break
+        } catch { Start-Sleep -Milliseconds 10 }
+    }
     for ($index = 0; $index -lt [Math]::Max(1, $BurstCount); $index++) {
-        [void][L2DCatWheelNative]::PostMessageW($window, 0x020A,
-            (Wheel-WParam $ScaleDelta $wheelKeys), $position)
+        if ($SystemWheel) {
+            [L2DCatWheelNative]::mouse_event(
+                0x0800, 0, 0, $ScaleDelta, [UIntPtr]::Zero)
+        } else {
+            [void][L2DCatWheelNative]::PostMessageW($window, 0x020A,
+                (Wheel-WParam $ScaleDelta $wheelKeys), $position)
+        }
+        if ($BurstDelayMs -gt 0) { Start-Sleep -Milliseconds $BurstDelayMs }
     }
     $samples = [Collections.Generic.List[object]]::new()
     $sampleClock = [Diagnostics.Stopwatch]::StartNew()
@@ -163,6 +184,13 @@ try {
     }
     Start-Sleep -Milliseconds 80
     $visiblePixels = Get-VisiblePixels (Join-Path $data "frame.bmp")
+    $frameRows = if (Test-Path -LiteralPath $frameSeries) {
+        @(Import-Csv -LiteralPath $frameSeries)
+    } else { @() }
+    $minimumFramePixels = if ($frameRows.Count) {
+        ($frameRows | Measure-Object -Property visible_pixels -Minimum).Minimum
+    } else { 0 }
+    $uniqueRenderWidths = @($frameRows.width | Select-Object -Unique).Count
     $process.Refresh()
     $final = $samples[$samples.Count - 1]
     $opacitySamples | Export-Csv (Join-Path $OutputDir "opacity-samples.csv") -NoTypeInformation
@@ -193,12 +221,17 @@ try {
         CenterDriftX=[Math]::Abs($final.CenterX-$centerX)
         CenterDriftY=[Math]::Abs($final.CenterY-$centerY)
         BurstCount=$BurstCount
+        BurstDelayMs=$BurstDelayMs
         GlobalControl=$GlobalControl.IsPresent
+        SystemWheel=$SystemWheel.IsPresent
         ForegroundSeparated=(-not $GlobalControl -or $foregroundSeparated)
         PeakWorkingSetMB=$peakWorkingSet / 1MB
         WorkingSetGrowthMB=($peakWorkingSet-$initialWorkingSet) / 1MB
         ScaleCpuMs=$process.TotalProcessorTime.TotalMilliseconds-$initialCpu
         VisibleFramePixels=$visiblePixels
+        CapturedRenderFrames=$frameRows.Count
+        UniqueRenderWidths=$uniqueRenderWidths
+        MinimumFramePixels=[int]$minimumFramePixels
         WithinWorkArea=(-not $AtEdge -or -not $workAreaAvailable -or
             ($final.CenterX-$final.Width/2 -ge $workArea.L -and
             $final.CenterY-$final.Height/2 -ge $workArea.T -and
@@ -214,11 +247,13 @@ try {
     }
     $centerPassed = $AtEdge -or
         ($result.CenterDriftX -le 2 -and $result.CenterDriftY -le 2)
+    $animationPassed = $uniqueWidths -ge 4 -or $uniqueRenderWidths -ge 4
     $result.Passed = $opacityAvailable -and $alpha -lt 255 -and $directionPassed -and
-        $uniqueWidths -ge 4 -and $maxNormalizedWidthStep -le 8 -and $centerPassed -and
+        $animationPassed -and $maxNormalizedWidthStep -le 8 -and $centerPassed -and
         $result.WithinWorkArea -and $result.WorkingSetGrowthMB -le 64 -and
         $result.ScaleCpuMs -le 1000 -and $result.ForegroundSeparated -and
-        $result.VisibleFramePixels -ge 100
+        $result.VisibleFramePixels -ge 100 -and $result.CapturedRenderFrames -ge 2 -and
+        $result.MinimumFramePixels -ge 100
     $result | ConvertTo-Json | Set-Content (Join-Path $OutputDir "result.json")
     [pscustomobject]$result | Format-List
     if (-not $result.Passed) { exit 1 }
