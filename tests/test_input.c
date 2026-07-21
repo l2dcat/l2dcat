@@ -28,6 +28,16 @@ void test_input(void) {
     CHECK(output.kind == L2DCAT_INPUT_KEY_UP);
     CHECK(!l2dcat_input_pop(&state, &output));
 
+    memcpy(event.name, "ShiftRight", sizeof("ShiftRight"));
+    event.kind = L2DCAT_INPUT_KEY_DOWN;
+    CHECK(l2dcat_input_push(&state, &event));
+    CHECK(l2dcat_input_shift_down(&state));
+    event.kind = L2DCAT_INPUT_KEY_UP;
+    CHECK(l2dcat_input_push(&state, &event));
+    CHECK(!l2dcat_input_shift_down(&state));
+    CHECK(l2dcat_input_pop(&state, &output));
+    CHECK(l2dcat_input_pop(&state, &output));
+
     l2dcat_input_mouse(&state, 1.0, 2.0);
     l2dcat_input_mouse(&state, 8.0, 9.0);
     double x, y;
@@ -57,6 +67,7 @@ void test_input(void) {
     CHECK(l2dcat_mouse_parameter_value(-30.0f, 30.0f,
         0.0f, 0.0f, 'Z', false) == -30.0f);
 
+    memcpy(event.name, "ControlLeft", sizeof("ControlLeft"));
     for (int i = 0; i < 255; ++i) CHECK(l2dcat_input_push(&state, &event));
     CHECK(!l2dcat_input_push(&state, &event));
     event.kind = L2DCAT_INPUT_KEY_DOWN;
@@ -65,7 +76,14 @@ void test_input(void) {
     event.kind = L2DCAT_INPUT_KEY_UP;
     CHECK(!l2dcat_input_push(&state, &event));
     CHECK(!l2dcat_input_control_down(&state));
-    CHECK(atomic_load(&state.dropped) == 3);
+    memcpy(event.name, "ShiftLeft", sizeof("ShiftLeft"));
+    event.kind = L2DCAT_INPUT_KEY_DOWN;
+    CHECK(!l2dcat_input_push(&state, &event));
+    CHECK(l2dcat_input_shift_down(&state));
+    event.kind = L2DCAT_INPUT_KEY_UP;
+    CHECK(!l2dcat_input_push(&state, &event));
+    CHECK(!l2dcat_input_shift_down(&state));
+    CHECK(atomic_load(&state.dropped) == 5);
 
     l2dcat_input_init(&state);
     event.kind = L2DCAT_INPUT_KEY_DOWN;

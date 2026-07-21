@@ -24,6 +24,13 @@ void l2dcat_window_wheel(L2DCatApp *app, const SDL_MouseWheelEvent *event);
 void l2dcat_window_update_wheel_animation(L2DCatApp *app, uint64_t now);
 void l2dcat_window_cancel_wheel_animation(L2DCatApp *app);
 bool l2dcat_window_wheel_self_test(L2DCatApp *app);
+bool l2dcat_window_scaled_size(int base_width, int base_height, float base_scale,
+    float requested_scale, float *actual_scale, int *width, int *height);
+bool l2dcat_window_apply_geometry(L2DCatApp *app, int x, int y,
+    float scale, int width, int height);
+bool l2dcat_window_set_scale(L2DCatApp *app, float scale);
+void l2dcat_window_clamp_to_display(L2DCatApp *app);
+void l2dcat_window_resize_by_pointer(L2DCatApp *app, const SDL_Event *event);
 const char *l2dcat_gamepad_axis_name(Uint8 axis);
 const char *l2dcat_gamepad_button_name(Uint8 button);
 void l2dcat_gamepads_set_enabled(L2DCatApp *app, bool enabled);

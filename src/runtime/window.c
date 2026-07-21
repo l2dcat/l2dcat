@@ -58,38 +58,6 @@ void l2dcat_window_apply(L2DCatApp *app) {
     l2dcat_platform_set_taskbar(&app->platform, value->taskbar_visible);
 }
 
-static void clamp_to_display(L2DCatApp *app) {
-    if (!app->config.window.keep_in_screen) return;
-    SDL_DisplayID display = SDL_GetDisplayForWindow(app->window);
-    SDL_Rect bounds;
-    if (!display || !SDL_GetDisplayUsableBounds(display, &bounds)) return;
-    int x, y, width, height;
-    SDL_GetWindowPosition(app->window, &x, &y);
-    SDL_GetWindowSize(app->window, &width, &height);
-    int max_x = bounds.x + bounds.w - width;
-    int max_y = bounds.y + bounds.h - height;
-    int next_x = SDL_clamp(x, bounds.x, max_x < bounds.x ? bounds.x : max_x);
-    int next_y = SDL_clamp(y, bounds.y, max_y < bounds.y ? bounds.y : max_y);
-    if (next_x != x || next_y != y) SDL_SetWindowPosition(app->window, next_x, next_y);
-}
-
-static void resize_by_pointer(L2DCatApp *app, const SDL_Event *event) {
-    if (!(event->motion.state & SDL_BUTTON_RMASK) || !(SDL_GetModState() & SDL_KMOD_SHIFT))
-        return;
-    l2dcat_window_cancel_wheel_animation(app);
-    app->resize_gesture = true;
-    float delta = (event->motion.xrel + event->motion.yrel) * 0.5f;
-    float old_scale = app->config.window.scale_percent;
-    float next_scale = SDL_clamp(old_scale + delta, 10.0f, 500.0f);
-    if (next_scale == old_scale) return;
-    float factor = next_scale / old_scale;
-    app->config.window.scale_percent = next_scale;
-    app->config.window.width = (int)(app->config.window.width * factor);
-    app->config.window.height = (int)(app->config.window.height * factor);
-    SDL_SetWindowSize(app->window, app->config.window.width, app->config.window.height);
-    l2dcat_window_mark_hit_dirty(app);
-}
-
 static void begin_drag_candidate(L2DCatApp *app, const SDL_MouseButtonEvent *event) {
     l2dcat_window_cancel_wheel_animation(app);
     app->drag_candidate = l2dcat_window_visible_at_pointer(app, event->x, event->y);
@@ -108,18 +76,6 @@ static void update_drag_candidate(L2DCatApp *app, const SDL_MouseMotionEvent *ev
 
 static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
     return l2dcat_i18n_get(app->i18n, key, fallback);
-}
-
-static void set_scale(L2DCatApp *app, float scale) {
-    l2dcat_window_cancel_wheel_animation(app);
-    float old = app->config.window.scale_percent;
-    if (old <= 0.0f || old == scale) return;
-    float factor = scale / old;
-    app->config.window.scale_percent = scale;
-    app->config.window.width = (int)(app->config.window.width * factor);
-    app->config.window.height = (int)(app->config.window.height * factor);
-    SDL_SetWindowSize(app->window, app->config.window.width, app->config.window.height);
-    l2dcat_window_mark_hit_dirty(app);
 }
 
 static void context_menu(L2DCatApp *app) {
@@ -152,7 +108,8 @@ void l2dcat_window_menu_action(L2DCatApp *app, L2DCatMenuAction action) {
         l2dcat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
     } else if (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_SCALE_200) {
         const float scales[] = {50, 75, 100, 125, 150, 200};
-        set_scale(app, scales[action - L2DCAT_MENU_SCALE_50]);
+        l2dcat_window_cancel_wheel_animation(app);
+        l2dcat_window_set_scale(app, scales[action - L2DCAT_MENU_SCALE_50]);
     } else if (action >= L2DCAT_MENU_OPACITY_25 && action <= L2DCAT_MENU_OPACITY_100) {
         const float values[] = {25, 50, 75, 100};
         l2dcat_window_cancel_wheel_animation(app);
@@ -183,65 +140,6 @@ bool l2dcat_window_menu_self_test(L2DCatApp *app) {
     return result;
 }
 
-bool l2dcat_window_geometry_self_test(L2DCatApp *app) {
-    if (!app || !app->window) return false;
-    L2DCatWindowOptions backup = app->config.window;
-    int original_x, original_y, original_width, original_height;
-    SDL_GetWindowPosition(app->window, &original_x, &original_y);
-    SDL_GetWindowSize(app->window, &original_width, &original_height);
-    SDL_DisplayID display = SDL_GetDisplayForWindow(app->window);
-    SDL_Rect bounds;
-    if (!display || !SDL_GetDisplayUsableBounds(display, &bounds)) return false;
-    app->config.window.keep_in_screen = true;
-    app->config.window.width = 320; app->config.window.height = 240;
-    app->config.window.scale_percent = 100.0f;
-    SDL_SetWindowSize(app->window, 320, 240);
-    SDL_SetWindowPosition(app->window, bounds.x - 2000, bounds.y - 2000);
-    SDL_SyncWindow(app->window); clamp_to_display(app); SDL_SyncWindow(app->window);
-    int x, y, width, height; SDL_GetWindowPosition(app->window, &x, &y);
-    bool clamped = x >= bounds.x && y >= bounds.y;
-    set_scale(app, 125.0f); SDL_SyncWindow(app->window);
-    SDL_GetWindowSize(app->window, &width, &height);
-    bool scaled = width == 400 && height == 300;
-    l2dcat_window_menu_action(app, L2DCAT_MENU_OPACITY_50);
-    bool opacity = SDL_fabsf(SDL_GetWindowOpacity(app->window) - 0.5f) < 0.02f;
-    app->config.window.hide_on_hover = true;
-    app->config.window.hide_delay_seconds = 0.0f;
-    app->config.window.pass_through = false;
-    app->config.window.opacity_percent = 100.0f;
-    l2dcat_app_track_hover(app, x + 10, y + 10);
-    l2dcat_app_update_hover(app, SDL_GetTicksNS() + 1);
-    bool hidden = app->hover_hidden && SDL_GetWindowOpacity(app->window) < 0.02f;
-    l2dcat_app_track_hover(app, bounds.x - 10, bounds.y - 10);
-    bool restored = !app->hover_hidden &&
-        SDL_fabsf(SDL_GetWindowOpacity(app->window) - 1.0f) < 0.02f;
-    app->config.window.width = 320; app->config.window.height = 240;
-    app->config.window.scale_percent = 100.0f;
-    SDL_SetWindowSize(app->window, 320, 240); SDL_SyncWindow(app->window);
-    SDL_Keymod old_modifiers = SDL_GetModState();
-    SDL_SetModState(old_modifiers | SDL_KMOD_SHIFT);
-    SDL_Event motion = {.type = SDL_EVENT_MOUSE_MOTION};
-    motion.motion.state = SDL_BUTTON_RMASK;
-    motion.motion.xrel = 20.0f; motion.motion.yrel = 20.0f;
-    resize_by_pointer(app, &motion); SDL_SyncWindow(app->window);
-    SDL_GetWindowSize(app->window, &width, &height);
-    bool gesture = app->resize_gesture && app->config.window.scale_percent == 120.0f &&
-        width == 384 && height == 288;
-    SDL_Event released = {.type = SDL_EVENT_MOUSE_BUTTON_UP};
-    released.button.button = SDL_BUTTON_RIGHT; l2dcat_window_event(app, &released);
-    gesture = gesture && !app->resize_gesture;
-    SDL_SetModState(old_modifiers);
-    app->config.window = backup;
-    l2dcat_window_sync_click_through(app);
-    l2dcat_platform_set_always_on_top(&app->platform, backup.always_on_top);
-    l2dcat_platform_set_taskbar(&app->platform, backup.taskbar_visible);
-    SDL_SetWindowOpacity(app->window, backup.opacity_percent / 100.0f);
-    SDL_SetWindowSize(app->window, original_width, original_height);
-    SDL_SetWindowPosition(app->window, original_x, original_y);
-    SDL_SyncWindow(app->window); l2dcat_window_mark_hit_dirty(app);
-    return clamped && scaled && opacity && hidden && restored && gesture;
-}
-
 bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
     if (event->type >= SDL_EVENT_WINDOW_FIRST && event->type <= SDL_EVENT_WINDOW_LAST &&
         event->window.windowID != SDL_GetWindowID(app->window)) return true;
@@ -254,7 +152,7 @@ bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
     if (event->type == SDL_EVENT_WINDOW_RESIZED) {
         app->config.window.width = event->window.data1;
         app->config.window.height = event->window.data2;
-        clamp_to_display(app);
+        l2dcat_window_clamp_to_display(app);
         app->dirty = true;
     }
     if (event->type == SDL_EVENT_WINDOW_RESIZED ||
@@ -266,13 +164,13 @@ bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
     } else if (event->type == SDL_EVENT_WINDOW_MOVED) {
         app->config.window.x = event->window.data1;
         app->config.window.y = event->window.data2;
-        clamp_to_display(app);
+        l2dcat_window_clamp_to_display(app);
         l2dcat_window_mark_hit_dirty(app);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         event->button.button == SDL_BUTTON_LEFT) {
         begin_drag_candidate(app, &event->button);
     } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
-        resize_by_pointer(app, event);
+        l2dcat_window_resize_by_pointer(app, event);
         update_drag_candidate(app, &event->motion);
     } else if (event->type == SDL_EVENT_MOUSE_WHEEL) {
         l2dcat_window_wheel(app, &event->wheel);

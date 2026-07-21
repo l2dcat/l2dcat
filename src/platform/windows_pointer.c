@@ -46,10 +46,11 @@ void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
         visible ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW, true);
 }
 
-void l2dcat_platform_set_geometry(L2DCatPlatform *platform,
+bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
     int x, int y, int width, int height) {
-    if (!platform || !platform->window) return;
-    SDL_SetWindowSize(platform->window, width, height);
+    if (!platform || !platform->window ||
+        !SDL_SetWindowSize(platform->window, width, height)) return false;
     SDL_SetWindowPosition(platform->window, x, y);
+    return true;
 }
 #endif

@@ -88,13 +88,10 @@ void l2dcat_preferences_page_cat(L2DCatApp *app, struct nk_context *context) {
         "pages.preference.cat.hints.windowSize", "Resize with the edge or Shift + right drag."),
         10.0f, &window->scale_percent, 500.0f, 1.0f);
     if (old_scale != window->scale_percent && old_scale > 0.0f) {
+        float requested_scale = window->scale_percent;
+        window->scale_percent = old_scale;
         l2dcat_window_cancel_wheel_animation(app);
-        float factor = window->scale_percent / old_scale;
-        window->width = (int)(window->width * factor);
-        window->height = (int)(window->height * factor);
-        SDL_SetWindowSize(app->window, window->width, window->height);
-        l2dcat_window_mark_hit_dirty(app);
-        app->dirty = true;
+        l2dcat_window_set_scale(app, requested_scale);
     }
     float old_radius = window->radius_percent;
     l2dcat_pref_float(context, "radius", tr(app,

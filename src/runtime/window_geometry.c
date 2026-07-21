@@ -1,0 +1,188 @@
+#include "runtime.h"
+
+#include <stdio.h>
+
+#define WINDOW_MIN_DIMENSION 64
+#define WINDOW_MAX_DIMENSION 8192
+#define WINDOW_MIN_SCALE 10.0f
+#define WINDOW_MAX_SCALE 500.0f
+
+static int round_dimension(double value) {
+    return (int)(value + 0.5);
+}
+
+bool l2dcat_window_scaled_size(int base_width, int base_height, float base_scale,
+    float requested_scale, float *actual_scale, int *width, int *height) {
+    if (base_width <= 0 || base_height <= 0 || base_scale <= 0.0f ||
+        !actual_scale || !width || !height) return false;
+    float minimum = SDL_max(WINDOW_MIN_SCALE, SDL_max(
+        base_scale * WINDOW_MIN_DIMENSION / base_width,
+        base_scale * WINDOW_MIN_DIMENSION / base_height));
+    float maximum = SDL_min(WINDOW_MAX_SCALE, SDL_min(
+        base_scale * WINDOW_MAX_DIMENSION / base_width,
+        base_scale * WINDOW_MAX_DIMENSION / base_height));
+    if (minimum > maximum) return false;
+    float scale = SDL_clamp(requested_scale, minimum, maximum);
+    int next_width = round_dimension((double)base_width * scale / base_scale);
+    int next_height = round_dimension((double)base_height * scale / base_scale);
+    *actual_scale = scale;
+    *width = SDL_clamp(next_width, WINDOW_MIN_DIMENSION, WINDOW_MAX_DIMENSION);
+    *height = SDL_clamp(next_height, WINDOW_MIN_DIMENSION, WINDOW_MAX_DIMENSION);
+    return true;
+}
+
+bool l2dcat_window_apply_geometry(L2DCatApp *app, int x, int y,
+    float scale, int width, int height) {
+    if (!app || !app->window || width < WINDOW_MIN_DIMENSION ||
+        height < WINDOW_MIN_DIMENSION || width > WINDOW_MAX_DIMENSION ||
+        height > WINDOW_MAX_DIMENSION) return false;
+    if (!l2dcat_platform_set_geometry(&app->platform, x, y, width, height))
+        return false;
+    app->config.window.scale_percent = scale;
+    app->config.window.x = x;
+    app->config.window.y = y;
+    app->config.window.width = width;
+    app->config.window.height = height;
+    if (SDL_GetWindowSizeInPixels(app->window,
+        &app->resize_pixel_width, &app->resize_pixel_height))
+        app->resize_pending = true;
+    app->dirty = true;
+    l2dcat_window_mark_hit_dirty(app);
+    return true;
+}
+
+bool l2dcat_window_set_scale(L2DCatApp *app, float scale) {
+    if (!app || !app->window) return false;
+    int x, y, width, height;
+    if (!SDL_GetWindowPosition(app->window, &x, &y) ||
+        !SDL_GetWindowSize(app->window, &width, &height)) return false;
+    float actual;
+    int next_width, next_height;
+    if (!l2dcat_window_scaled_size(width, height,
+        app->config.window.scale_percent, scale,
+        &actual, &next_width, &next_height)) return false;
+    if (actual == app->config.window.scale_percent &&
+        next_width == width && next_height == height) return false;
+    return l2dcat_window_apply_geometry(app, x, y,
+        actual, next_width, next_height);
+}
+
+void l2dcat_window_clamp_to_display(L2DCatApp *app) {
+    if (!app || !app->config.window.keep_in_screen) return;
+    SDL_DisplayID display = SDL_GetDisplayForWindow(app->window);
+    SDL_Rect bounds;
+    if (!display || !SDL_GetDisplayUsableBounds(display, &bounds)) return;
+    int x, y, width, height;
+    if (!SDL_GetWindowPosition(app->window, &x, &y) ||
+        !SDL_GetWindowSize(app->window, &width, &height)) return;
+    int max_x = SDL_max(bounds.x, bounds.x + bounds.w - width);
+    int max_y = SDL_max(bounds.y, bounds.y + bounds.h - height);
+    int next_x = SDL_clamp(x, bounds.x, max_x);
+    int next_y = SDL_clamp(y, bounds.y, max_y);
+    if (next_x == x && next_y == y) return;
+    SDL_SetWindowPosition(app->window, next_x, next_y);
+    app->config.window.x = next_x;
+    app->config.window.y = next_y;
+}
+
+void l2dcat_window_resize_by_pointer(L2DCatApp *app, const SDL_Event *event) {
+    bool shift = (SDL_GetModState() & SDL_KMOD_SHIFT) != 0 ||
+        l2dcat_input_shift_down(&app->input);
+    if (!(event->motion.state & SDL_BUTTON_RMASK) || !shift) return;
+    l2dcat_window_cancel_wheel_animation(app);
+    if (!app->resize_gesture) {
+        if (!SDL_GetWindowSize(app->window,
+            &app->resize_base_width, &app->resize_base_height)) return;
+        app->resize_scale_start = app->config.window.scale_percent;
+        app->resize_scale_target = app->resize_scale_start;
+        app->resize_gesture = true;
+    }
+    float delta = (event->motion.xrel + event->motion.yrel) * 0.5f;
+    app->resize_scale_target = SDL_clamp(app->resize_scale_target + delta,
+        WINDOW_MIN_SCALE, WINDOW_MAX_SCALE);
+    float actual;
+    int width, height, x, y;
+    if (!l2dcat_window_scaled_size(app->resize_base_width,
+        app->resize_base_height, app->resize_scale_start,
+        app->resize_scale_target, &actual, &width, &height) ||
+        !SDL_GetWindowPosition(app->window, &x, &y)) return;
+    app->resize_scale_target = actual;
+    if (!l2dcat_window_apply_geometry(app, x, y, actual, width, height))
+        app->resize_scale_target = app->config.window.scale_percent;
+}
+
+bool l2dcat_window_geometry_self_test(L2DCatApp *app) {
+    if (!app || !app->window) return false;
+    L2DCatWindowOptions backup = app->config.window;
+    int original_x, original_y, original_width, original_height;
+    SDL_GetWindowPosition(app->window, &original_x, &original_y);
+    SDL_GetWindowSize(app->window, &original_width, &original_height);
+    SDL_DisplayID display = SDL_GetDisplayForWindow(app->window);
+    SDL_Rect bounds;
+    if (!display || !SDL_GetDisplayUsableBounds(display, &bounds)) return false;
+    app->config.window.keep_in_screen = true;
+    l2dcat_window_apply_geometry(app, bounds.x - 2000, bounds.y - 2000,
+        100.0f, 320, 240);
+    SDL_SyncWindow(app->window);
+    l2dcat_window_clamp_to_display(app);
+    SDL_SyncWindow(app->window);
+    int x, y, width, height;
+    SDL_GetWindowPosition(app->window, &x, &y);
+    bool clamped = x >= bounds.x && y >= bounds.y;
+    bool scaled = l2dcat_window_set_scale(app, 125.0f);
+    SDL_SyncWindow(app->window);
+    SDL_GetWindowSize(app->window, &width, &height);
+    scaled = scaled && width == 400 && height == 300;
+    l2dcat_window_menu_action(app, L2DCAT_MENU_OPACITY_50);
+    bool opacity = SDL_fabsf(SDL_GetWindowOpacity(app->window) - 0.5f) < 0.02f;
+    app->config.window.hide_on_hover = true;
+    app->config.window.hide_delay_seconds = 0.0f;
+    app->config.window.pass_through = false;
+    app->config.window.opacity_percent = 100.0f;
+    l2dcat_app_track_hover(app, x + 10, y + 10);
+    l2dcat_app_update_hover(app, SDL_GetTicksNS() + 1);
+    bool hidden = app->hover_hidden && SDL_GetWindowOpacity(app->window) < 0.02f;
+    l2dcat_app_track_hover(app, bounds.x - 10, bounds.y - 10);
+    bool restored = !app->hover_hidden &&
+        SDL_fabsf(SDL_GetWindowOpacity(app->window) - 1.0f) < 0.02f;
+    float safe_scale;
+    int safe_width, safe_height;
+    bool bounded = l2dcat_window_scaled_size(8000, 4000, 100.0f, 500.0f,
+        &safe_scale, &safe_width, &safe_height) && safe_width == 8192 &&
+        safe_height == 4096 && safe_scale < 103.0f;
+    L2DCatInputEvent shift = {.kind = L2DCAT_INPUT_KEY_DOWN};
+    snprintf(shift.name, sizeof(shift.name), "ShiftLeft");
+    l2dcat_input_push(&app->input, &shift);
+    L2DCatInputEvent discarded;
+    l2dcat_input_pop(&app->input, &discarded);
+    SDL_Keymod old_modifiers = SDL_GetModState();
+    SDL_SetModState(old_modifiers & ~SDL_KMOD_SHIFT);
+    app->resize_gesture = false;
+    l2dcat_window_apply_geometry(app, x, y, 100.0f, 320, 240);
+    SDL_Event motion = {.type = SDL_EVENT_MOUSE_MOTION};
+    motion.motion.state = SDL_BUTTON_RMASK;
+    motion.motion.xrel = 20.0f;
+    motion.motion.yrel = 20.0f;
+    l2dcat_window_resize_by_pointer(app, &motion);
+    SDL_SyncWindow(app->window);
+    SDL_GetWindowSize(app->window, &width, &height);
+    bool gesture = app->resize_gesture &&
+        app->config.window.scale_percent == 120.0f &&
+        width == 384 && height == 288;
+    SDL_Event released = {.type = SDL_EVENT_MOUSE_BUTTON_UP};
+    released.button.button = SDL_BUTTON_RIGHT;
+    l2dcat_window_event(app, &released);
+    gesture = gesture && !app->resize_gesture;
+    shift.kind = L2DCAT_INPUT_KEY_UP;
+    l2dcat_input_push(&app->input, &shift);
+    l2dcat_input_pop(&app->input, &discarded);
+    app->resize_gesture = false;
+    SDL_SetModState(old_modifiers);
+    l2dcat_window_apply_geometry(app, original_x, original_y,
+        backup.scale_percent, original_width, original_height);
+    app->config.window = backup;
+    SDL_SetWindowOpacity(app->window, backup.opacity_percent / 100.0f);
+    l2dcat_window_sync_click_through(app);
+    SDL_SyncWindow(app->window);
+    return clamped && scaled && opacity && hidden && restored && bounded && gesture;
+}

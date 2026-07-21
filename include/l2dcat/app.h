@@ -59,6 +59,7 @@ typedef struct L2DCatApp {
     uint64_t hover_deadline_ns;
     uint64_t pointer_hit_deadline_ns;
     uint64_t mouse_last_ns;
+    uint64_t frame_audit_bmp_ns;
     L2DCatMouseTracking mouse_tracking;
     bool hover_inside;
     bool hover_hidden;
@@ -71,10 +72,13 @@ typedef struct L2DCatApp {
     bool right_mouse_down;
     double pointer_x, pointer_y;
     bool resize_gesture;
+    float resize_scale_start, resize_scale_target;
+    int resize_base_width, resize_base_height;
     bool resize_pending;
     bool wheel_animation_active;
+    bool wheel_gesture_active;
     int resize_pixel_width, resize_pixel_height;
-    uint64_t wheel_animation_ns, wheel_input_ns;
+    uint64_t wheel_animation_ns, wheel_input_ns, wheel_event_ns;
     float wheel_opacity_target, wheel_scale_target;
     float wheel_opacity_start, wheel_scale_start;
     float wheel_center_x, wheel_center_y;

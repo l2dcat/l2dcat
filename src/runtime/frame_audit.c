@@ -58,10 +58,18 @@ void l2dcat_frame_audit(L2DCatApp *app, int width, int height) {
         }
     }
     size_t pitch = (size_t)width * 4, bytes = pitch * (size_t)height;
-    unsigned char *pixels = malloc(bytes), *row = malloc(pitch);
-    if (!pixels || !row) { free(pixels); free(row); return; }
+    unsigned char *pixels = malloc(bytes);
+    if (!pixels) return;
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     record_frame(app, pixels, width, height, pitch);
+    uint64_t now = SDL_GetTicksNS();
+    if (app->frame_audit_bmp_ns && now >= app->frame_audit_bmp_ns &&
+        now - app->frame_audit_bmp_ns < 50000000ull) {
+        free(pixels); return;
+    }
+    app->frame_audit_bmp_ns = now;
+    unsigned char *row = malloc(pitch);
+    if (!row) { free(pixels); return; }
     for (int y = 0; y < height / 2; ++y) {
         unsigned char *top = pixels + (size_t)y * pitch;
         unsigned char *bottom = pixels + (size_t)(height - 1 - y) * pitch;
