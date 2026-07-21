@@ -49,6 +49,8 @@ bool l2dcat_platform_pointer_local(L2DCatPlatform *platform, double screen_x,
     double screen_y, float *local_x, float *local_y);
 void l2dcat_platform_set_always_on_top(L2DCatPlatform *platform, bool enabled);
 void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible);
+void l2dcat_platform_set_geometry(L2DCatPlatform *platform,
+    int x, int y, int width, int height);
 void l2dcat_platform_begin_drag(L2DCatPlatform *platform);
 bool l2dcat_platform_global_input_supported(void);
 bool l2dcat_platform_single_instance_begin(void);

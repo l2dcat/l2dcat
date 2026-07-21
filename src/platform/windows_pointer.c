@@ -45,4 +45,11 @@ void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
     update_style(platform, visible ? WS_EX_APPWINDOW : WS_EX_TOOLWINDOW,
         visible ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW, true);
 }
+
+void l2dcat_platform_set_geometry(L2DCatPlatform *platform,
+    int x, int y, int width, int height) {
+    HWND window = native_window(platform);
+    if (window) SetWindowPos(window, NULL, x, y, width, height,
+        SWP_NOZORDER | SWP_NOACTIVATE);
+}
 #endif

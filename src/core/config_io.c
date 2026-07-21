@@ -134,7 +134,8 @@ L2DCatResult l2dcat_config_load(const char *path, L2DCatConfig *config, L2DCatEr
         return L2DCAT_ERROR_FORMAT;
     }
     yyjson_val *root = yyjson_doc_get_root(doc);
-    config->schema_version = (uint32_t)get_int(root, "schemaVersion", 1);
+    uint32_t loaded_schema = (uint32_t)get_int(root, "schemaVersion", 1);
+    config->schema_version = loaded_schema;
     read_model(yyjson_obj_get(root, "model"), &config->model);
     read_window(yyjson_obj_get(root, "window"), &config->window);
     read_app(yyjson_obj_get(root, "app"), &config->app);
@@ -143,6 +144,10 @@ L2DCatResult l2dcat_config_load(const char *path, L2DCatConfig *config, L2DCatEr
     const char *model = get_string(root, "currentModel");
     if (model) snprintf(config->current_model, sizeof(config->current_model), "%s", model);
     config->current_mode = parse_mode(get_string(root, "currentMode"));
+    if (loaded_schema < 2) {
+        config->window.visible = true;
+        config->window.always_on_top = true;
+    }
     yyjson_doc_free(doc);
     l2dcat_config_validate(config);
     return L2DCAT_OK;

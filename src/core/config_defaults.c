@@ -9,12 +9,13 @@ static float clampf(float value, float low, float high) {
 void l2dcat_config_defaults(L2DCatConfig *config) {
     if (!config) return;
     memset(config, 0, sizeof(*config));
-    config->schema_version = 1;
+    config->schema_version = 2;
     config->model.motion_sound = true;
     config->model.behavior = true;
     config->model.auto_release_seconds = 3.0f;
     config->model.max_fps = 60;
     config->window.visible = true;
+    config->window.always_on_top = true;
     config->window.keep_in_screen = true;
     config->window.scale_percent = 100.0f;
     config->window.opacity_percent = 100.0f;
@@ -29,7 +30,7 @@ void l2dcat_config_defaults(L2DCatConfig *config) {
 
 void l2dcat_config_validate(L2DCatConfig *config) {
     if (!config) return;
-    config->schema_version = 1;
+    config->schema_version = 2;
     config->model.auto_release_seconds = clampf(config->model.auto_release_seconds, 0.05f, 30.0f);
     if (config->model.max_fps < 1) config->model.max_fps = 1;
     if (config->model.max_fps > 240) config->model.max_fps = 240;

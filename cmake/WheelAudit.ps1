@@ -87,6 +87,11 @@ try {
     $opacitySamples | Export-Csv (Join-Path $OutputDir "opacity-samples.csv") -NoTypeInformation
     $samples | Export-Csv (Join-Path $OutputDir "scale-samples.csv") -NoTypeInformation
     $uniqueWidths = @($samples.Width | Select-Object -Unique).Count
+    $maxWidthStep = 0
+    for ($index = 1; $index -lt $samples.Count; $index++) {
+        $step = [Math]::Abs($samples[$index].Width - $samples[$index - 1].Width)
+        if ($step -gt $maxWidthStep) { $maxWidthStep = $step }
+    }
     $centerX = ($initial.L + $initial.R) / 2.0
     $centerY = ($initial.T + $initial.B) / 2.0
     $result = [ordered]@{
@@ -94,12 +99,14 @@ try {
         InitialWidth=$initial.R-$initial.L; FinalWidth=$final.Width
         InitialHeight=$initial.B-$initial.T; FinalHeight=$final.Height
         UniqueAnimatedWidths=$uniqueWidths
+        MaxAnimatedWidthStep=$maxWidthStep
         CenterDriftX=[Math]::Abs($final.CenterX-$centerX)
         CenterDriftY=[Math]::Abs($final.CenterY-$centerY)
     }
     $result.Passed = $opacityAvailable -and $alpha -lt 255 -and
         $final.Width -gt $result.InitialWidth -and $final.Height -gt $result.InitialHeight -and
-        $uniqueWidths -ge 10 -and $result.CenterDriftX -le 2 -and $result.CenterDriftY -le 2
+        $uniqueWidths -ge 6 -and $maxWidthStep -le 8 -and
+        $result.CenterDriftX -le 2 -and $result.CenterDriftY -le 2
     $result | ConvertTo-Json | Set-Content (Join-Path $OutputDir "result.json")
     [pscustomobject]$result | Format-List
     if (-not $result.Passed) { exit 1 }

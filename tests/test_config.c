@@ -13,6 +13,7 @@ void test_config(void) {
     CHECK(value.model.max_fps == 60);
     CHECK(value.window.width == 612);
     CHECK(value.window.height == 354);
+    CHECK(value.window.visible && value.window.always_on_top);
     CHECK(value.current_mode == L2DCAT_MODE_GAMEPAD);
 
     value.model.max_fps = 900;
@@ -51,4 +52,17 @@ void test_config(void) {
     CHECK(loaded.behavior_shortcut_count == 1);
     CHECK(strcmp(loaded.behavior_shortcuts[0].shortcut, "Control+1") == 0);
     CHECK(l2dcat_file_remove(path));
+
+    const char *legacy_path = "l2dcat-legacy.json";
+    FILE *legacy = l2dcat_file_open(legacy_path, "wb");
+    CHECK(legacy != NULL);
+    if (legacy) {
+        fputs("{\"schemaVersion\":1,\"window\":{\"visible\":false,"
+            "\"alwaysOnTop\":false}}", legacy);
+        fclose(legacy);
+    }
+    CHECK(l2dcat_config_load(legacy_path, &loaded, &error) == L2DCAT_OK);
+    CHECK(loaded.schema_version == 2);
+    CHECK(loaded.window.visible && loaded.window.always_on_top);
+    CHECK(l2dcat_file_remove(legacy_path));
 }

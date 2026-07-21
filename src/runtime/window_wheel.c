@@ -2,7 +2,7 @@
 #include "l2dcat/preferences.h"
 
 #define WHEEL_OPACITY_STEP 5.0f
-#define WHEEL_SCALE_STEP 8.0f
+#define WHEEL_SCALE_STEP 5.0f
 #define WHEEL_OPACITY_ANIMATION_NS 220000000ull
 #define WHEEL_SCALE_ANIMATION_NS 420000000ull
 
@@ -22,6 +22,9 @@ static void initialize_targets(L2DCatApp *app) {
     app->wheel_scale_start = app->wheel_scale_target;
     app->wheel_center_x = x + width * 0.5f;
     app->wheel_center_y = y + height * 0.5f;
+    app->wheel_geometry_scale = app->config.window.scale_percent;
+    app->wheel_base_width = width;
+    app->wheel_base_height = height;
     app->wheel_animation_ns = SDL_GetTicksNS();
 }
 
@@ -51,18 +54,16 @@ static float interpolate(float start, float target, float progress) {
 static void apply_scale(L2DCatApp *app, float scale) {
     float old = app->config.window.scale_percent;
     if (old <= 0.0f || SDL_fabsf(scale - old) < 0.001f) return;
-    int width, height;
-    SDL_GetWindowSize(app->window, &width, &height);
-    float factor = scale / old;
-    int next_width = SDL_max(1, (int)(width * factor + 0.5f));
-    int next_height = SDL_max(1, (int)(height * factor + 0.5f));
+    float factor = scale / app->wheel_geometry_scale;
+    int next_width = SDL_max(1, (int)(app->wheel_base_width * factor + 0.5f));
+    int next_height = SDL_max(1, (int)(app->wheel_base_height * factor + 0.5f));
     app->config.window.scale_percent = scale;
     app->config.window.width = next_width;
     app->config.window.height = next_height;
-    SDL_SetWindowSize(app->window, next_width, next_height);
-    SDL_SetWindowPosition(app->window,
+    l2dcat_platform_set_geometry(&app->platform,
         (int)(app->wheel_center_x - next_width * 0.5f + 0.5f),
-        (int)(app->wheel_center_y - next_height * 0.5f + 0.5f));
+        (int)(app->wheel_center_y - next_height * 0.5f + 0.5f),
+        next_width, next_height);
     l2dcat_window_mark_hit_dirty(app);
 }
 
@@ -108,12 +109,12 @@ bool l2dcat_window_wheel_self_test(L2DCatApp *app) {
     started = app->wheel_animation_ns;
     for (int i = 1; i <= 30; ++i)
         l2dcat_window_update_wheel_animation(app, started + i * 16666667ull);
-    bool scale = SDL_fabsf(app->config.window.scale_percent - 108.0f) < 0.1f;
+    bool scale = SDL_fabsf(app->config.window.scale_percent - 105.0f) < 0.1f;
     SDL_SetModState(modifiers);
     app->config.window = backup;
     app->wheel_animation_active = false;
     SDL_SetWindowOpacity(app->window, backup.opacity_percent / 100.0f);
-    SDL_SetWindowSize(app->window, backup.width, backup.height);
-    SDL_SetWindowPosition(app->window, original_x, original_y);
+    l2dcat_platform_set_geometry(&app->platform, original_x, original_y,
+        backup.width, backup.height);
     return opacity && scale;
 }
