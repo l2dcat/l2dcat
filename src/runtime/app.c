@@ -218,7 +218,6 @@ static void update_model(L2DCatApp *app, uint64_t now) {
     app->last_frame_ns = now;
     if (l2dcat_live2d_update(app->live2d, elapsed)) app->dirty = true;
 }
-
 static void render(L2DCatApp *app) {
     SDL_GL_MakeCurrent(app->window, app->gl_context);
     int width, height;
@@ -237,6 +236,8 @@ static void render(L2DCatApp *app) {
     app->dirty = false;
     l2dcat_window_sync_click_through(app); l2dcat_window_schedule_hit_check(app);
 }
+
+void l2dcat_app_render_now(L2DCatApp *app) { if (app && app->window && app->config.window.visible) render(app); }
 
 static void loop(L2DCatApp *app) {
     while (app->running) {

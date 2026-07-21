@@ -269,7 +269,7 @@ L2DCatMenuAction l2dcat_platform_context_menu(L2DCatPlatform *platform,
     HWND window = native_window(platform);
     SetForegroundWindow(window);
     l2dcat_windows_menu_preview(labels->preview, labels->preview_userdata);
-    UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
+    UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
         point.x, point.y, 0, window, NULL);
     l2dcat_windows_menu_preview(NULL, NULL);
     if (labels->restore) labels->restore(labels->preview_userdata, (L2DCatMenuAction)command);

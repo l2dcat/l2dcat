@@ -49,6 +49,7 @@ static bool open_window(L2DCatPreferences *value) {
     value->window = SDL_CreateWindow(L2DCAT_NAME, 900, 640, flags);
     if (!value->window) return false;
     SDL_SetWindowMinimumSize(value->window, 720, 520);
+    SDL_ShowWindow(value->window); l2dcat_platform_raise_window(value->window);
     value->gl_context = value->app->gl_context;
     if (!SDL_GL_MakeCurrent(value->window, value->gl_context)) {
         SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
@@ -79,8 +80,7 @@ static bool open_window(L2DCatPreferences *value) {
     value->font_language = value->app->config.app.language;
     SDL_GL_SetSwapInterval(1);
     SDL_StartTextInput(value->window);
-    SDL_ShowWindow(value->window);
-    l2dcat_platform_raise_window(value->window);
+    SDL_ShowWindow(value->window); l2dcat_platform_raise_window(value->window);
     value->render_dirty = true;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     return true;
@@ -101,7 +101,7 @@ void l2dcat_preferences_show(L2DCatPreferences *value) {
         return;
     }
     SDL_ShowWindow(value->window);
-    SDL_RaiseWindow(value->window);
+    l2dcat_platform_raise_window(value->window);
     value->render_dirty = true;
 }
 void l2dcat_preferences_close(L2DCatPreferences *value) {

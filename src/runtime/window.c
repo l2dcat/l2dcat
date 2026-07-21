@@ -92,6 +92,7 @@ static void menu_preview(void *userdata, L2DCatMenuAction action) {
         app->config.window.opacity_percent = (float[]){25,50,75,100}[action-L2DCAT_MENU_OPACITY_25];
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
     }
+    l2dcat_app_render_now(app);
 }
 static void menu_restore(void *userdata, L2DCatMenuAction selected) {
     MenuPreview *state = userdata; L2DCatApp *app = state->app;
@@ -99,6 +100,7 @@ static void menu_restore(void *userdata, L2DCatMenuAction selected) {
     l2dcat_window_set_scale(app, state->scale);
     app->config.window.opacity_percent = state->opacity;
     SDL_SetWindowOpacity(app->window, state->opacity / 100.0f);
+    l2dcat_app_render_now(app);
     (void)selected;
 }
 
