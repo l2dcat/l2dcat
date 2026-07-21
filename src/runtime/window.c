@@ -81,9 +81,18 @@ static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
 
 typedef struct MenuPreview { L2DCatApp *app; char model[L2DCAT_ID_CAP];
     float scale, opacity; L2DCatMenuAction last; } MenuPreview;
+static void menu_restore(void *userdata, L2DCatMenuAction selected);
+static bool previewable(L2DCatMenuAction action) {
+    return (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_OPACITY_100) ||
+        action >= L2DCAT_MENU_MODEL_FIRST;
+}
 static void menu_preview(void *userdata, L2DCatMenuAction action) {
     MenuPreview *state = userdata; L2DCatApp *app = state->app;
     if (action == state->last) return;
+    if (state->last != L2DCAT_MENU_NONE) menu_restore(state, L2DCAT_MENU_NONE);
+    if (!previewable(action)) {
+        menu_restore(state, L2DCAT_MENU_NONE); state->last = action; return;
+    }
     state->last = action;
     if (action >= L2DCAT_MENU_MODEL_FIRST &&
         (size_t)(action - L2DCAT_MENU_MODEL_FIRST) < app->models.count)
