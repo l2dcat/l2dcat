@@ -80,9 +80,11 @@ static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
 }
 
 typedef struct MenuPreview { L2DCatApp *app; char model[L2DCAT_ID_CAP];
-    float scale, opacity; } MenuPreview;
+    float scale, opacity; L2DCatMenuAction last; } MenuPreview;
 static void menu_preview(void *userdata, L2DCatMenuAction action) {
     MenuPreview *state = userdata; L2DCatApp *app = state->app;
+    if (action == state->last) return;
+    state->last = action;
     if (action >= L2DCAT_MENU_MODEL_FIRST &&
         (size_t)(action - L2DCAT_MENU_MODEL_FIRST) < app->models.count)
         l2dcat_app_select_model(app, app->models.entries[action - L2DCAT_MENU_MODEL_FIRST].id);
@@ -96,17 +98,27 @@ static void menu_preview(void *userdata, L2DCatMenuAction action) {
 }
 static void menu_restore(void *userdata, L2DCatMenuAction selected) {
     MenuPreview *state = userdata; L2DCatApp *app = state->app;
-    l2dcat_app_select_model(app, state->model);
-    l2dcat_window_set_scale(app, state->scale);
-    app->config.window.opacity_percent = state->opacity;
-    SDL_SetWindowOpacity(app->window, state->opacity / 100.0f);
-    l2dcat_app_render_now(app);
+    bool changed = false;
+    bool keep_model = selected >= L2DCAT_MENU_MODEL_FIRST;
+    bool keep_scale = selected >= L2DCAT_MENU_SCALE_50 && selected <= L2DCAT_MENU_SCALE_200;
+    bool keep_opacity = selected >= L2DCAT_MENU_OPACITY_25 && selected <= L2DCAT_MENU_OPACITY_100;
+    if (!keep_model && strcmp(app->config.current_model, state->model) != 0) {
+        l2dcat_app_select_model(app, state->model); changed = true;
+    }
+    if (!keep_scale && SDL_fabsf(app->config.window.scale_percent - state->scale) > .01f) {
+        l2dcat_window_set_scale(app, state->scale); changed = true;
+    }
+    if (!keep_opacity && SDL_fabsf(app->config.window.opacity_percent - state->opacity) > .01f) {
+        app->config.window.opacity_percent = state->opacity;
+        SDL_SetWindowOpacity(app->window, state->opacity / 100.0f); changed = true;
+    }
+    if (changed) l2dcat_app_render_now(app);
     (void)selected;
 }
 
 static void context_menu(L2DCatApp *app) {
     MenuPreview preview = {app, "", app->config.window.scale_percent,
-        app->config.window.opacity_percent};
+        app->config.window.opacity_percent, L2DCAT_MENU_NONE};
     snprintf(preview.model, sizeof(preview.model), "%s", app->config.current_model);
     const char *model_names[L2DCAT_MODEL_CAP];
     size_t current_model = app->models.count;
