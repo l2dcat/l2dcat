@@ -113,6 +113,7 @@ add_library(l2dcat_runtime STATIC
   src/runtime/model_files.c
   src/runtime/model_import.c
   src/runtime/model_import_discovery.c
+  src/runtime/runtime_flow.c
   src/runtime/shortcuts.c
   src/runtime/tray.c
   src/runtime/update.c
@@ -252,7 +253,6 @@ if(MSVC)
 endif()
 
 include(cmake/NativeRelease.cmake)
-
 l2dcat_stage_cubism_assets(l2dcat)
 
 add_custom_target(check-lines ALL

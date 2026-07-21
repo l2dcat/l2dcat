@@ -35,6 +35,7 @@ typedef struct L2DCatApp {
     char locale_root[L2DCAT_PATH_CAP];
     char smoke_import_path[L2DCAT_PATH_CAP];
     char smoke_model[L2DCAT_ID_CAP];
+    char smoke_runtime_model[L2DCAT_ID_CAP];
     char smoke_live2d_scenario[L2DCAT_ID_CAP];
     bool running;
     bool smoke;
@@ -48,6 +49,9 @@ typedef struct L2DCatApp {
     bool smoke_context_menu;
     bool smoke_frame_audited;
     bool smoke_frame_series;
+    bool smoke_runtime_flow;
+    unsigned smoke_runtime_stage;
+    uint64_t smoke_runtime_flow_ns;
     bool restart_requested;
     int smoke_language;
     int smoke_theme;

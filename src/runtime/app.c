@@ -24,6 +24,7 @@ static void parse_arguments(L2DCatApp *app, int argc, char **argv) {
             app->smoke_taskbar_visible = true;
         else if (strcmp(argv[i], "--ci-context-menu") == 0) app->smoke_context_menu = true;
         else if (strcmp(argv[i], "--ci-frame-series") == 0) app->smoke_frame_series = true;
+        else if (strcmp(argv[i], "--ci-runtime-flow") == 0) app->smoke_runtime_flow = true;
         else if (strncmp(argv[i], "--ci-preference-page=", 21) == 0) {
             int page = atoi(argv[i] + 21);
             if (page >= 0 && page < 5) app->smoke_preference_page = page;
@@ -236,9 +237,7 @@ static void render(L2DCatApp *app) {
     app->dirty = false;
     l2dcat_window_sync_click_through(app); l2dcat_window_schedule_hit_check(app);
 }
-
 void l2dcat_app_render_now(L2DCatApp *app) { if (app && app->window && app->config.window.visible) render(app); }
-
 static void loop(L2DCatApp *app) {
     while (app->running) {
         bool preferences = l2dcat_preferences_visible(app->preferences);
@@ -254,6 +253,7 @@ static void loop(L2DCatApp *app) {
         l2dcat_preferences_input_end(app->preferences);
         drain_input(app);
         uint64_t now = SDL_GetTicksNS(); l2dcat_window_update_wheel_animation(app, now);
+        l2dcat_runtime_flow_update(app, now);
         l2dcat_window_apply_pending_resize(app);
         l2dcat_app_update_hover(app, now);
         if (app->config.window.visible) update_model(app, now); else app->last_frame_ns = now;

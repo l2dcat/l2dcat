@@ -48,5 +48,6 @@ void l2dcat_window_show_context_menu(L2DCatApp *app);
 void l2dcat_live2d_audit_run(L2DCatApp *app);
 void l2dcat_frame_audit(L2DCatApp *app, int width, int height);
 void l2dcat_app_render_now(L2DCatApp *app);
+void l2dcat_runtime_flow_update(L2DCatApp *app, uint64_t now);
 
 #endif
