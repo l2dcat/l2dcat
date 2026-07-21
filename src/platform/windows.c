@@ -246,11 +246,11 @@ L2DCatMenuAction l2dcat_platform_context_menu(L2DCatPlatform *platform,
         UINT flags = MF_STRING | (SDL_fabsf(labels->scale_percent - scales[i]) < .5f ? MF_CHECKED : 0);
         AppendMenuW(sizes, flags, L2DCAT_MENU_SCALE_50 + i, label);
     }
-    const int opacities[] = {25, 50, 75, 100};
-    for (int i = 0; i < 4; ++i) {
+    const int opacities[] = {10,20,30,40,50,60,70,80,90,100};
+    for (int i = 0; i < 10; ++i) {
         wchar_t label[16]; swprintf(label, 16, L"%d%%", opacities[i]);
         UINT flags = MF_STRING | (SDL_fabsf(labels->opacity_percent - opacities[i]) < .5f ? MF_CHECKED : 0);
-        AppendMenuW(opacity, flags, L2DCAT_MENU_OPACITY_25 + i, label);
+        AppendMenuW(opacity, flags, L2DCAT_MENU_OPACITY_10 + i, label);
     }
     for (size_t i = 0; i < labels->model_count; ++i)
         menu_text(models, MF_STRING | (i == labels->current_model ? MF_CHECKED : 0),
@@ -263,7 +263,6 @@ L2DCatMenuAction l2dcat_platform_context_menu(L2DCatPlatform *platform,
         (UINT_PTR)models, model_label ? model_label : L"");
     free(size_label); free(opacity_label); free(model_label);
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
-    menu_text(menu, MF_STRING, L2DCAT_MENU_RESTART, labels->restart);
     menu_text(menu, MF_STRING, L2DCAT_MENU_EXIT, labels->exit);
     POINT point; GetCursorPos(&point);
     HWND window = native_window(platform);

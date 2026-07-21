@@ -103,7 +103,7 @@ $locale = Get-Content -Raw -Encoding utf8 (Join-Path $root "resources\assets\loc
 $menuLabels = $locale.composables.useAppMenu.labels
 $expected = @($menuLabels.preference, $menuLabels.hideCat, $menuLabels.passThrough,
     $menuLabels.alwaysOnTop, $menuLabels.windowSize, $menuLabels.opacity,
-    $menuLabels.model, $menuLabels.restartApp, $menuLabels.quitApp)
+    $menuLabels.model, $menuLabels.quitApp)
 $labelsMatch = $Language -ne "zh-CN" -or (($labels -join "|") -eq ($expected -join "|"))
 $passed = $menuHandle -ne [IntPtr]::Zero -and $preferencesOpened -and $exitCode -eq 0 -and $labelsMatch
 $result = [pscustomobject]@{MenuFound=($menuHandle-ne[IntPtr]::Zero); Labels=$labels

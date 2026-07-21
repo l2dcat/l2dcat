@@ -24,11 +24,16 @@ typedef enum L2DCatMenuAction {
     L2DCAT_MENU_SCALE_125,
     L2DCAT_MENU_SCALE_150,
     L2DCAT_MENU_SCALE_200,
-    L2DCAT_MENU_OPACITY_25,
+    L2DCAT_MENU_OPACITY_10,
+    L2DCAT_MENU_OPACITY_20,
+    L2DCAT_MENU_OPACITY_30,
+    L2DCAT_MENU_OPACITY_40,
     L2DCAT_MENU_OPACITY_50,
-    L2DCAT_MENU_OPACITY_75,
+    L2DCAT_MENU_OPACITY_60,
+    L2DCAT_MENU_OPACITY_70,
+    L2DCAT_MENU_OPACITY_80,
+    L2DCAT_MENU_OPACITY_90,
     L2DCAT_MENU_OPACITY_100,
-    L2DCAT_MENU_RESTART,
     L2DCAT_MENU_EXIT,
     L2DCAT_MENU_MODEL_FIRST = 1000
 } L2DCatMenuAction;
@@ -36,7 +41,7 @@ typedef void (*L2DCatMenuPreview)(void *userdata, L2DCatMenuAction action);
 
 typedef struct L2DCatMenuLabels {
     const char *preferences, *hide, *pass_through, *always_on_top;
-    const char *window_size, *opacity, *model, *restart, *exit;
+    const char *window_size, *opacity, *model, *exit;
     const char *const *model_names;
     size_t model_count, current_model;
     float scale_percent, opacity_percent;
