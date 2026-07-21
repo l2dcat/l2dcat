@@ -3,6 +3,7 @@
 
 #define WHEEL_OPACITY_STEP 5.0f
 #define WHEEL_SCALE_STEP 5.0f
+#define WHEEL_SCALE_TARGET_LEAD 15.0f
 #define WHEEL_OPACITY_ANIMATION_NS 220000000ull
 #define WHEEL_SCALE_ANIMATION_NS 420000000ull
 
@@ -32,10 +33,14 @@ void l2dcat_window_wheel(L2DCatApp *app, const SDL_MouseWheelEvent *event) {
     if (!app || !app->window || !event) return;
     float delta = wheel_delta(event);
     if (SDL_fabsf(delta) < 0.001f) return;
+    delta = SDL_clamp(delta, -1.0f, 1.0f);
     initialize_targets(app);
     if (SDL_GetModState() & SDL_KMOD_CTRL) {
+        float current = app->config.window.scale_percent;
+        float minimum = SDL_max(10.0f, current - WHEEL_SCALE_TARGET_LEAD);
+        float maximum = SDL_min(500.0f, current + WHEEL_SCALE_TARGET_LEAD);
         app->wheel_scale_target = SDL_clamp(app->wheel_scale_target +
-            delta * WHEEL_SCALE_STEP, 10.0f, 500.0f);
+            delta * WHEEL_SCALE_STEP, minimum, maximum);
     } else {
         app->wheel_opacity_target = SDL_clamp(app->wheel_opacity_target +
             delta * WHEEL_OPACITY_STEP, 10.0f, 100.0f);

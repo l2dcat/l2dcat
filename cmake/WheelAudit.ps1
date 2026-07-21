@@ -1,4 +1,4 @@
-param([string]$Exe = "", [string]$OutputDir = "")
+param([string]$Exe = "", [string]$OutputDir = "", [int]$ScaleDelta = 120)
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\l2dcat.exe" }
@@ -74,7 +74,7 @@ try {
 
     [void][L2DCatWheelNative]::PostMessageW($window, 0x0100, [IntPtr]0x11, [IntPtr]::Zero)
     [void][L2DCatWheelNative]::PostMessageW($window, 0x020A,
-        (Wheel-WParam 120 8), $position)
+        (Wheel-WParam $ScaleDelta 8), $position)
     $samples = [Collections.Generic.List[object]]::new()
     for ($index = 0; $index -lt 30; $index++) {
         $rect = Get-Rect $window
@@ -103,8 +103,13 @@ try {
         CenterDriftX=[Math]::Abs($final.CenterX-$centerX)
         CenterDriftY=[Math]::Abs($final.CenterY-$centerY)
     }
-    $result.Passed = $opacityAvailable -and $alpha -lt 255 -and
-        $final.Width -gt $result.InitialWidth -and $final.Height -gt $result.InitialHeight -and
+    $directionPassed = if ($ScaleDelta -gt 0) {
+        $final.Width -gt $result.InitialWidth -and $final.Height -gt $result.InitialHeight
+    } else {
+        $final.Width -lt $result.InitialWidth -and $final.Height -lt $result.InitialHeight -and
+            $final.Width -ge $result.InitialWidth * 0.8
+    }
+    $result.Passed = $opacityAvailable -and $alpha -lt 255 -and $directionPassed -and
         $uniqueWidths -ge 6 -and $maxWidthStep -le 8 -and
         $result.CenterDriftX -le 2 -and $result.CenterDriftY -le 2
     $result | ConvertTo-Json | Set-Content (Join-Path $OutputDir "result.json")
