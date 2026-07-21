@@ -4,13 +4,13 @@
 
 #define WHEEL_OPACITY_STEP 5.0f
 #define WHEEL_SCALE_STEP 5.0f
-#define WHEEL_SCALE_TARGET_LEAD 60.0f
+#define WHEEL_SCALE_TARGET_LEAD 10.0f
 #define WHEEL_OPACITY_RESPONSE_SECONDS 0.05f
-#define WHEEL_SCALE_RESPONSE_SECONDS 0.07f
+#define WHEEL_SCALE_RESPONSE_SECONDS 0.01f
 #define WHEEL_OPACITY_SPEED_PER_SECOND 100.0f
-#define WHEEL_SCALE_SPEED_PER_SECOND 50.0f
+#define WHEEL_SCALE_SPEED_PER_SECOND 150.0f
 #define WHEEL_MAX_FRAME_SECONDS (1.0f / 60.0f)
-#define WHEEL_GESTURE_IDLE_NS 300000000ull
+#define WHEEL_GESTURE_IDLE_NS 120000000ull
 
 static float wheel_delta(const SDL_MouseWheelEvent *event) {
     float value = event ? event->y : 0.0f;
@@ -55,7 +55,7 @@ void l2dcat_window_wheel(L2DCatApp *app, const SDL_MouseWheelEvent *event) {
     if (!app || !app->window || !event) return;
     float delta = wheel_delta(event);
     if (SDL_fabsf(delta) < 0.001f) return;
-    delta = SDL_clamp(delta, -12.0f, 12.0f);
+    delta = SDL_clamp(delta, -1.0f, 1.0f);
     uint64_t event_ns = event->timestamp ? event->timestamp : SDL_GetTicksNS();
     bool continuing = app->wheel_gesture_active && event_ns >= app->wheel_event_ns &&
         event_ns - app->wheel_event_ns < WHEEL_GESTURE_IDLE_NS;
@@ -90,9 +90,9 @@ void l2dcat_window_wheel(L2DCatApp *app, const SDL_MouseWheelEvent *event) {
 }
 
 static float approach(float current, float target, float elapsed_seconds,
-    float response_seconds, float speed_per_second) {
+    float response_seconds, float speed_per_second, float snap_distance) {
     float difference = target - current;
-    if (SDL_fabsf(difference) < 0.01f) return target;
+    if (SDL_fabsf(difference) < snap_distance) return target;
     float alpha = elapsed_seconds / (response_seconds + elapsed_seconds);
     float step = difference * alpha;
     float maximum = speed_per_second * elapsed_seconds;
@@ -134,10 +134,10 @@ void l2dcat_window_update_wheel_animation(L2DCatApp *app, uint64_t now) {
         WHEEL_MAX_FRAME_SECONDS);
     float opacity = approach(app->config.window.opacity_percent,
         app->wheel_opacity_target, elapsed_seconds,
-        WHEEL_OPACITY_RESPONSE_SECONDS, WHEEL_OPACITY_SPEED_PER_SECOND);
+        WHEEL_OPACITY_RESPONSE_SECONDS, WHEEL_OPACITY_SPEED_PER_SECOND, 0.01f);
     float scale = approach(app->config.window.scale_percent,
         app->wheel_scale_target, elapsed_seconds,
-        WHEEL_SCALE_RESPONSE_SECONDS, WHEEL_SCALE_SPEED_PER_SECOND);
+        WHEEL_SCALE_RESPONSE_SECONDS, WHEEL_SCALE_SPEED_PER_SECOND, 0.5f);
     bool changed = SDL_fabsf(opacity - app->config.window.opacity_percent) > 0.001f ||
         SDL_fabsf(scale - app->config.window.scale_percent) > 0.001f;
     if (SDL_fabsf(opacity - app->config.window.opacity_percent) > 0.001f) {
@@ -181,27 +181,26 @@ bool l2dcat_window_wheel_self_test(L2DCatApp *app) {
     SDL_SetModState(modifiers | SDL_KMOD_CTRL);
     wheel.y = 1.0f; l2dcat_window_wheel(app, &wheel);
     started = app->wheel_animation_ns;
-    l2dcat_window_update_wheel_animation(app, started + 100000000ull);
-    bool slow_frame = app->config.window.scale_percent >= 100.5f &&
-        app->config.window.scale_percent <= 101.1f;
-    for (int i = 1; i <= 30; ++i)
-        l2dcat_window_update_wheel_animation(app,
-            started + 100000000ull + i * 16666667ull);
-    bool scale = SDL_fabsf(app->config.window.scale_percent - 105.0f) < 0.1f;
+    for (int i = 1; i <= 8; ++i)
+        l2dcat_window_update_wheel_animation(app, started + i * 16666667ull);
+    bool responsive = SDL_fabsf(app->config.window.scale_percent - 105.0f) < 0.1f;
+    l2dcat_window_update_wheel_animation(app,
+        app->wheel_input_ns + WHEEL_GESTURE_IDLE_NS + 1);
+    bool scale = responsive && !app->wheel_animation_active;
     l2dcat_window_cancel_wheel_animation(app);
     l2dcat_window_apply_geometry(app, original_x, original_y, 100.0f,
         original_width, original_height);
     wheel.y = 1000.0f;
-    for (int i = 0; i < 32; ++i) l2dcat_window_wheel(app, &wheel);
-    bool burst = app->wheel_scale_target >= 159.5f &&
-        app->wheel_scale_target <= 160.1f;
+    for (int i = 0; i < 2; ++i) l2dcat_window_wheel(app, &wheel);
+    bool burst = app->wheel_scale_target >= 109.5f &&
+        app->wheel_scale_target <= 110.1f;
     l2dcat_window_cancel_wheel_animation(app);
     l2dcat_window_apply_geometry(app, original_x, original_y, 100.0f,
         original_width, original_height);
     wheel.y = 3.0f;
     l2dcat_window_wheel(app, &wheel);
-    bool aggregated = app->wheel_scale_target >= 114.5f &&
-        app->wheel_scale_target <= 115.1f;
+    bool aggregated = app->wheel_scale_target >= 104.5f &&
+        app->wheel_scale_target <= 105.1f;
     l2dcat_window_cancel_wheel_animation(app);
     l2dcat_window_apply_geometry(app, original_x, original_y, 100.0f,
         original_width, original_height);
@@ -249,12 +248,11 @@ bool l2dcat_window_wheel_self_test(L2DCatApp *app) {
     SDL_SetWindowOpacity(app->window, backup.opacity_percent / 100.0f);
     l2dcat_platform_set_geometry(&app->platform, original_x, original_y,
         original_width, original_height);
-    bool passed = opacity && slow_frame && scale && burst && aggregated && reversal &&
-        flipped && maximum && minimum && opacity_maximum && opacity_minimum && rounding;
-    if (!passed) fprintf(stderr, "wheel self-test: opacity=%d slow=%d scale=%d "
-        "burst=%d aggregated=%d reversal=%d flipped=%d maximum=%d minimum=%d "
-        "opacity_max=%d opacity_min=%d rounding=%d\n", opacity, slow_frame, scale,
-        burst, aggregated, reversal, flipped, maximum, minimum, opacity_maximum,
-        opacity_minimum, rounding);
+    bool passed = opacity && scale && burst && aggregated && reversal && flipped &&
+        maximum && minimum && opacity_maximum && opacity_minimum && rounding;
+    if (!passed) fprintf(stderr, "wheel self-test: opacity=%d scale=%d burst=%d "
+        "aggregated=%d reversal=%d flipped=%d maximum=%d minimum=%d opacity_max=%d "
+        "opacity_min=%d rounding=%d\n", opacity, scale, burst, aggregated, reversal,
+        flipped, maximum, minimum, opacity_maximum, opacity_minimum, rounding);
     return passed;
 }

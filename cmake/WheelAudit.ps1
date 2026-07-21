@@ -88,6 +88,13 @@ Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
 $data = if ($DataRoot) { [IO.Path]::GetFullPath($DataRoot) } else {
     Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 }
+$frameSeries = Join-Path $data "frame-series.csv"
+for ($attempt = 0; $attempt -lt 20; $attempt++) {
+    try {
+        if ([IO.File]::Exists($frameSeries)) { [IO.File]::Delete($frameSeries) }
+        break
+    } catch { Start-Sleep -Milliseconds 10 }
+}
 $process = Start-Process $Exe -ArgumentList @("--ci-smoke", "--ci-frame-series", "--ci-exit-ms=9000",
     "--data-root=$data") -WorkingDirectory (Split-Path $Exe) -PassThru
 $globalControlDown = $false
@@ -144,13 +151,6 @@ try {
         [void][L2DCatWheelNative]::SetCursorPos(
             [int](($initial.L + $initial.R) / 2), [int](($initial.T + $initial.B) / 2))
         Start-Sleep -Milliseconds 80
-    }
-    $frameSeries = Join-Path $data "frame-series.csv"
-    for ($attempt = 0; $attempt -lt 20; $attempt++) {
-        try {
-            if ([IO.File]::Exists($frameSeries)) { [IO.File]::Delete($frameSeries) }
-            break
-        } catch { Start-Sleep -Milliseconds 10 }
     }
     for ($index = 0; $index -lt [Math]::Max(1, $BurstCount); $index++) {
         if ($SystemWheel) {
@@ -236,8 +236,10 @@ try {
     $uniqueWidths = @($samples.Width | Select-Object -Unique).Count
     $maxWidthStep = 0
     $maxNormalizedWidthStep = 0.0
+    $settledAtMs = 0.0
     for ($index = 1; $index -lt $samples.Count; $index++) {
         $step = [Math]::Abs($samples[$index].Width - $samples[$index - 1].Width)
+        if ($step -gt 0) { $settledAtMs = $samples[$index].ElapsedMs }
         if ($step -gt $maxWidthStep) { $maxWidthStep = $step }
         $elapsed = $samples[$index].ElapsedMs - $samples[$index - 1].ElapsedMs
         if ($elapsed -gt 0) {
@@ -268,6 +270,7 @@ try {
         CenterDriftY=[Math]::Abs($final.CenterY-$centerY)
         MaximumCenterDriftX=$maximumCenterDriftX
         MaximumCenterDriftY=$maximumCenterDriftY
+        SettledAtMs=$settledAtMs
         BurstCount=$BurstCount
         BurstDelayMs=$BurstDelayMs
         GlobalControl=$GlobalControl.IsPresent
@@ -308,11 +311,12 @@ try {
         ($result.MaximumCenterDriftX -le 2 -and $result.MaximumCenterDriftY -le 2)
     $animationPassed = $uniqueWidths -ge 4 -or $uniqueRenderWidths -ge 4
     $smoothnessPassed = if ($frameRows.Count -ge 2) {
-        $maxNormalizedRenderWidthStep -le 8 -and $stepP95 -le 7 -and
-            $maxRenderWidthStepPercent -le 2.5 -and $oppositeRenderSteps -eq 0
+        $maxNormalizedRenderWidthStep -le 20 -and $stepP95 -le 16 -and
+            $maxRenderWidthStepPercent -le 3.0 -and $oppositeRenderSteps -eq 0
     } else { $maxNormalizedWidthStep -le 8 }
+    $latencyPassed = -not $shortBurst -or $settledAtMs -le 350
     $result.Passed = $opacityAvailable -and $alpha -lt 255 -and $directionPassed -and
-        $animationPassed -and $smoothnessPassed -and $centerPassed -and
+        $animationPassed -and $smoothnessPassed -and $latencyPassed -and $centerPassed -and
         $result.WithinWorkArea -and
         $result.WorkingSetGrowthMB -le $result.AllowedWorkingSetGrowthMB -and
         $result.ScaleCpuMs -le 1000 -and $result.ForegroundSeparated -and
