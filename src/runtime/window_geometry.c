@@ -113,6 +113,7 @@ void l2dcat_window_resize_by_pointer(L2DCatApp *app, const SDL_Event *event) {
 
 bool l2dcat_window_geometry_self_test(L2DCatApp *app) {
     if (!app || !app->window) return false;
+    SDL_SyncWindow(app->window);
     L2DCatWindowOptions backup = app->config.window;
     int original_x, original_y, original_width, original_height;
     SDL_GetWindowPosition(app->window, &original_x, &original_y);
@@ -132,6 +133,7 @@ bool l2dcat_window_geometry_self_test(L2DCatApp *app) {
     bool scaled = l2dcat_window_set_scale(app, 125.0f);
     SDL_SyncWindow(app->window);
     SDL_GetWindowSize(app->window, &width, &height);
+    int scaled_width = width, scaled_height = height;
     scaled = scaled && width == 400 && height == 300;
     l2dcat_window_menu_action(app, L2DCAT_MENU_OPACITY_50);
     bool opacity = SDL_fabsf(SDL_GetWindowOpacity(app->window) - 0.5f) < 0.02f;
@@ -166,6 +168,7 @@ bool l2dcat_window_geometry_self_test(L2DCatApp *app) {
     l2dcat_window_resize_by_pointer(app, &motion);
     SDL_SyncWindow(app->window);
     SDL_GetWindowSize(app->window, &width, &height);
+    int gesture_width = width, gesture_height = height;
     bool gesture = app->resize_gesture &&
         app->config.window.scale_percent == 120.0f &&
         width == 384 && height == 288;
@@ -184,5 +187,10 @@ bool l2dcat_window_geometry_self_test(L2DCatApp *app) {
     SDL_SetWindowOpacity(app->window, backup.opacity_percent / 100.0f);
     l2dcat_window_sync_click_through(app);
     SDL_SyncWindow(app->window);
-    return clamped && scaled && opacity && hidden && restored && bounded && gesture;
+    bool passed = clamped && scaled && opacity && hidden && restored && bounded && gesture;
+    if (!passed) fprintf(stderr, "geometry self-test: clamped=%d scaled=%d(%dx%d) "
+        "opacity=%d hidden=%d restored=%d bounded=%d gesture=%d(%dx%d)\n",
+        clamped, scaled, scaled_width, scaled_height, opacity, hidden, restored,
+        bounded, gesture, gesture_width, gesture_height);
+    return passed;
 }

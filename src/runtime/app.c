@@ -58,7 +58,6 @@ static void parse_arguments(L2DCatApp *app, int argc, char **argv) {
     }
     if (app->smoke && !app->smoke_deadline_ns) app->smoke_deadline_ns = 1500000000ull;
 }
-
 static void locate_config(L2DCatApp *app) {
     if (!app->data_root[0]) {
         char *pref = SDL_GetPrefPath("l2dcat", L2DCAT_NAME);
@@ -70,7 +69,6 @@ static void locate_config(L2DCatApp *app) {
     if (!app->config_path[0]) l2dcat_path_join(app->config_path,
         sizeof(app->config_path), app->data_root, "settings.json");
 }
-
 static void ci_failure(L2DCatApp *app, const L2DCatError *error) {
     app->exit_code = 1;
     if (!app->data_root[0]) return;
@@ -81,7 +79,6 @@ static void ci_failure(L2DCatApp *app, const L2DCatError *error) {
     fputs(error && error->message[0] ? error->message : "CI operation failed", file);
     fclose(file);
 }
-
 static void scan_models(L2DCatApp *app) {
     L2DCatError error = {0};
     char path[L2DCAT_PATH_CAP];
@@ -92,7 +89,6 @@ static void scan_models(L2DCatApp *app) {
         l2dcat_models_scan(&app->models, path, false, &error);
     }
 }
-
 static void load_selected_model(L2DCatApp *app) {
     const L2DCatModelEntry *entry = l2dcat_models_find(&app->models, app->config.current_model);
     if (!entry && app->models.count) entry = &app->models.entries[0];
@@ -102,7 +98,6 @@ static void load_selected_model(L2DCatApp *app) {
     }
     l2dcat_app_select_model(app, entry->id);
 }
-
 static bool initialize(L2DCatApp *app, int argc, char **argv, L2DCatError *error) {
     memset(app, 0, sizeof(*app));
     app->smoke_language = -1;
@@ -165,11 +160,18 @@ static bool initialize(L2DCatApp *app, int argc, char **argv, L2DCatError *error
         l2dcat_error_set(&shortcut_error, L2DCAT_ERROR_PLATFORM, "Shortcut action self-test failed");
         ci_failure(app, &shortcut_error);
     }
-    if (app->smoke_menu && (!l2dcat_window_menu_self_test(app) ||
-        !l2dcat_window_geometry_self_test(app) || !l2dcat_window_wheel_self_test(app) || !l2dcat_tray_self_test(app->tray))) {
-        L2DCatError menu_error = {0};
-        l2dcat_error_set(&menu_error, L2DCAT_ERROR_PLATFORM, "Context menu action self-test failed");
-        ci_failure(app, &menu_error);
+    if (app->smoke_menu) {
+        bool menu = l2dcat_window_menu_self_test(app);
+        bool geometry = l2dcat_window_geometry_self_test(app);
+        bool wheel = l2dcat_window_wheel_self_test(app);
+        bool tray = l2dcat_tray_self_test(app->tray);
+        if (!menu || !geometry || !wheel || !tray) {
+            L2DCatError menu_error = {0};
+            l2dcat_error_set(&menu_error, L2DCAT_ERROR_PLATFORM,
+                "Context menu action self-test failed (menu=%d geometry=%d wheel=%d tray=%d)",
+                menu, geometry, wheel, tray);
+            ci_failure(app, &menu_error);
+        }
     }
     if (app->smoke_preferences) l2dcat_preferences_show(app->preferences);
     app->last_frame_ns = SDL_GetTicksNS();
@@ -177,14 +179,12 @@ static bool initialize(L2DCatApp *app, int argc, char **argv, L2DCatError *error
     if (app->smoke_deadline_ns) app->smoke_deadline_ns += app->last_frame_ns;
     return true;
 }
-
 static void handle_event(L2DCatApp *app, const SDL_Event *event) {
     if (l2dcat_preferences_event(app->preferences, event)) return;
     if (!l2dcat_window_event(app, event)) app->running = false;
     if (event->type >= SDL_EVENT_GAMEPAD_AXIS_MOTION &&
         event->type <= SDL_EVENT_GAMEPAD_TOUCHPAD_UP) l2dcat_gamepad_event(app, event);
 }
-
 static void drain_input(L2DCatApp *app) {
     L2DCatInputEvent event;
     while (l2dcat_input_pop(&app->input, &event)) {
@@ -212,7 +212,6 @@ static void drain_input(L2DCatApp *app) {
     }
     if (!app->smoke_ignore_global_input) l2dcat_app_apply_mouse(app);
 }
-
 static void update_model(L2DCatApp *app, uint64_t now) {
     float elapsed = (float)((now - app->last_frame_ns) / 1000000000.0);
     if (elapsed > 0.25f) elapsed = 0.25f;
@@ -244,7 +243,7 @@ static void loop(L2DCatApp *app) {
         bool preferences = l2dcat_preferences_visible(app->preferences);
         int wait_ms = preferences ? 16 : app->config.window.visible
             ? L2DCAT_FRAME_WAIT(app) : 250;
-        if (app->wheel_animation_active && wait_ms > 16) wait_ms = 16;
+        if (app->wheel_animation_active && wait_ms > 8) wait_ms = 8;
         l2dcat_preferences_input_begin(app->preferences);
         SDL_Event event;
         if (SDL_WaitEventTimeout(&event, wait_ms)) {

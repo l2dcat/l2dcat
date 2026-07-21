@@ -50,13 +50,27 @@ bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
     int x, int y, int width, int height) {
     if (!platform || !platform->window) return false;
     int current_width, current_height;
-    if ((!SDL_GetWindowSize(platform->window, &current_width, &current_height) ||
-        current_width != width || current_height != height) &&
-        !SDL_SetWindowSize(platform->window, width, height)) return false;
+    bool size_known = SDL_GetWindowSize(platform->window,
+        &current_width, &current_height);
     int current_x, current_y;
-    if (!SDL_GetWindowPosition(platform->window, &current_x, &current_y) ||
-        current_x != x || current_y != y)
-        SDL_SetWindowPosition(platform->window, x, y);
+    bool position_known = SDL_GetWindowPosition(platform->window,
+        &current_x, &current_y);
+    bool size_changed = !size_known || current_width != width || current_height != height;
+    bool position_changed = !position_known || current_x != x || current_y != y;
+    if (!size_changed && !position_changed) return true;
+    HWND window = native_window(platform);
+    if (!window) return false;
+    if (size_changed && position_changed) {
+        int midpoint_x = current_x + (x - current_x) / 2;
+        int midpoint_y = current_y + (y - current_y) / 2;
+        if (!SetWindowPos(window, NULL, midpoint_x, midpoint_y, 0, 0,
+            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE)) return false;
+    }
+    if (size_changed && !SDL_SetWindowSize(platform->window, width, height)) return false;
+    RECT bounds;
+    if (!GetWindowRect(window, &bounds) || !SetWindowPos(window, NULL, x, y,
+        bounds.right - bounds.left, bounds.bottom - bounds.top,
+        SWP_NOZORDER | SWP_NOACTIVATE)) return false;
     return true;
 }
 #endif

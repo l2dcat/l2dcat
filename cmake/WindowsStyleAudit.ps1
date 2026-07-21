@@ -55,6 +55,13 @@ $windows = [Collections.Generic.List[object]]::new()
 $window = $windows | Sort-Object Area -Descending | Select-Object -First 1
 $windowStyle = [L2DCatStyleNative]::GetWindowLongPtr($window.Handle, -16).ToInt64()
 $style = [L2DCatStyleNative]::GetWindowLongPtr($window.Handle, -20).ToInt64()
+if ($Mode -eq "menu") {
+    for ($index = 0; $index -lt 40 -and -not $process.HasExited; $index++) {
+        if (($style -band 0x20) -ne 0 -and ($style -band 0x8) -ne 0) { break }
+        Start-Sleep -Milliseconds 100
+        $style = [L2DCatStyleNative]::GetWindowLongPtr($window.Handle, -20).ToInt64()
+    }
+}
 $caption = ($windowStyle -band 0xC00000) -ne 0
 $thickFrame = ($windowStyle -band 0x40000) -ne 0
 $systemMenu = ($windowStyle -band 0x80000) -ne 0

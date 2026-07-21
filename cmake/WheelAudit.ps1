@@ -192,17 +192,42 @@ try {
     } else { 0 }
     $uniqueRenderWidths = @($frameRows.width | Select-Object -Unique).Count
     $maxNormalizedRenderWidthStep = 0.0
+    $maxRenderWidthStep = 0.0
+    $oppositeRenderSteps = 0
+    $normalizedRenderSteps = [Collections.Generic.List[double]]::new()
+    $renderIntervals = [Collections.Generic.List[double]]::new()
     for ($index = 1; $index -lt $frameRows.Count; $index++) {
-        $step = [Math]::Abs([double]$frameRows[$index].width -
-            [double]$frameRows[$index - 1].width)
+        $signedStep = [double]$frameRows[$index].width -
+            [double]$frameRows[$index - 1].width
+        $step = [Math]::Abs($signedStep)
         $elapsed = ([double]$frameRows[$index].ticks_ns -
             [double]$frameRows[$index - 1].ticks_ns) / 1000000.0
         if ($elapsed -gt 0) {
+            $renderIntervals.Add($elapsed)
             $normalized = $step * 16.6667 / $elapsed
+            if ($step -gt 0) { $normalizedRenderSteps.Add($normalized) }
             if ($normalized -gt $maxNormalizedRenderWidthStep) {
                 $maxNormalizedRenderWidthStep = $normalized
             }
         }
+        if ($step -gt $maxRenderWidthStep) { $maxRenderWidthStep = $step }
+        if (($ScaleDelta -gt 0 -and $signedStep -lt 0) -or
+            ($ScaleDelta -lt 0 -and $signedStep -gt 0)) { $oppositeRenderSteps++ }
+    }
+    $sortedSteps = @($normalizedRenderSteps | Sort-Object)
+    $sortedIntervals = @($renderIntervals | Sort-Object)
+    $stepP95 = if ($sortedSteps.Count) { $sortedSteps[
+        [Math]::Ceiling(($sortedSteps.Count - 1) * 0.95)] } else { 0.0 }
+    $intervalP95 = if ($sortedIntervals.Count) { $sortedIntervals[
+        [Math]::Ceiling(($sortedIntervals.Count - 1) * 0.95)] } else { 0.0 }
+    $maximumInterval = if ($sortedIntervals.Count) { $sortedIntervals[-1] } else { 0.0 }
+    $firstRenderWidth = if ($frameRows.Count) { [double]$frameRows[0].width } else { 0.0 }
+    $maxRenderWidthStepPercent = if ($firstRenderWidth -gt 0) {
+        100.0 * $maxRenderWidthStep / $firstRenderWidth
+    } else { 0.0 }
+    if (Test-Path -LiteralPath $frameSeries) {
+        Copy-Item -LiteralPath $frameSeries -Destination `
+            (Join-Path $OutputDir "frame-series.csv") -Force
     }
     $process.Refresh()
     $final = $samples[$samples.Count - 1]
@@ -257,6 +282,13 @@ try {
         CapturedRenderFrames=$frameRows.Count
         UniqueRenderWidths=$uniqueRenderWidths
         MaxNormalizedRenderWidthStep=$maxNormalizedRenderWidthStep
+        NormalizedRenderWidthStepP95=$stepP95
+        MaxRenderWidthStep=$maxRenderWidthStep
+        MaxRenderWidthStepPercent=$maxRenderWidthStepPercent
+        OppositeRenderSteps=$oppositeRenderSteps
+        ChangedRenderFrames=$normalizedRenderSteps.Count
+        RenderIntervalP95Ms=$intervalP95
+        MaximumRenderIntervalMs=$maximumInterval
         MinimumFramePixels=[int]$minimumFramePixels
         WithinWorkArea=(-not $AtEdge -or -not $workAreaAvailable -or
             ($final.CenterX-$final.Width/2 -ge $workArea.L -and
@@ -276,7 +308,8 @@ try {
         ($result.MaximumCenterDriftX -le 2 -and $result.MaximumCenterDriftY -le 2)
     $animationPassed = $uniqueWidths -ge 4 -or $uniqueRenderWidths -ge 4
     $smoothnessPassed = if ($frameRows.Count -ge 2) {
-        $maxNormalizedRenderWidthStep -le 8
+        $maxNormalizedRenderWidthStep -le 8 -and $stepP95 -le 7 -and
+            $maxRenderWidthStepPercent -le 2.5 -and $oppositeRenderSteps -eq 0
     } else { $maxNormalizedWidthStep -le 8 }
     $result.Passed = $opacityAvailable -and $alpha -lt 255 -and $directionPassed -and
         $animationPassed -and $smoothnessPassed -and $centerPassed -and

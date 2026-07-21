@@ -1,14 +1,15 @@
 #include "runtime.h"
 #include "l2dcat/preferences.h"
+#include <stdio.h>
 
 #define WHEEL_OPACITY_STEP 5.0f
 #define WHEEL_SCALE_STEP 5.0f
-#define WHEEL_SCALE_TARGET_LEAD 30.0f
+#define WHEEL_SCALE_TARGET_LEAD 60.0f
 #define WHEEL_OPACITY_RESPONSE_SECONDS 0.05f
 #define WHEEL_SCALE_RESPONSE_SECONDS 0.07f
 #define WHEEL_OPACITY_SPEED_PER_SECOND 100.0f
-#define WHEEL_SCALE_SPEED_PER_SECOND 60.0f
-#define WHEEL_MAX_FRAME_SECONDS (1.0f / 30.0f)
+#define WHEEL_SCALE_SPEED_PER_SECOND 50.0f
+#define WHEEL_MAX_FRAME_SECONDS (1.0f / 60.0f)
 #define WHEEL_GESTURE_IDLE_NS 300000000ull
 
 static float wheel_delta(const SDL_MouseWheelEvent *event) {
@@ -54,7 +55,7 @@ void l2dcat_window_wheel(L2DCatApp *app, const SDL_MouseWheelEvent *event) {
     if (!app || !app->window || !event) return;
     float delta = wheel_delta(event);
     if (SDL_fabsf(delta) < 0.001f) return;
-    delta = SDL_clamp(delta, -1.0f, 1.0f);
+    delta = SDL_clamp(delta, -12.0f, 12.0f);
     uint64_t event_ns = event->timestamp ? event->timestamp : SDL_GetTicksNS();
     bool continuing = app->wheel_gesture_active && event_ns >= app->wheel_event_ns &&
         event_ns - app->wheel_event_ns < WHEEL_GESTURE_IDLE_NS;
@@ -180,20 +181,30 @@ bool l2dcat_window_wheel_self_test(L2DCatApp *app) {
     SDL_SetModState(modifiers | SDL_KMOD_CTRL);
     wheel.y = 1.0f; l2dcat_window_wheel(app, &wheel);
     started = app->wheel_animation_ns;
+    l2dcat_window_update_wheel_animation(app, started + 100000000ull);
+    bool slow_frame = app->config.window.scale_percent >= 100.5f &&
+        app->config.window.scale_percent <= 101.1f;
     for (int i = 1; i <= 30; ++i)
-        l2dcat_window_update_wheel_animation(app, started + i * 16666667ull);
+        l2dcat_window_update_wheel_animation(app,
+            started + 100000000ull + i * 16666667ull);
     bool scale = SDL_fabsf(app->config.window.scale_percent - 105.0f) < 0.1f;
     l2dcat_window_cancel_wheel_animation(app);
-    app->config.window.scale_percent = 100.0f;
+    l2dcat_window_apply_geometry(app, original_x, original_y, 100.0f,
+        original_width, original_height);
     wheel.y = 1000.0f;
     for (int i = 0; i < 32; ++i) l2dcat_window_wheel(app, &wheel);
-    started = app->wheel_animation_ns;
-    for (int i = 1; i <= 60; ++i)
-        l2dcat_window_update_wheel_animation(app, started + i * 16666667ull);
-    float burst_scale = app->config.window.scale_percent;
-    bool burst = burst_scale >= 129.5f && burst_scale <= 130.1f;
+    bool burst = app->wheel_scale_target >= 159.5f &&
+        app->wheel_scale_target <= 160.1f;
     l2dcat_window_cancel_wheel_animation(app);
-    app->config.window.scale_percent = 100.0f;
+    l2dcat_window_apply_geometry(app, original_x, original_y, 100.0f,
+        original_width, original_height);
+    wheel.y = 3.0f;
+    l2dcat_window_wheel(app, &wheel);
+    bool aggregated = app->wheel_scale_target >= 114.5f &&
+        app->wheel_scale_target <= 115.1f;
+    l2dcat_window_cancel_wheel_animation(app);
+    l2dcat_window_apply_geometry(app, original_x, original_y, 100.0f,
+        original_width, original_height);
     wheel.y = 1.0f;
     l2dcat_window_wheel(app, &wheel);
     wheel.y = -1.0f;
@@ -238,6 +249,12 @@ bool l2dcat_window_wheel_self_test(L2DCatApp *app) {
     SDL_SetWindowOpacity(app->window, backup.opacity_percent / 100.0f);
     l2dcat_platform_set_geometry(&app->platform, original_x, original_y,
         original_width, original_height);
-    return opacity && scale && burst && reversal && flipped && maximum && minimum &&
-        opacity_maximum && opacity_minimum && rounding;
+    bool passed = opacity && slow_frame && scale && burst && aggregated && reversal &&
+        flipped && maximum && minimum && opacity_maximum && opacity_minimum && rounding;
+    if (!passed) fprintf(stderr, "wheel self-test: opacity=%d slow=%d scale=%d "
+        "burst=%d aggregated=%d reversal=%d flipped=%d maximum=%d minimum=%d "
+        "opacity_max=%d opacity_min=%d rounding=%d\n", opacity, slow_frame, scale,
+        burst, aggregated, reversal, flipped, maximum, minimum, opacity_maximum,
+        opacity_minimum, rounding);
+    return passed;
 }
