@@ -36,6 +36,7 @@ typedef struct L2DCatInputState {
     _Atomic double mouse_x;
     _Atomic double mouse_y;
     atomic_bool mouse_dirty;
+    atomic_uint_fast8_t control;
     atomic_uint_fast64_t dropped;
     L2DCatAutoRelease releases[L2DCAT_AUTO_RELEASE_CAP];
     size_t release_count;
@@ -46,6 +47,7 @@ bool l2dcat_input_push(L2DCatInputState *state, const L2DCatInputEvent *event);
 bool l2dcat_input_pop(L2DCatInputState *state, L2DCatInputEvent *event);
 void l2dcat_input_mouse(L2DCatInputState *state, double x, double y);
 bool l2dcat_input_take_mouse(L2DCatInputState *state, double *x, double *y);
+bool l2dcat_input_control_down(const L2DCatInputState *state);
 void l2dcat_input_auto_release(L2DCatInputState *state,
     const L2DCatInputEvent *event, uint64_t delay_ms);
 bool l2dcat_input_take_release(L2DCatInputState *state, uint64_t now_ms,

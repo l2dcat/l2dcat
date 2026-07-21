@@ -55,7 +55,9 @@ void l2dcat_window_wheel(L2DCatApp *app, const SDL_MouseWheelEvent *event) {
     if (!initialize_targets(app)) return;
     float old_opacity_target = app->wheel_opacity_target;
     float old_scale_target = app->wheel_scale_target;
-    if (SDL_GetModState() & SDL_KMOD_CTRL) {
+    bool control = (SDL_GetModState() & SDL_KMOD_CTRL) != 0 ||
+        l2dcat_input_control_down(&app->input);
+    if (control) {
         float current = app->config.window.scale_percent;
         float minimum = SDL_max(10.0f, current - WHEEL_SCALE_TARGET_LEAD);
         float maximum = SDL_min(500.0f, current + WHEEL_SCALE_TARGET_LEAD);

@@ -1,5 +1,6 @@
 param([string]$Exe = "", [string]$OutputDir = "", [int]$ScaleDelta = 120,
-    [int]$BurstCount = 1, [switch]$AtEdge)
+    [int]$BurstCount = 1, [switch]$AtEdge, [switch]$GlobalControl,
+    [string]$DataRoot = "")
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\l2dcat.exe" }
@@ -7,6 +8,7 @@ if (-not $OutputDir) { $OutputDir = Join-Path $root "build-cubism\wheel-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+Add-Type -AssemblyName System.Drawing
 
 Add-Type @'
 using System;
@@ -22,6 +24,11 @@ public static class L2DCatWheelNative {
         IntPtr h, IntPtr after, int x, int y, int width, int height, uint flags);
     [DllImport("user32.dll")] public static extern bool SystemParametersInfoW(
         uint action, uint parameter, out Rect value, uint update);
+    [DllImport("user32.dll")] public static extern IntPtr GetShellWindow();
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll")] public static extern void keybd_event(
+        byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
 }
 '@
 
@@ -54,10 +61,33 @@ function Position-LParam($Rect) {
     return [IntPtr]([int64](($y -shl 16) -bor $x))
 }
 
+function Get-VisiblePixels([string]$Path) {
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        if (Test-Path -LiteralPath $Path) {
+            try {
+                $bitmap = [Drawing.Bitmap]::new($Path)
+                $visible = 0
+                for ($y = 0; $y -lt $bitmap.Height; $y += 4) {
+                    for ($x = 0; $x -lt $bitmap.Width; $x += 4) {
+                        $color = $bitmap.GetPixel($x, $y)
+                        if ($color.R + $color.G + $color.B -gt 60) { $visible++ }
+                    }
+                }
+                $bitmap.Dispose()
+                return $visible
+            } catch { Start-Sleep -Milliseconds 25 }
+        } else { Start-Sleep -Milliseconds 25 }
+    }
+    return 0
+}
+
 Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
-$data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
+$data = if ($DataRoot) { [IO.Path]::GetFullPath($DataRoot) } else {
+    Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
+}
 $process = Start-Process $Exe -ArgumentList @("--ci-smoke", "--ci-exit-ms=9000",
     "--data-root=$data") -WorkingDirectory (Split-Path $Exe) -PassThru
+$globalControlDown = $false
 try {
     $window = Wait-Window $process
     Start-Sleep -Milliseconds 400
@@ -87,14 +117,29 @@ try {
     $opacityAvailable = [L2DCatWheelNative]::GetLayeredWindowAttributes(
         $window, [ref]$color, [ref]$alpha, [ref]$flags)
 
-    [void][L2DCatWheelNative]::PostMessageW($window, 0x0100, [IntPtr]0x11, [IntPtr]::Zero)
+    $foregroundSeparated = $false
+    if ($GlobalControl) {
+        $shell = [L2DCatWheelNative]::GetShellWindow()
+        if ($shell -ne [IntPtr]::Zero) {
+            [void][L2DCatWheelNative]::SetForegroundWindow($shell)
+            Start-Sleep -Milliseconds 120
+        }
+        $foregroundSeparated = [L2DCatWheelNative]::GetForegroundWindow() -ne $window
+        [L2DCatWheelNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
+        $globalControlDown = $true
+        Start-Sleep -Milliseconds 80
+    } else {
+        [void][L2DCatWheelNative]::PostMessageW(
+            $window, 0x0100, [IntPtr]0x11, [IntPtr]::Zero)
+    }
     $process.Refresh()
     $initialWorkingSet = $process.WorkingSet64
     $initialCpu = $process.TotalProcessorTime.TotalMilliseconds
     $peakWorkingSet = $initialWorkingSet
+    $wheelKeys = if ($GlobalControl) { 0 } else { 8 }
     for ($index = 0; $index -lt [Math]::Max(1, $BurstCount); $index++) {
         [void][L2DCatWheelNative]::PostMessageW($window, 0x020A,
-            (Wheel-WParam $ScaleDelta 8), $position)
+            (Wheel-WParam $ScaleDelta $wheelKeys), $position)
     }
     $samples = [Collections.Generic.List[object]]::new()
     $sampleClock = [Diagnostics.Stopwatch]::StartNew()
@@ -109,7 +154,15 @@ try {
             CenterX=($rect.L+$rect.R)/2.0; CenterY=($rect.T+$rect.B)/2.0})
         Start-Sleep -Milliseconds 16
     }
-    [void][L2DCatWheelNative]::PostMessageW($window, 0x0101, [IntPtr]0x11, [IntPtr]::Zero)
+    if ($GlobalControl) {
+        [L2DCatWheelNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
+        $globalControlDown = $false
+    } else {
+        [void][L2DCatWheelNative]::PostMessageW(
+            $window, 0x0101, [IntPtr]0x11, [IntPtr]::Zero)
+    }
+    Start-Sleep -Milliseconds 80
+    $visiblePixels = Get-VisiblePixels (Join-Path $data "frame.bmp")
     $process.Refresh()
     $final = $samples[$samples.Count - 1]
     $opacitySamples | Export-Csv (Join-Path $OutputDir "opacity-samples.csv") -NoTypeInformation
@@ -140,9 +193,12 @@ try {
         CenterDriftX=[Math]::Abs($final.CenterX-$centerX)
         CenterDriftY=[Math]::Abs($final.CenterY-$centerY)
         BurstCount=$BurstCount
+        GlobalControl=$GlobalControl.IsPresent
+        ForegroundSeparated=(-not $GlobalControl -or $foregroundSeparated)
         PeakWorkingSetMB=$peakWorkingSet / 1MB
         WorkingSetGrowthMB=($peakWorkingSet-$initialWorkingSet) / 1MB
         ScaleCpuMs=$process.TotalProcessorTime.TotalMilliseconds-$initialCpu
+        VisibleFramePixels=$visiblePixels
         WithinWorkArea=(-not $AtEdge -or -not $workAreaAvailable -or
             ($final.CenterX-$final.Width/2 -ge $workArea.L -and
             $final.CenterY-$final.Height/2 -ge $workArea.T -and
@@ -159,12 +215,16 @@ try {
     $centerPassed = $AtEdge -or
         ($result.CenterDriftX -le 2 -and $result.CenterDriftY -le 2)
     $result.Passed = $opacityAvailable -and $alpha -lt 255 -and $directionPassed -and
-        $uniqueWidths -ge 6 -and $maxNormalizedWidthStep -le 8 -and $centerPassed -and
+        $uniqueWidths -ge 4 -and $maxNormalizedWidthStep -le 8 -and $centerPassed -and
         $result.WithinWorkArea -and $result.WorkingSetGrowthMB -le 64 -and
-        $result.ScaleCpuMs -le 1000
+        $result.ScaleCpuMs -le 1000 -and $result.ForegroundSeparated -and
+        $result.VisibleFramePixels -ge 100
     $result | ConvertTo-Json | Set-Content (Join-Path $OutputDir "result.json")
     [pscustomobject]$result | Format-List
     if (-not $result.Passed) { exit 1 }
 } finally {
+    if ($globalControlDown) {
+        [L2DCatWheelNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
+    }
     if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
 }

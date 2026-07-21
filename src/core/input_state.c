@@ -11,13 +11,25 @@ void l2dcat_input_init(L2DCatInputState *state) {
     atomic_init(&state->mouse_x, 0.0);
     atomic_init(&state->mouse_y, 0.0);
     atomic_init(&state->mouse_dirty, false);
+    atomic_init(&state->control, 0);
     atomic_init(&state->dropped, 0);
     memset(state->releases, 0, sizeof(state->releases));
     state->release_count = 0;
 }
 
+static void update_control(L2DCatInputState *state, const L2DCatInputEvent *event) {
+    if (event->kind != L2DCAT_INPUT_KEY_DOWN && event->kind != L2DCAT_INPUT_KEY_UP) return;
+    uint8_t mask = strcmp(event->name, "ControlLeft") == 0 ? 1 :
+        strcmp(event->name, "ControlRight") == 0 ? 2 : 0;
+    if (!mask) return;
+    if (event->kind == L2DCAT_INPUT_KEY_DOWN)
+        atomic_fetch_or_explicit(&state->control, mask, memory_order_release);
+    else atomic_fetch_and_explicit(&state->control, (uint8_t)~mask, memory_order_release);
+}
+
 bool l2dcat_input_push(L2DCatInputState *state, const L2DCatInputEvent *event) {
     if (!state || !event) return false;
+    update_control(state, event);
     uint16_t head = (uint16_t)atomic_load_explicit(&state->head, memory_order_relaxed);
     uint16_t next = (uint16_t)((head + 1u) % 256u);
     if (next == atomic_load_explicit(&state->tail, memory_order_acquire)) {
@@ -51,6 +63,10 @@ bool l2dcat_input_take_mouse(L2DCatInputState *state, double *x, double *y) {
     *x = atomic_load_explicit(&state->mouse_x, memory_order_relaxed);
     *y = atomic_load_explicit(&state->mouse_y, memory_order_relaxed);
     return true;
+}
+
+bool l2dcat_input_control_down(const L2DCatInputState *state) {
+    return state && atomic_load_explicit(&state->control, memory_order_acquire) != 0;
 }
 
 static size_t release_index(const L2DCatInputState *state, const char *name) {
