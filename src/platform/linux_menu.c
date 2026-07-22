@@ -6,7 +6,7 @@
 
 static L2DCatMenuAction submenu(SDL_Window *window, const char *title,
     const int *values, int count, L2DCatMenuAction first) {
-    SDL_MessageBoxButtonData buttons[10]; char labels[10][16];
+    SDL_MessageBoxButtonData buttons[16]; char labels[16][16];
     for (int i = 0; i < count; ++i) {
         snprintf(labels[i], sizeof(labels[i]), "%d%%", values[i]);
         buttons[i] = (SDL_MessageBoxButtonData){0, i, labels[i]};
@@ -36,8 +36,10 @@ L2DCatMenuAction l2dcat_linux_context_menu(L2DCatPlatform *platform,
     int selected = 0;
     if (!SDL_ShowMessageBox(&data, &selected)) return L2DCAT_MENU_NONE;
     if (selected == -1) {
-        const int values[] = {50,75,100,125,150,200};
-        return submenu(platform->window, labels->window_size, values, 6, L2DCAT_MENU_SCALE_50);
+        const int values[] = {50,60,70,80,90,100,110,120,
+            130,140,150,160,170,180,190,200};
+        return submenu(platform->window, labels->window_size, values, 16,
+            L2DCAT_MENU_SCALE_50);
     }
     if (selected == -2) {
         const int values[] = {10,20,30,40,50,60,70,80,90,100};

@@ -32,10 +32,11 @@ static void add_scale_menu(NSMenu *menu, L2DCatMenuTarget *target,
     NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:text(label)
         action:nil keyEquivalent:@""];
     NSMenu *submenu = [[NSMenu alloc] initWithTitle:text(label)];
-    const int values[] = {10,20,30,40,50,60,70,80,90,100,50,75,100,125,150,200};
-    int first = opacity ? 0 : 10, count = opacity ? 10 : 6;
+    const int values[] = {10,20,30,40,50,60,70,80,90,100};
+    int count = opacity ? 10 : 16;
     for (int i = 0; i < count; ++i) {
-        int value = values[first + i]; char title[16]; snprintf(title, sizeof(title), "%d%%", value);
+        int value = opacity ? values[i] : 50 + i * 10;
+        char title[16]; snprintf(title, sizeof(title), "%d%%", value);
         NSInteger tag = opacity ? L2DCAT_MENU_OPACITY_10 + i : L2DCAT_MENU_SCALE_50 + i;
         add_item(submenu, target, title, tag, false);
     }

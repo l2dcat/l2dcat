@@ -240,10 +240,10 @@ L2DCatMenuAction l2dcat_platform_context_menu(L2DCatPlatform *platform,
         L2DCAT_MENU_PASS_THROUGH, labels->pass_through);
     menu_text(menu, MF_STRING | (labels->always_on_top_checked ? MF_CHECKED : 0),
         L2DCAT_MENU_ALWAYS_ON_TOP, labels->always_on_top);
-    const int scales[] = {50, 75, 100, 125, 150, 200};
-    for (int i = 0; i < 6; ++i) {
-        wchar_t label[16]; swprintf(label, 16, L"%d%%", scales[i]);
-        UINT flags = MF_STRING | (SDL_fabsf(labels->scale_percent - scales[i]) < .5f ? MF_CHECKED : 0);
+    for (int i = 0; i < 16; ++i) {
+        int scale = 50 + i * 10;
+        wchar_t label[16]; swprintf(label, 16, L"%d%%", scale);
+        UINT flags = MF_STRING | (SDL_fabsf(labels->scale_percent - scale) < .5f ? MF_CHECKED : 0);
         AppendMenuW(sizes, flags, L2DCAT_MENU_SCALE_50 + i, label);
     }
     const int opacities[] = {10,20,30,40,50,60,70,80,90,100};

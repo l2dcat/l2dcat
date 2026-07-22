@@ -86,19 +86,29 @@ static bool previewable(L2DCatMenuAction action) {
     return (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_OPACITY_100) ||
         action >= L2DCAT_MENU_MODEL_FIRST;
 }
+static int preview_group(L2DCatMenuAction action) {
+    if (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_SCALE_200) return 1;
+    if (action >= L2DCAT_MENU_OPACITY_10 && action <= L2DCAT_MENU_OPACITY_100) return 2;
+    if (action >= L2DCAT_MENU_MODEL_FIRST) return 3;
+    return 0;
+}
 static void menu_preview(void *userdata, L2DCatMenuAction action) {
     MenuPreview *state = userdata; L2DCatApp *app = state->app;
     if (action == state->last) return;
-    if (state->last != L2DCAT_MENU_NONE) menu_restore(state, L2DCAT_MENU_NONE);
+    int previous_group = preview_group(state->last);
+    int next_group = preview_group(action);
+    if (state->last != L2DCAT_MENU_NONE && previous_group != next_group)
+        menu_restore(state, L2DCAT_MENU_NONE);
     if (!previewable(action)) {
-        menu_restore(state, L2DCAT_MENU_NONE); state->last = action; return;
+        if (previous_group == 0) menu_restore(state, L2DCAT_MENU_NONE);
+        state->last = action; return;
     }
     state->last = action;
     if (action >= L2DCAT_MENU_MODEL_FIRST &&
         (size_t)(action - L2DCAT_MENU_MODEL_FIRST) < app->models.count)
         l2dcat_app_select_model(app, app->models.entries[action - L2DCAT_MENU_MODEL_FIRST].id);
     else if (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_SCALE_200)
-        l2dcat_window_set_scale(app, (float[]){50,75,100,125,150,200}[action-L2DCAT_MENU_SCALE_50]);
+        l2dcat_window_set_scale(app, (float)(50 + 10 * (action-L2DCAT_MENU_SCALE_50)));
     else if (action >= L2DCAT_MENU_OPACITY_10 && action <= L2DCAT_MENU_OPACITY_100) {
         app->config.window.opacity_percent = (float)(10 * (action-L2DCAT_MENU_OPACITY_10+1));
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
@@ -167,9 +177,9 @@ void l2dcat_window_menu_action(L2DCatApp *app, L2DCatMenuAction action) {
         app->config.window.always_on_top = !app->config.window.always_on_top;
         l2dcat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
     } else if (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_SCALE_200) {
-        const float scales[] = {50, 75, 100, 125, 150, 200};
         l2dcat_window_cancel_wheel_animation(app);
-        l2dcat_window_set_scale(app, scales[action - L2DCAT_MENU_SCALE_50]);
+        l2dcat_window_set_scale(app,
+            (float)(50 + 10 * (action - L2DCAT_MENU_SCALE_50)));
     } else if (action >= L2DCAT_MENU_OPACITY_10 && action <= L2DCAT_MENU_OPACITY_100) {
         l2dcat_window_cancel_wheel_animation(app);
         app->config.window.opacity_percent = (float)(10 * (action-L2DCAT_MENU_OPACITY_10+1));
@@ -190,11 +200,11 @@ bool l2dcat_window_menu_self_test(L2DCatApp *app) {
     app->config.window.opacity_percent = 100.0f;
     l2dcat_window_menu_action(app, L2DCAT_MENU_PASS_THROUGH);
     l2dcat_window_menu_action(app, L2DCAT_MENU_ALWAYS_ON_TOP);
-    l2dcat_window_menu_action(app, L2DCAT_MENU_SCALE_125);
+    l2dcat_window_menu_action(app, L2DCAT_MENU_SCALE_120);
     l2dcat_window_menu_action(app, L2DCAT_MENU_OPACITY_50);
     l2dcat_window_menu_action(app, L2DCAT_MENU_PREFERENCES);
     bool result = app->config.window.pass_through && app->config.window.always_on_top &&
-        app->config.window.scale_percent == 125.0f &&
+        app->config.window.scale_percent == 120.0f &&
         app->config.window.opacity_percent == 50.0f &&
         l2dcat_preferences_visible(app->preferences);
     l2dcat_preferences_close(app->preferences);
