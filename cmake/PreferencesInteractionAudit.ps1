@@ -82,13 +82,34 @@ function Get-ClientPoint([IntPtr]$Window, [double]$X, [double]$Y) {
 
 function Invoke-Click([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
+    $client = [L2DCatPreferencesNative+Rect]::new()
+    [void][L2DCatPreferencesNative]::GetClientRect($Window, [ref]$client)
+    $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
+    $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 640.0)
+    $position = [IntPtr]([long](($clientY -band 0xFFFF) -shl 16) -bor
+        [long]($clientX -band 0xFFFF))
     [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
     [void][L2DCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 50
+    [void][L2DCatPreferencesNative]::PostMessageW(
+        $Window, 0x0200, [IntPtr]::Zero, $position)
+    [void][L2DCatPreferencesNative]::PostMessageW(
+        $Window, 0x0201, [IntPtr]1, $position)
+    Start-Sleep -Milliseconds 180
+    [void][L2DCatPreferencesNative]::PostMessageW(
+        $Window, 0x0202, [IntPtr]::Zero, $position)
+    Start-Sleep -Milliseconds 250
+}
+
+function Invoke-PhysicalClick([IntPtr]$Window, [double]$X, [double]$Y) {
+    $point = Get-ClientPoint $Window $X $Y
+    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
+    [void][L2DCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
+    Start-Sleep -Milliseconds 80
     [L2DCatPreferencesNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 80
     [L2DCatPreferencesNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
-    Start-Sleep -Milliseconds 250
+    Start-Sleep -Milliseconds 300
 }
 
 function Invoke-Wheel([IntPtr]$Window, [double]$X, [double]$Y) {
@@ -103,6 +124,18 @@ function Invoke-Wheel([IntPtr]$Window, [double]$X, [double]$Y) {
     Start-Sleep -Milliseconds 80
     [void][L2DCatPreferencesNative]::PostMessageW($Window, 0x020A, $wheel, $position)
     Start-Sleep -Milliseconds 300
+}
+
+function Invoke-Text([IntPtr]$Window, [string]$Text) {
+    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
+    [void][L2DCatPreferencesNative]::PostMessageW(
+        $Window, 0x0007, [IntPtr]::Zero, [IntPtr]::Zero)
+    Start-Sleep -Milliseconds 80
+    foreach ($character in $Text.ToCharArray()) {
+        [void][L2DCatPreferencesNative]::PostMessageW(
+            $Window, 0x0109, [IntPtr][int]$character, [IntPtr]::Zero)
+        Start-Sleep -Milliseconds 40
+    }
 }
 
 function Save-Window([IntPtr]$Window, [string]$Name) {
@@ -165,19 +198,14 @@ try {
     Invoke-Click $window 90 194
     $shortcuts = Save-Window $window "06-shortcuts.png"
     Invoke-Click $window 745 135
-    [Windows.Forms.Clipboard]::SetText("TEST")
-    [L2DCatPreferencesNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
-    [L2DCatPreferencesNative]::keybd_event(0x56, 0, 0, [UIntPtr]::Zero)
-    Start-Sleep -Milliseconds 50
-    [L2DCatPreferencesNative]::keybd_event(0x56, 0, 2, [UIntPtr]::Zero)
-    [L2DCatPreferencesNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
+    Invoke-Text $window "TEST"
     Start-Sleep -Milliseconds 300
     $edited = Save-Window $window "07-shortcut-edited.png"
 
     Invoke-Click $window 90 246
     $about = Save-Window $window "08-about.png"
-    Invoke-Click $window 745 263
-    Start-Sleep -Milliseconds 100
+    [Windows.Forms.Clipboard]::SetText("clipboard-audit-sentinel")
+    Invoke-PhysicalClick $window 800 263
     $clipboard = [Windows.Forms.Clipboard]::GetText()
     [void][L2DCatPreferencesNative]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
     for ($i = 0; $i -lt 50 -and -not (Test-Path $configPath); $i++) {

@@ -126,7 +126,7 @@ static void cleanup(ImportInstall *installs, size_t count, bool committed) {
 }
 
 static bool prepare_install(const L2DCatImportCandidate *candidate,
-    ImportInstall *install, const char *root, unsigned long long stamp,
+    ImportInstall *install, const char *source, const char *root, unsigned long long stamp,
     size_t index, size_t count, L2DCatError *error) {
     const char *mode = candidate->mode == L2DCAT_MODE_KEYBOARD ? "keyboard" :
         candidate->mode == L2DCAT_MODE_GAMEPAD ? "gamepad" : "standard";
@@ -141,6 +141,7 @@ static bool prepare_install(const L2DCatImportCandidate *candidate,
         !l2dcat_path_join(install->target, sizeof(install->target), root, install->id) ||
         l2dcat_copy_directory(candidate->directory, install->temporary, error) != L2DCAT_OK ||
         !copy_preview(candidate, install->temporary, error) ||
+        !l2dcat_import_legacy_assets(candidate, source, install->temporary, error) ||
         !write_mode(install->temporary, candidate->mode, error)) return false;
     char setting[L2DCAT_PATH_CAP];
     return l2dcat_path_find_suffix(install->temporary, ".model3.json", setting,
@@ -157,7 +158,7 @@ L2DCatResult l2dcat_app_import_model(L2DCatApp *app, const char *source,
     ImportInstall installs[L2DCAT_IMPORT_CANDIDATE_CAP] = {0};
     unsigned long long stamp = (unsigned long long)SDL_GetTicksNS();
     for (size_t i = 0; i < discovery.count; ++i) {
-        if (prepare_install(&discovery.candidates[i], &installs[i], root,
+        if (prepare_install(&discovery.candidates[i], &installs[i], source, root,
             stamp, i, discovery.count, error)) continue;
         cleanup(installs, i + 1, false);
         return error && error->code == L2DCAT_ERROR_FORMAT

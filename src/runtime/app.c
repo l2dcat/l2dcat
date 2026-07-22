@@ -166,11 +166,12 @@ static bool initialize(L2DCatApp *app, int argc, char **argv, L2DCatError *error
         bool geometry = l2dcat_window_geometry_self_test(app);
         bool wheel = l2dcat_window_wheel_self_test(app);
         bool tray = l2dcat_tray_self_test(app->tray);
-        if (!menu || !geometry || !wheel || !tray) {
+        bool wait = l2dcat_window_wait_timeout_self_test();
+        if (!menu || !geometry || !wheel || !tray || !wait) {
             L2DCatError menu_error = {0};
             l2dcat_error_set(&menu_error, L2DCAT_ERROR_PLATFORM,
-                "Context menu action self-test failed (menu=%d geometry=%d wheel=%d tray=%d)",
-                menu, geometry, wheel, tray);
+                "Context menu action self-test failed (menu=%d geometry=%d wheel=%d tray=%d wait=%d)",
+                menu, geometry, wheel, tray, wait);
             ci_failure(app, &menu_error);
         }
     }
@@ -224,6 +225,8 @@ static void render(L2DCatApp *app) {
     int width, height;
     SDL_GetWindowSizeInPixels(app->window, &width, &height);
     glViewport(0, 0, width, height);
+    glDisable(GL_SCISSOR_TEST); glStencilMask(0xff);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     l2dcat_overlay_begin_clip(app->overlay, app->config.window.radius_percent);
@@ -240,10 +243,7 @@ static void render(L2DCatApp *app) {
 void l2dcat_app_render_now(L2DCatApp *app) { if (app && app->window && app->config.window.visible) render(app); }
 static void loop(L2DCatApp *app) {
     while (app->running) {
-        bool preferences = l2dcat_preferences_visible(app->preferences);
-        int wait_ms = preferences ? 16 : app->config.window.visible
-            ? L2DCAT_FRAME_WAIT(app) : 250;
-        if (app->wheel_animation_active && wait_ms > 8) wait_ms = 8;
+        int wait_ms = l2dcat_window_wait_timeout(app, SDL_GetTicksNS());
         l2dcat_preferences_input_begin(app->preferences);
         SDL_Event event;
         if (SDL_WaitEventTimeout(&event, wait_ms)) {
@@ -270,8 +270,8 @@ static void shutdown(L2DCatApp *app) {
             SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
     }
     l2dcat_preferences_destroy(app->preferences);
-    l2dcat_i18n_destroy(app->i18n);
-    l2dcat_tray_destroy(app->tray);
+    l2dcat_i18n_destroy(app->i18n); l2dcat_tray_destroy(app->tray);
+    l2dcat_gamepads_set_enabled(app, false);
     l2dcat_audio_destroy(app->audio);
     l2dcat_overlay_destroy(app->overlay);
     l2dcat_live2d_destroy(app->live2d);

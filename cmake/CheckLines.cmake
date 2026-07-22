@@ -3,8 +3,16 @@ if(NOT DEFINED ROOT)
 endif()
 
 file(GLOB_RECURSE FILES
-  "${ROOT}/src/*.c" "${ROOT}/src/*.cpp" "${ROOT}/include/*.h"
-  "${ROOT}/tests/*.c" "${ROOT}/tests/*.cpp" "${ROOT}/cmake/*.cmake")
+  "${ROOT}/src/*.c" "${ROOT}/src/*.cc" "${ROOT}/src/*.cpp"
+  "${ROOT}/src/*.cxx" "${ROOT}/src/*.m" "${ROOT}/src/*.mm"
+  "${ROOT}/src/*.h" "${ROOT}/src/*.hh" "${ROOT}/src/*.hpp" "${ROOT}/src/*.hxx"
+  "${ROOT}/include/*.h" "${ROOT}/include/*.hh"
+  "${ROOT}/include/*.hpp" "${ROOT}/include/*.hxx"
+  "${ROOT}/tests/*.c" "${ROOT}/tests/*.cc" "${ROOT}/tests/*.cpp"
+  "${ROOT}/tests/*.cxx" "${ROOT}/tests/*.m" "${ROOT}/tests/*.mm"
+  "${ROOT}/tests/*.h" "${ROOT}/tests/*.hh"
+  "${ROOT}/tests/*.hpp" "${ROOT}/tests/*.hxx"
+  "${ROOT}/cmake/*.cmake")
 list(APPEND FILES "${ROOT}/CMakeLists.txt")
 
 set(FAILED "")

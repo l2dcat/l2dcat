@@ -37,6 +37,7 @@ typedef struct L2DCatApp {
     char smoke_model[L2DCAT_ID_CAP];
     char smoke_runtime_model[L2DCAT_ID_CAP];
     char smoke_live2d_scenario[L2DCAT_ID_CAP];
+    char loaded_model[L2DCAT_ID_CAP];
     bool running;
     bool smoke;
     bool smoke_preferences;
@@ -92,6 +93,7 @@ typedef struct L2DCatApp {
     float left_stick_x, left_stick_y;
     float right_stick_x, right_stick_y;
     bool left_stick_pressed, right_stick_pressed;
+    uint32_t active_gamepad;
 } L2DCatApp;
 
 int l2dcat_app_run(int argc, char **argv);

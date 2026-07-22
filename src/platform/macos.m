@@ -16,6 +16,42 @@ static L2DCatPlatform *active_platform;
 static NSObject *instance_observer;
 static bool instance_show_pending;
 
+/* SDL 3.2's pinned Cocoa tray layout; kept local to the platform adapter. */
+typedef struct L2DCatSDLTrayMenu { NSMenu *menu; } L2DCatSDLTrayMenu;
+typedef struct L2DCatSDLTray {
+    NSStatusBar *status_bar; NSStatusItem *status_item; L2DCatSDLTrayMenu *menu;
+} L2DCatSDLTray;
+
+@interface L2DCatTrayTarget : NSObject {
+    NSStatusItem *item_; NSMenu *menu_; L2DCatTrayClick callback_; void *userdata_;
+}
+- (id)initWithItem:(NSStatusItem *)item menu:(NSMenu *)menu
+    callback:(L2DCatTrayClick)callback userdata:(void *)userdata;
+- (void)clicked:(id)sender;
+- (void)unbind;
+@end
+
+@implementation L2DCatTrayTarget
+- (id)initWithItem:(NSStatusItem *)item menu:(NSMenu *)menu
+    callback:(L2DCatTrayClick)callback userdata:(void *)userdata {
+    self = [super init];
+    if (self) { item_ = item; menu_ = menu; callback_ = callback; userdata_ = userdata; }
+    return self;
+}
+- (void)clicked:(id)sender {
+    (void)sender;
+    NSEvent *event = [NSApp currentEvent];
+    if ([event type] == NSEventTypeLeftMouseUp) callback_(userdata_);
+    else [NSMenu popUpContextMenu:menu_ withEvent:event forView:[item_ button]];
+}
+- (void)unbind {
+    [[item_ button] setTarget:nil]; [[item_ button] setAction:nil];
+    [item_ setMenu:menu_];
+}
+@end
+
+static L2DCatTrayTarget *tray_target;
+
 static NSWindow *native_window(L2DCatPlatform *platform) {
     return (__bridge NSWindow *)SDL_GetPointerProperty(SDL_GetWindowProperties(platform->window),
         SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, NULL);
@@ -116,6 +152,22 @@ void l2dcat_platform_begin_drag(L2DCatPlatform *platform) {
 }
 bool l2dcat_platform_global_input_supported(void) {
     return l2dcat_macos_input_supported();
+}
+
+void l2dcat_platform_set_tray_left_click(void *tray, L2DCatTrayClick callback,
+    void *userdata) {
+    L2DCatSDLTray *native = tray;
+    if (tray_target) {
+        [tray_target unbind]; [tray_target release]; tray_target = nil;
+    }
+    if (!native || !callback || !native->status_item || !native->menu) return;
+    tray_target = [[L2DCatTrayTarget alloc] initWithItem:native->status_item
+        menu:native->menu->menu callback:callback userdata:userdata];
+    [native->status_item setMenu:nil];
+    [[native->status_item button] setTarget:tray_target];
+    [[native->status_item button] setAction:@selector(clicked:)];
+    [[native->status_item button] sendActionOn:NSEventMaskLeftMouseUp |
+        NSEventMaskRightMouseUp];
 }
 bool l2dcat_platform_single_instance_begin(void) {
     char path[96]; snprintf(path, sizeof(path), "/tmp/l2dcat-native-%lu.lock",

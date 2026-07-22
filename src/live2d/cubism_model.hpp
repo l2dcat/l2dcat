@@ -20,7 +20,7 @@ public:
     ~NativeModel() override;
     bool load(const char *directory, const char *setting_file, L2DCatError *error);
     bool load_textures(L2DCatError *error);
-    void release_textures();
+    void release_render_resources();
     void resize(int width, int height);
     void reshape(int width, int height);
     bool update(float delta_seconds);
@@ -45,6 +45,8 @@ private:
     void load_lock_motion(const std::string &key,
         const std::vector<unsigned char> &bytes);
     bool toggle_lock_motion(const std::string &key, Csm::ACubismMotion *motion);
+    void release_textures();
+    void release_renderer();
     void bind_textures();
     std::vector<unsigned char> read(const std::string &path) const;
     std::string path(const char *relative) const;

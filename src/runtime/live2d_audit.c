@@ -27,9 +27,8 @@ static bool pointer(L2DCatApp *app, bool mirror) {
     SDL_DisplayID display = SDL_GetPrimaryDisplay();
     if (!display || !SDL_GetDisplayBounds(display, &bounds)) return false;
     app->config.model.mouse_mirror = mirror;
-    l2dcat_input_mouse(&app->input, bounds.x + bounds.w * 0.9,
-        bounds.y + bounds.h * 0.1);
-    l2dcat_app_apply_mouse(app);
+    l2dcat_app_apply_mouse_position(app, bounds.x + bounds.w * 0.9,
+        bounds.y + bounds.h * 0.1, 1.0f / 60.0f);
     return true;
 }
 

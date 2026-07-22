@@ -131,6 +131,11 @@ void l2dcat_platform_begin_drag(L2DCatPlatform *platform) {
 bool l2dcat_platform_global_input_supported(void) {
     return l2dcat_linux_x11_supported(active_platform);
 }
+
+void l2dcat_platform_set_tray_left_click(void *tray, L2DCatTrayClick callback,
+    void *userdata) {
+    (void)tray; (void)callback; (void)userdata;
+}
 bool l2dcat_platform_single_instance_begin(void) {
     char path[96]; snprintf(path, sizeof(path), "/tmp/l2dcat-native-%lu.lock",
         (unsigned long)getuid());

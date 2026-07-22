@@ -22,5 +22,7 @@ bool l2dcat_import_discover(const char *source, L2DCatImportDiscovery *discovery
     L2DCatError *error);
 bool l2dcat_import_manifest_valid(const char *root, const char *setting,
     L2DCatError *error);
+bool l2dcat_import_legacy_assets(const L2DCatImportCandidate *candidate,
+    const char *source_root, const char *target, L2DCatError *error);
 
 #endif

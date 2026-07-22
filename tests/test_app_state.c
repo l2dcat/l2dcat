@@ -12,7 +12,7 @@ typedef struct ParameterValue {
 
 static ParameterValue parameters[128];
 static size_t parameter_count;
-static bool left_hand, right_hand;
+static bool left_hand, right_hand, left_trigger, right_trigger, left_thumb;
 int l2dcat_test_failures;
 
 static float parameter(const char *id) {
@@ -44,6 +44,9 @@ int l2dcat_overlay_key(L2DCatOverlay *overlay, const char *name, bool pressed) {
         left_hand = pressed;
     else if (strcmp(name, "RightArrow") == 0 || strcmp(name, "South") == 0)
         right_hand = pressed;
+    else if (strcmp(name, "LeftTrigger2") == 0) left_trigger = pressed;
+    else if (strcmp(name, "RightTrigger2") == 0) right_trigger = pressed;
+    else if (strcmp(name, "LeftThumb") == 0) left_thumb = pressed;
     return 0;
 }
 
@@ -108,11 +111,23 @@ int main(void) {
     event = input(L2DCAT_INPUT_GAMEPAD_AXIS, "RightStickY", 0.25f);
     l2dcat_app_apply_input(&app, &event);
     CHECK(parameter("CatParamStickRY") == 0.25f);
+    event = input(L2DCAT_INPUT_GAMEPAD_BUTTON, "South", 1.0f);
+    l2dcat_app_apply_input(&app, &event);
+    CHECK(right_hand);
+    event = input(L2DCAT_INPUT_GAMEPAD_AXIS, "LeftTrigger2", 1.0f);
+    l2dcat_app_apply_input(&app, &event);
+    event = input(L2DCAT_INPUT_GAMEPAD_AXIS, "RightTrigger2", 1.0f);
+    l2dcat_app_apply_input(&app, &event);
+    CHECK(left_trigger && right_trigger);
+    event = input(L2DCAT_INPUT_GAMEPAD_BUTTON, "LeftThumb", 1.0f);
+    l2dcat_app_apply_input(&app, &event);
+    CHECK(left_thumb);
 
     l2dcat_app_reset_gamepad(&app);
     CHECK(parameter("CatParamStickLX") == 0.0f);
     CHECK(parameter("CatParamStickLeftDown") == 0.0f);
     CHECK(parameter("CatParamStickShowLeftHand") == 0.0f);
     CHECK(parameter("CatParamLeftHandDown") == 0.0f);
+    CHECK(!right_hand && !left_trigger && !right_trigger && !left_thumb);
     return l2dcat_test_failures ? 1 : 0;
 }

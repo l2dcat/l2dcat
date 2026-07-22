@@ -24,12 +24,14 @@ typedef struct WindowsState {
 
 static WindowsState *global_state;
 static HANDLE instance_mutex;
-
+static void wake_main_thread(void) {
+    SDL_Event wake = {.type = SDL_EVENT_USER};
+    SDL_PushEvent(&wake);
+}
 static HWND native_window(L2DCatPlatform *platform) {
     return (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(platform->window),
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 }
-
 static void push_event(L2DCatInputKind kind, const char *name, float value) {
     if (!global_state || !global_state->platform || !name) return;
     L2DCatInputEvent event = {0};
@@ -37,12 +39,9 @@ static void push_event(L2DCatInputKind kind, const char *name, float value) {
     event.timestamp_ms = GetTickCount64();
     event.value = value;
     snprintf(event.name, sizeof(event.name), "%s", name);
-    if (l2dcat_input_push(global_state->platform->input, &event)) {
-        SDL_Event wake = {.type = SDL_EVENT_USER};
-        SDL_PushEvent(&wake);
-    }
+    if (l2dcat_input_push(global_state->platform->input, &event))
+        wake_main_thread();
 }
-
 static LRESULT CALLBACK keyboard_hook(int code, WPARAM message, LPARAM data) {
     if (code == HC_ACTION) {
         const KBDLLHOOKSTRUCT *key = (const KBDLLHOOKSTRUCT *)data;
@@ -71,7 +70,8 @@ static LRESULT CALLBACK mouse_hook(int code, WPARAM message, LPARAM data) {
     if (code == HC_ACTION && global_state) {
         const MSLLHOOKSTRUCT *mouse = (const MSLLHOOKSTRUCT *)data;
         if (message == WM_MOUSEMOVE) {
-            l2dcat_input_mouse(global_state->platform->input, mouse->pt.x, mouse->pt.y);
+            if (l2dcat_input_mouse(global_state->platform->input,
+                mouse->pt.x, mouse->pt.y)) wake_main_thread();
         } else {
             const char *name = mouse_button(message, mouse->mouseData);
             bool down = message == WM_LBUTTONDOWN || message == WM_RBUTTONDOWN ||
@@ -123,6 +123,12 @@ L2DCatResult l2dcat_platform_init(L2DCatPlatform *platform, SDL_Window *window,
     }
     HWND hwnd = native_window(platform);
     l2dcat_windows_borderless_install(hwnd);
+    if (!SDL_SetWindowResizable(window, true)) {
+        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM,
+            "Cannot initialize borderless resize state: %s", SDL_GetError());
+        l2dcat_platform_shutdown(platform);
+        return L2DCAT_ERROR_PLATFORM;
+    }
     MARGINS margins = {-1, -1, -1, -1};
     DwmExtendFrameIntoClientArea(hwnd, &margins);
     SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE |
@@ -144,7 +150,10 @@ void l2dcat_platform_shutdown(L2DCatPlatform *platform) {
 }
 
 void l2dcat_platform_set_always_on_top(L2DCatPlatform *platform, bool enabled) {
-    SetWindowPos(native_window(platform), enabled ? HWND_TOPMOST : HWND_NOTOPMOST,
+    if (!platform || !platform->window) return;
+    if (SDL_SetWindowAlwaysOnTop(platform->window, enabled)) return;
+    HWND window = native_window(platform);
+    if (window) SetWindowPos(window, enabled ? HWND_TOPMOST : HWND_NOTOPMOST,
         0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 }
 

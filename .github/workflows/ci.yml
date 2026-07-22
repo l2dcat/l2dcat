@@ -136,24 +136,38 @@ jobs:
         if: runner.os != 'Windows'
         run: ctest --test-dir build --output-on-failure
 
+      - name: Stage Windows install tree
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake --install build --config Release --prefix package/l2dcat
+
+      - name: Stage Linux install tree
+        if: runner.os == 'Linux'
+        run: cmake --install build --prefix "$PWD/package/l2dcat"
+
+      - name: Stage macOS install tree
+        if: runner.os == 'macOS'
+        run: cmake --install build --prefix "$PWD/package"
+
       - name: Package Windows executable
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          $executable = Get-ChildItem build -Recurse -Filter l2dcat.exe -File |
-            Select-Object -First 1
-          if (-not $executable) { throw "l2dcat.exe was not produced" }
-          Copy-Item -LiteralPath $executable.FullName -Destination dist/l2dcat.exe
+          $executable = 'package/l2dcat/l2dcat.exe'
+          if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
+            throw "The install staging tree did not contain l2dcat.exe"
+          }
+          Copy-Item -LiteralPath $executable -Destination dist/l2dcat.exe
           (Get-FileHash dist/l2dcat.exe -Algorithm SHA256).Hash |
             Set-Content -NoNewline dist/l2dcat.exe.sha256
 
       - name: Package Linux application
         if: runner.os == 'Linux'
         run: |
-          mkdir -p package/l2dcat/assets dist
-          install -m 755 build/l2dcat package/l2dcat/l2dcat
-          cp -R resources/assets/. package/l2dcat/assets/
+          test -x package/l2dcat/l2dcat
+          test -d package/l2dcat/assets
+          mkdir -p dist
           tar -C package -czf dist/l2dcat-linux-x86_64.tar.gz l2dcat
           sha256sum dist/l2dcat-linux-x86_64.tar.gz > \
             dist/l2dcat-linux-x86_64.tar.gz.sha256
@@ -162,9 +176,9 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           mkdir -p dist
-          test -d build/l2dcat.app
+          test -d package/l2dcat.app
           ditto -c -k --sequesterRsrc --keepParent \
-            build/l2dcat.app dist/l2dcat-macos.zip
+            package/l2dcat.app dist/l2dcat-macos.zip
           shasum -a 256 dist/l2dcat-macos.zip > \
             dist/l2dcat-macos.zip.sha256
 

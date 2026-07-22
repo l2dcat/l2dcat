@@ -25,14 +25,14 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
     } else if (message == WM_NCACTIVATE) {
         return TRUE;
     } else if (message == WM_MOUSEACTIVATE) {
-        if (HIWORD(lparam) == WM_LBUTTONDOWN)
-            PostMessageW(window, WM_NCLBUTTONDOWN, HTCAPTION, 0);
         return MA_ACTIVATE;
     } else if (message == WM_MENUSELECT && menu_preview) {
         UINT id = LOWORD(wparam), flags = HIWORD(wparam);
         if (flags == 0xffff && !lparam) return CallWindowProcW(
             original ? original : DefWindowProcW, window, message, wparam, lparam);
-        if (!(flags & (MF_POPUP | MF_SEPARATOR)) && id)
+        if ((flags & (MF_POPUP | MF_SEPARATOR)) || !id)
+            menu_preview(menu_preview_userdata, L2DCAT_MENU_NONE);
+        else
             menu_preview(menu_preview_userdata, (L2DCatMenuAction)id);
     }
     return CallWindowProcW(original ? original : DefWindowProcW,

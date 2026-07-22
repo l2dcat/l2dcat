@@ -14,30 +14,52 @@ typedef struct TreeContext {
     L2DCatError *error;
 } TreeContext;
 
+static void select_model_state(L2DCatApp *app, const L2DCatModelEntry *entry) {
+    snprintf(app->config.current_model, sizeof(app->config.current_model), "%s",
+        entry->id);
+    app->config.current_mode = entry->mode;
+    l2dcat_gamepads_set_enabled(app, entry->mode == L2DCAT_MODE_GAMEPAD);
+}
+
 bool l2dcat_app_select_model(L2DCatApp *app, const char *id) {
     if (!app || !app->live2d || !id) return false;
     const L2DCatModelEntry *entry = l2dcat_models_find(&app->models, id);
     if (!entry) return false;
+    if (app->loaded_model[0] && strcmp(app->loaded_model, entry->id) == 0) {
+        select_model_state(app, entry);
+        return true;
+    }
     L2DCatError error = {0};
     L2DCatBehaviorCatalog *behaviors = calloc(1, sizeof(*behaviors));
     if (!behaviors) return false;
     if (l2dcat_behaviors_load(behaviors, entry, &error) != L2DCAT_OK)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+    SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
+    SDL_GLContext previous_context = SDL_GL_GetCurrentContext();
+    bool restore_context = previous_window != app->window ||
+        previous_context != app->gl_context;
+    if (restore_context && !SDL_GL_MakeCurrent(app->window, app->gl_context)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
+            "Cannot activate the main OpenGL context: %s", SDL_GetError());
+        free(behaviors);
+        return false;
+    }
     if (l2dcat_live2d_load(app->live2d, entry->directory,
         entry->setting_file, &error) != L2DCAT_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+        if (restore_context) SDL_GL_MakeCurrent(previous_window, previous_context);
         free(behaviors);
         return false;
     }
     app->behaviors = *behaviors;
     free(behaviors);
     l2dcat_overlay_load(app->overlay, entry->directory, &error);
-    snprintf(app->config.current_model, sizeof(app->config.current_model), "%s", entry->id);
-    app->config.current_mode = entry->mode;
-    l2dcat_gamepads_set_enabled(app, entry->mode == L2DCAT_MODE_GAMEPAD);
+    snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
+    select_model_state(app, entry);
     int pixel_width = app->config.window.width, pixel_height = app->config.window.height;
     if (app->window) SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
     l2dcat_live2d_resize(app->live2d, pixel_width, pixel_height);
+    if (restore_context) SDL_GL_MakeCurrent(previous_window, previous_context);
     l2dcat_window_mark_hit_dirty(app);
     app->dirty = true;
     return true;
@@ -64,7 +86,7 @@ static SDL_EnumerationResult SDLCALL copy_item(void *userdata,
     bool ok = info.type == SDL_PATHTYPE_DIRECTORY
         ? copy_tree(source, target, context->error)
         : info.type == SDL_PATHTYPE_FILE && SDL_CopyFile(source, target);
-    if (!ok && !context->error->message[0])
+    if (!ok && context->error && !context->error->message[0])
         l2dcat_error_set(context->error, L2DCAT_ERROR_IO, "Cannot copy %s: %s",
             source, SDL_GetError());
     return ok ? SDL_ENUM_CONTINUE : SDL_ENUM_FAILURE;

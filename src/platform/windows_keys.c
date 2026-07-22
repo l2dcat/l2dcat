@@ -17,8 +17,19 @@ const char *l2dcat_windows_key_name(const KBDLLHOOKSTRUCT *key, char output[16])
         snprintf(output, 16, "F%lu", code - VK_F1 + 1);
         return output;
     }
+    if (!(key->flags & LLKHF_EXTENDED)) switch (code) {
+    case VK_INSERT: return "Kp0"; case VK_END: return "Kp1";
+    case VK_DOWN: return "Kp2"; case VK_NEXT: return "Kp3";
+    case VK_LEFT: return "Kp4"; case VK_CLEAR: return "Kp5";
+    case VK_RIGHT: return "Kp6"; case VK_HOME: return "Kp7";
+    case VK_UP: return "Kp8"; case VK_PRIOR: return "Kp9";
+    case VK_DELETE: return "KpDecimal"; default: break;
+    }
     switch (code) {
     case VK_ESCAPE: return "Escape";
+    case VK_PAUSE: return "Pause";
+    case VK_SNAPSHOT: return "PrintScreen";
+    case VK_APPS: return "Apps";
     case VK_TAB: return "Tab";
     case VK_CAPITAL: return "CapsLock";
     case VK_SPACE: return "Space";
@@ -44,6 +55,16 @@ const char *l2dcat_windows_key_name(const KBDLLHOOKSTRUCT *key, char output[16])
     case VK_CONTROL: return key->flags & LLKHF_EXTENDED ? "ControlRight" : "ControlLeft";
     case VK_MENU: return key->flags & LLKHF_EXTENDED ? "AltGr" : "Alt";
     case VK_RETURN: return "Return";
+    case VK_NUMLOCK: return "NumLock";
+    case VK_SCROLL: return "ScrollLock";
+    case VK_NUMPAD0: return "Kp0"; case VK_NUMPAD1: return "Kp1";
+    case VK_NUMPAD2: return "Kp2"; case VK_NUMPAD3: return "Kp3";
+    case VK_NUMPAD4: return "Kp4"; case VK_NUMPAD5: return "Kp5";
+    case VK_NUMPAD6: return "Kp6"; case VK_NUMPAD7: return "Kp7";
+    case VK_NUMPAD8: return "Kp8"; case VK_NUMPAD9: return "Kp9";
+    case VK_MULTIPLY: return "KpMultiply"; case VK_ADD: return "KpPlus";
+    case VK_SUBTRACT: return "KpMinus"; case VK_DECIMAL: return "KpDecimal";
+    case VK_DIVIDE: return "KpDivide";
     case VK_OEM_3: return "BackQuote";
     case VK_OEM_MINUS: return "Minus";
     case VK_OEM_PLUS: return "Equal";

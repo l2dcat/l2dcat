@@ -52,7 +52,10 @@ static CGEventRef event_tap(CGEventTapProxy proxy, CGEventType type,
     if (type == kCGEventMouseMoved || type == kCGEventLeftMouseDragged ||
         type == kCGEventRightMouseDragged || type == kCGEventOtherMouseDragged) {
         CGPoint point = CGEventGetLocation(event);
-        l2dcat_input_mouse(state->platform->input, point.x, point.y);
+        if (l2dcat_input_mouse(state->platform->input, point.x, point.y)) {
+            SDL_Event wake = {.type = SDL_EVENT_USER};
+            SDL_PushEvent(&wake);
+        }
         return event;
     }
     if (type == kCGEventKeyDown || type == kCGEventKeyUp || type == kCGEventFlagsChanged) {

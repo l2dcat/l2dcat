@@ -4,14 +4,25 @@
 #import <Cocoa/Cocoa.h>
 #include <stdio.h>
 
-@interface L2DCatMenuTarget : NSObject { NSInteger selected_; }
+@interface L2DCatMenuTarget : NSObject <NSMenuDelegate> {
+    NSInteger selected_; const L2DCatMenuLabels *labels_;
+}
+- (id)initWithLabels:(const L2DCatMenuLabels *)labels;
 - (void)choose:(id)sender;
 - (NSInteger)selected;
 @end
 
 @implementation L2DCatMenuTarget
+- (id)initWithLabels:(const L2DCatMenuLabels *)labels {
+    self = [super init]; if (self) labels_ = labels; return self;
+}
 - (void)choose:(id)sender { selected_ = [sender tag]; }
 - (NSInteger)selected { return selected_; }
+- (void)menu:(NSMenu *)menu willHighlightItem:(NSMenuItem *)item {
+    (void)menu;
+    if (labels_->preview) labels_->preview(labels_->preview_userdata,
+        item ? (L2DCatMenuAction)[item tag] : L2DCAT_MENU_NONE);
+}
 @end
 
 static NSString *text(const char *value) {
@@ -32,6 +43,7 @@ static void add_scale_menu(NSMenu *menu, L2DCatMenuTarget *target,
     NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:text(label)
         action:nil keyEquivalent:@""];
     NSMenu *submenu = [[NSMenu alloc] initWithTitle:text(label)];
+    [submenu setDelegate:target];
     const int values[] = {10,20,30,40,50,60,70,80,90,100};
     int count = opacity ? 10 : 16;
     for (int i = 0; i < count; ++i) {
@@ -48,8 +60,9 @@ L2DCatMenuAction l2dcat_macos_context_menu(L2DCatPlatform *platform,
     const L2DCatMenuLabels *labels) {
     (void)platform;
     if (!labels) return L2DCAT_MENU_NONE;
-    L2DCatMenuTarget *target = [[L2DCatMenuTarget alloc] init];
+    L2DCatMenuTarget *target = [[L2DCatMenuTarget alloc] initWithLabels:labels];
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@""];
+    [menu setDelegate:target];
     add_item(menu, target, labels->preferences, L2DCAT_MENU_PREFERENCES, false);
     add_item(menu, target, labels->hide, L2DCAT_MENU_HIDE, false);
     [menu addItem:[NSMenuItem separatorItem]];
@@ -62,6 +75,7 @@ L2DCatMenuAction l2dcat_macos_context_menu(L2DCatPlatform *platform,
     NSMenuItem *modelRoot = [[NSMenuItem alloc] initWithTitle:text(labels->model)
         action:nil keyEquivalent:@""];
     NSMenu *models = [[NSMenu alloc] initWithTitle:text(labels->model)];
+    [models setDelegate:target];
     for (size_t i = 0; i < labels->model_count; ++i)
         add_item(models, target, labels->model_names[i], L2DCAT_MENU_MODEL_FIRST + i,
             i == labels->current_model);
@@ -71,6 +85,7 @@ L2DCatMenuAction l2dcat_macos_context_menu(L2DCatPlatform *platform,
     add_item(menu, target, labels->exit, L2DCAT_MENU_EXIT, false);
     [menu popUpMenuPositioningItem:nil atLocation:[NSEvent mouseLocation] inView:nil];
     L2DCatMenuAction result = (L2DCatMenuAction)[target selected];
+    if (labels->restore) labels->restore(labels->preview_userdata, result);
     [menu release]; [target release]; return result;
 }
 #endif

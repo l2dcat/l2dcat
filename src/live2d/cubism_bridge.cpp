@@ -10,6 +10,7 @@
 #include <SDL3/SDL_filesystem.h>
 #include <cstdio>
 #include <cstdlib>
+#include <exception>
 #include <new>
 
 #ifdef _WIN32
@@ -118,7 +119,41 @@ void stop_framework() {
 
 } // namespace
 
-struct L2DCatLive2D { l2dcat::NativeModel *model; };
+struct L2DCatLive2D {
+    l2dcat::NativeModel *model;
+    int width = 612;
+    int height = 354;
+};
+
+static bool restore_previous(L2DCatLive2D *runtime,
+    l2dcat::NativeModel *previous, L2DCatError *primary) noexcept {
+    if (!previous) { runtime->model = nullptr; return true; }
+    L2DCatError restore_error = {};
+    try {
+        if (previous->load_textures(&restore_error)) {
+            runtime->model = previous;
+            return true;
+        }
+    } catch (const std::bad_alloc &) {
+        l2dcat_error_set(&restore_error, L2DCAT_ERROR_MEMORY,
+            "Out of memory while restoring the previous model");
+    } catch (const std::exception &exception) {
+        l2dcat_error_set(&restore_error, L2DCAT_ERROR_CUBISM,
+            "Previous model restore failed: %s", exception.what());
+    } catch (...) {
+        l2dcat_error_set(&restore_error, L2DCAT_ERROR_CUBISM,
+            "Previous model restore failed with an unknown exception");
+    }
+    if (primary) {
+        char original[sizeof(primary->message)];
+        std::snprintf(original, sizeof(original), "%s", primary->message);
+        l2dcat_error_set(primary, primary->code,
+            "%s; restore failed: %s", original, restore_error.message);
+    }
+    delete previous;
+    runtime->model = nullptr;
+    return false;
+}
 
 extern "C" L2DCatLive2D *l2dcat_live2d_create(const char *asset_root,
     L2DCatError *error) {
@@ -142,38 +177,75 @@ extern "C" void l2dcat_live2d_destroy(L2DCatLive2D *runtime) {
 extern "C" L2DCatResult l2dcat_live2d_load(L2DCatLive2D *runtime, const char *directory,
     const char *setting, L2DCatError *error) {
     if (!runtime) return L2DCAT_ERROR_ARGUMENT;
-    auto *model = new(std::nothrow) l2dcat::NativeModel();
-    if (!model) return L2DCAT_ERROR_MEMORY;
-    if (!model->load(directory, setting, error)) {
-        delete model;
-        return error ? error->code : L2DCAT_ERROR_CUBISM;
-    }
     l2dcat::NativeModel *previous = runtime->model;
-    if (previous) {
-        previous->release_textures();
+    l2dcat::NativeModel *model = nullptr;
+    bool previous_released = false;
+    try {
+        model = new(std::nothrow) l2dcat::NativeModel();
+        if (!model) {
+            l2dcat_error_set(error, L2DCAT_ERROR_MEMORY,
+                "Cannot allocate Live2D model");
+            return L2DCAT_ERROR_MEMORY;
+        }
+        if (!model->load(directory, setting, error)) {
+            delete model;
+            return error ? error->code : L2DCAT_ERROR_CUBISM;
+        }
+        if (previous) {
+            previous_released = true;
+            previous->release_render_resources();
+            glFinish();
+        }
+        model->reshape(runtime->width, runtime->height);
+        if (!model->load_textures(error)) {
+            L2DCatResult result = error ? error->code : L2DCAT_ERROR_CUBISM;
+            delete model;
+            glFinish();
+            restore_previous(runtime, previous, error);
+            glFinish();
+            l2dcat_platform_trim_memory();
+            return result;
+        }
+        delete previous;
+        runtime->model = model;
+        glFinish();
+        l2dcat_platform_trim_memory();
+        return L2DCAT_OK;
+    } catch (const std::bad_alloc &) {
+        l2dcat_error_set(error, L2DCAT_ERROR_MEMORY,
+            "Out of memory while loading the Live2D model");
+    } catch (const std::exception &exception) {
+        l2dcat_error_set(error, L2DCAT_ERROR_CUBISM,
+            "Live2D model load failed: %s", exception.what());
+    } catch (...) {
+        l2dcat_error_set(error, L2DCAT_ERROR_CUBISM,
+            "Live2D model load failed with an unknown exception");
+    }
+    delete model;
+    if (previous_released) {
+        glFinish();
+        restore_previous(runtime, previous, error);
         glFinish();
         l2dcat_platform_trim_memory();
     }
-    if (!model->load_textures(error)) {
-        L2DCatResult result = error ? error->code : L2DCAT_ERROR_CUBISM;
-        L2DCatError restore_error = {};
-        if (previous && !previous->load_textures(&restore_error)) {
-            delete previous;
-            runtime->model = nullptr;
-        }
-        delete model;
-        return result;
-    }
-    delete previous;
-    runtime->model = model;
-    return L2DCAT_OK;
+    return error ? error->code : L2DCAT_ERROR_CUBISM;
 }
 
 extern "C" void l2dcat_live2d_resize(L2DCatLive2D *runtime, int width, int height) {
-    if (runtime && runtime->model) runtime->model->resize(width, height);
+    if (!runtime) return;
+    if (width > 0 && height > 0) {
+        runtime->width = width;
+        runtime->height = height;
+    }
+    if (runtime->model) runtime->model->resize(width, height);
 }
 extern "C" void l2dcat_live2d_reshape(L2DCatLive2D *runtime, int width, int height) {
-    if (runtime && runtime->model) runtime->model->reshape(width, height);
+    if (!runtime) return;
+    if (width > 0 && height > 0) {
+        runtime->width = width;
+        runtime->height = height;
+    }
+    if (runtime->model) runtime->model->reshape(width, height);
 }
 extern "C" bool l2dcat_live2d_update(L2DCatLive2D *runtime, float elapsed) {
     return runtime && runtime->model && runtime->model->update(elapsed);

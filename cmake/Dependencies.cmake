@@ -1,3 +1,18 @@
+set(L2DCAT_STB_INCLUDE_DIR "" CACHE PATH
+  "Directory containing stb_image.h and stb_image_write.h")
+set(L2DCAT_MINIAUDIO_INCLUDE_DIR "" CACHE PATH
+  "Directory containing miniaudio.h (used when no miniaudio CMake package exists)")
+set(L2DCAT_NUKLEAR_INCLUDE_DIR "" CACHE PATH
+  "Directory containing nuklear.h")
+
+function(l2dcat_require_dependency_header variable header guidance)
+  if(NOT EXISTS "${${variable}}/${header}")
+    message(FATAL_ERROR
+      "L2DCAT_FETCH_DEPS=OFF requires ${header}. ${guidance} "
+      "or set -D${variable}=<directory containing ${header}>.")
+  endif()
+endfunction()
+
 if(L2DCAT_FETCH_DEPS)
   set(SDL_SHARED OFF CACHE BOOL "" FORCE)
   set(SDL_STATIC ON CACHE BOOL "" FORCE)
@@ -7,6 +22,13 @@ if(L2DCAT_FETCH_DEPS)
   set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
   set(SDL_RENDER OFF CACHE BOOL "" FORCE)
   set(SDL_GPU OFF CACHE BOOL "" FORCE)
+  # l2dcat creates desktop OpenGL contexts and does not use SDL's alternate
+  # graphics or software video backends. Keep the platform video driver and
+  # dummy fallback enabled for diagnostics, while omitting unused APIs.
+  set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+  set(SDL_VULKAN OFF CACHE BOOL "" FORCE)
+  set(SDL_OFFSCREEN OFF CACHE BOOL "" FORCE)
+  set(SDL_VIRTUAL_JOYSTICK OFF CACHE BOOL "" FORCE)
   set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
   set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
   set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
@@ -19,8 +41,10 @@ if(L2DCAT_FETCH_DEPS)
   set(MINIAUDIO_NO_LIBVORBIS ON CACHE BOOL "" FORCE)
   set(MINIAUDIO_NO_LIBOPUS ON CACHE BOOL "" FORCE)
   set(MINIAUDIO_NO_ENCODING ON CACHE BOOL "" FORCE)
-  set(MINIAUDIO_NO_WAV ON CACHE BOOL "" FORCE)
-  set(MINIAUDIO_NO_MP3 ON CACHE BOOL "" FORCE)
+  # Motion metadata may reference WAV/MP3 files, so keep both decoders enabled.
+  # FORCE also repairs build trees created by older size-only configurations.
+  set(MINIAUDIO_NO_WAV OFF CACHE BOOL "" FORCE)
+  set(MINIAUDIO_NO_MP3 OFF CACHE BOOL "" FORCE)
   set(MINIAUDIO_NO_GENERATION ON CACHE BOOL "" FORCE)
   FetchContent_Declare(SDL3 URL https://github.com/libsdl-org/SDL/archive/402fc52af4e731184ad6a704068b5ccd27d8f1b8.tar.gz
     URL_HASH SHA256=e413151af71c23d316b6076a96a999342142afa792394eaf8a542a03503fc491)
@@ -33,7 +57,62 @@ if(L2DCAT_FETCH_DEPS)
   FetchContent_Declare(nuklear URL https://github.com/Immediate-Mode-UI/Nuklear/archive/8109cfbabe04f8705408c5d8ab1a6cd48649ccda.tar.gz
     URL_HASH SHA256=23e5e1b12e897f1d568eb703aa313b7224c9b75e1118764ceba477d13b8e39f4)
   FetchContent_MakeAvailable(SDL3 yyjson stb miniaudio nuklear)
+  set(L2DCAT_STB_INCLUDE_DIR "${stb_SOURCE_DIR}")
+  set(L2DCAT_MINIAUDIO_INCLUDE_DIR "${miniaudio_SOURCE_DIR}")
+  set(L2DCAT_NUKLEAR_INCLUDE_DIR "${nuklear_SOURCE_DIR}")
+  set(L2DCAT_MINIAUDIO_TARGET miniaudio)
 else()
   find_package(SDL3 CONFIG REQUIRED COMPONENTS SDL3-static)
   find_package(yyjson CONFIG REQUIRED)
+
+  if(NOT TARGET yyjson AND TARGET yyjson::yyjson)
+    add_library(yyjson ALIAS yyjson::yyjson)
+  elseif(NOT TARGET yyjson)
+    message(FATAL_ERROR
+      "The yyjson package was found but provides neither yyjson nor yyjson::yyjson")
+  endif()
+
+  if(NOT L2DCAT_STB_INCLUDE_DIR)
+    find_path(L2DCAT_STB_INCLUDE_DIR NAMES stb_image.h PATH_SUFFIXES stb)
+  endif()
+  l2dcat_require_dependency_header(L2DCAT_STB_INCLUDE_DIR stb_image.h
+    "Install the stb development headers")
+  l2dcat_require_dependency_header(L2DCAT_STB_INCLUDE_DIR stb_image_write.h
+    "Install the complete stb development headers")
+
+  if(NOT L2DCAT_NUKLEAR_INCLUDE_DIR)
+    find_path(L2DCAT_NUKLEAR_INCLUDE_DIR NAMES nuklear.h)
+  endif()
+  l2dcat_require_dependency_header(L2DCAT_NUKLEAR_INCLUDE_DIR nuklear.h
+    "Install the Nuklear development header")
+
+  if(NOT L2DCAT_MINIAUDIO_INCLUDE_DIR)
+    find_package(miniaudio CONFIG QUIET)
+  endif()
+  if(TARGET miniaudio)
+    set(L2DCAT_MINIAUDIO_TARGET miniaudio)
+  elseif(TARGET miniaudio::miniaudio)
+    set(L2DCAT_MINIAUDIO_TARGET miniaudio::miniaudio)
+  elseif(TARGET unofficial::miniaudio::miniaudio)
+    set(L2DCAT_MINIAUDIO_TARGET unofficial::miniaudio::miniaudio)
+  else()
+    if(NOT L2DCAT_MINIAUDIO_INCLUDE_DIR)
+      find_path(L2DCAT_MINIAUDIO_INCLUDE_DIR NAMES miniaudio.h
+        PATH_SUFFIXES miniaudio)
+    endif()
+    l2dcat_require_dependency_header(L2DCAT_MINIAUDIO_INCLUDE_DIR miniaudio.h
+      "Install miniaudio headers or a miniaudio CMake package")
+
+    set(miniaudio_impl "${CMAKE_CURRENT_BINARY_DIR}/generated/miniaudio_impl.c")
+    file(CONFIGURE OUTPUT "${miniaudio_impl}" CONTENT [=[
+#define MINIAUDIO_IMPLEMENTATION
+#include <miniaudio.h>
+]=] @ONLY)
+    add_library(l2dcat_miniaudio_system STATIC "${miniaudio_impl}")
+    target_include_directories(l2dcat_miniaudio_system SYSTEM PUBLIC
+      "${L2DCAT_MINIAUDIO_INCLUDE_DIR}")
+    target_compile_definitions(l2dcat_miniaudio_system PRIVATE
+      MA_NO_ENCODING MA_NO_GENERATION)
+    set(L2DCAT_MINIAUDIO_TARGET l2dcat_miniaudio_system)
+  endif()
 endif()

@@ -34,10 +34,70 @@ void l2dcat_window_mark_hit_dirty(L2DCatApp *app) {
     app->pointer_hit_deadline_ns = 0;
 }
 
+void l2dcat_window_schedule_pointer_hit(L2DCatApp *app) {
+    if (!app) return;
+    uint64_t deadline = SDL_GetTicksNS() + 8000000ull;
+    if (!app->pointer_hit_dirty) {
+        app->pointer_hit_dirty = true;
+        app->pointer_hit_deadline_ns = deadline;
+    } else if (app->pointer_hit_deadline_ns &&
+        app->pointer_hit_deadline_ns > deadline) {
+        app->pointer_hit_deadline_ns = deadline;
+    }
+}
+
 void l2dcat_window_schedule_hit_check(L2DCatApp *app) {
     if (!app || app->pointer_hit_dirty || !app->pointer_known) return;
     app->pointer_hit_dirty = true;
     app->pointer_hit_deadline_ns = SDL_GetTicksNS() + 100000000ull;
+}
+
+int l2dcat_window_wait_timeout(const L2DCatApp *app, uint64_t now) {
+    if (!app) return 250;
+    int wait_ms = app->config.window.visible ? L2DCAT_FRAME_WAIT(app) : 250;
+    if (app->wheel_animation_active && wait_ms > 8) wait_ms = 8;
+    bool pending_hit = app->config.window.visible && app->pointer_hit_dirty &&
+        app->pointer_hit_deadline_ns &&
+        !app->config.window.pass_through && !app->hover_hidden &&
+        !app->left_mouse_down && !app->right_mouse_down;
+    if (!pending_hit) return wait_ms;
+    if (app->pointer_hit_deadline_ns <= now) return 0;
+    uint64_t remaining_ns = app->pointer_hit_deadline_ns - now;
+    uint64_t remaining_ms = remaining_ns / 1000000ull +
+        (remaining_ns % 1000000ull != 0);
+    return remaining_ms < (uint64_t)wait_ms ? (int)remaining_ms : wait_ms;
+}
+
+bool l2dcat_window_wait_timeout_self_test(void) {
+    const uint64_t now = 1000000000ull;
+    L2DCatApp app = {0};
+    app.config.window.visible = true;
+    app.config.model.max_fps = 60;
+    app.pointer_hit_dirty = true;
+    app.pointer_hit_deadline_ns = now + 8000000ull;
+    if (l2dcat_window_wait_timeout(&app, now) != 8) return false;
+    app.config.model.max_fps = 30;
+    if (l2dcat_window_wait_timeout(&app, now) != 8) return false;
+    app.pointer_hit_deadline_ns = now + 8500000ull;
+    if (l2dcat_window_wait_timeout(&app, now) != 9) return false;
+    app.pointer_hit_deadline_ns = now;
+    if (l2dcat_window_wait_timeout(&app, now) != 0) return false;
+    app.pointer_hit_dirty = false;
+    if (l2dcat_window_wait_timeout(&app, now) != L2DCAT_FRAME_WAIT(&app)) return false;
+    app.pointer_hit_dirty = true;
+    app.pointer_hit_deadline_ns = now + 8000000ull;
+    app.config.window.pass_through = true;
+    if (l2dcat_window_wait_timeout(&app, now) != L2DCAT_FRAME_WAIT(&app)) return false;
+    app.config.window.pass_through = false;
+    app.left_mouse_down = true;
+    if (l2dcat_window_wait_timeout(&app, now) != L2DCAT_FRAME_WAIT(&app)) return false;
+    app.left_mouse_down = false;
+    app.config.window.visible = false;
+    if (l2dcat_window_wait_timeout(&app, now) != 250) return false;
+    app.pointer_hit_dirty = false;
+    if (l2dcat_window_wait_timeout(&app, now) != 250) return false;
+    app.wheel_animation_active = true;
+    return l2dcat_window_wait_timeout(&app, now) == 8;
 }
 
 void l2dcat_window_sync_click_through(L2DCatApp *app) {
@@ -48,7 +108,8 @@ void l2dcat_window_sync_click_through(L2DCatApp *app) {
         app->pointer_hit_dirty = false;
     }
     if (!forced && (app->left_mouse_down || app->right_mouse_down)) return;
-    if (!forced && app->pointer_known && app->pointer_hit_dirty &&
+    if (!forced && app->config.window.visible && app->pointer_known &&
+        app->pointer_hit_dirty &&
         (!app->pointer_hit_deadline_ns || SDL_GetTicksNS() >= app->pointer_hit_deadline_ns)) {
         float local_x, local_y;
         bool inside = l2dcat_platform_pointer_local(&app->platform,

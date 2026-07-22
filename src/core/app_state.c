@@ -48,10 +48,12 @@ static void apply_gamepad(L2DCatApp *app, const L2DCatInputEvent *event) {
         id = "CatParamStickRY"; app->right_stick_y = event->value;
     } else if (strcmp(event->name, "LeftThumb") == 0) {
         app->left_stick_pressed = event->value > 0.0f;
+        apply_key(app, event->name, app->left_stick_pressed);
         l2dcat_live2d_set_parameter(app->live2d, "CatParamStickLeftDown",
             app->left_stick_pressed);
     } else if (strcmp(event->name, "RightThumb") == 0) {
         app->right_stick_pressed = event->value > 0.0f;
+        apply_key(app, event->name, app->right_stick_pressed);
         l2dcat_live2d_set_parameter(app->live2d, "CatParamStickRightDown",
             app->right_stick_pressed);
     } else apply_key(app, event->name, event->value > 0.05f);
@@ -70,6 +72,13 @@ void l2dcat_app_reset_gamepad(L2DCatApp *app) {
         "CatParamStickRightDown"};
     for (size_t i = 0; i < sizeof(parameters) / sizeof(parameters[0]); ++i)
         l2dcat_live2d_set_parameter(app->live2d, parameters[i], 0.0f);
+    const char *buttons[] = {"South", "East", "West", "North", "Select", "Mode",
+        "Start", "LeftTrigger", "RightTrigger", "LeftTrigger2", "RightTrigger2",
+        "DPadUp", "DPadDown", "DPadLeft", "DPadRight", "Misc1", "Misc2",
+        "Misc3", "Misc4", "Misc5", "Misc6", "RightPaddle1", "LeftPaddle1",
+        "RightPaddle2", "LeftPaddle2", "Touchpad", "LeftThumb", "RightThumb"};
+    for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); ++i)
+        apply_key(app, buttons[i], false);
     update_hands(app);
     app->dirty = true;
 }

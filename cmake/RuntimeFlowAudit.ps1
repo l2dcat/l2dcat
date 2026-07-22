@@ -1,5 +1,6 @@
 param([string]$Exe="", [string]$OutputDir="", [double]$MaximumWorkingMiB=140,
-    [double]$MaximumRecoveryGrowthMiB=12, [int]$MaximumHandleGrowth=12)
+    [double]$MaximumPrivateMiB=100, [double]$MaximumRecoveryGrowthMiB=12,
+    [int]$MaximumHandleGrowth=12)
 $ErrorActionPreference="Stop"
 $root=Split-Path $PSScriptRoot -Parent
 if(-not $Exe){$Exe=Join-Path $root "build-cubism\Release\l2dcat.exe"}
@@ -18,7 +19,12 @@ try {
         Start-Sleep -Milliseconds 100; $process.Refresh(); if($process.HasExited){break}
         $now=[DateTime]::UtcNow; $cpu=$process.TotalProcessorTime
         $elapsed=($now-$previousAt).TotalSeconds
-        $stage=if(Test-Path $stageFile){(Get-Content $stageFile -Raw).Trim()}else{"launch"}
+        $stage="launch"
+        if(Test-Path $stageFile){
+            try{$stageText=Get-Content $stageFile -Raw
+                if($stageText){$stage=$stageText.Trim()}}
+            catch{}
+        }
         $rows.Add([pscustomobject]@{TimestampUtc=$now.ToString("o");Stage=$stage
             ElapsedMs=[math]::Round(($now-$started).TotalMilliseconds,1)
             WorkingMiB=[math]::Round($process.WorkingSet64/1MB,3)
@@ -37,17 +43,24 @@ $summary=$rows|Group-Object Stage|ForEach-Object{[pscustomobject]@{Stage=$_.Name
 $summary|Export-Csv (Join-Path $OutputDir "runtime-flow-summary.csv") -NoTypeInformation -Encoding UTF8
 $idle=$summary|Where-Object Stage -eq idle; $recovery=$summary|Where-Object Stage -eq final-recovery
 $peak=($rows|Measure-Object WorkingMiB -Maximum).Maximum
+$peakPrivate=($rows|Measure-Object PrivateMiB -Maximum).Maximum
 $initialized=$summary|Where-Object Stage -eq recovery
 $handleGrowth=if($initialized-and $recovery){$recovery.PeakHandles-$initialized.PeakHandles}else{999}
-$recoveryGrowth=if($idle-and $recovery){$recovery.PeakWorkingMiB-$idle.PeakWorkingMiB}else{999}
+$recoveryGrowth=if($initialized-and $recovery){
+    $recovery.PeakPrivateMiB-$initialized.PeakPrivateMiB}else{999}
+$coldRecoveryGrowth=if($idle-and $recovery){
+    $recovery.PeakPrivateMiB-$idle.PeakPrivateMiB}else{999}
 $expected=@("startup","idle","scale-up","scale-down","opacity-50","opacity-100",
     "model-keyboard","model-standard","model-gamepad","settings-first","settings-idle","settings-closed",
     "settings-reopen","recovery","gamepad-repeat","final-recovery")
 $missing=@($expected|Where-Object{$_ -notin $summary.Stage})
 $passed=$process.ExitCode-eq 0-and-not $missing.Count-and $peak-le $MaximumWorkingMiB-and
+    $peakPrivate-le $MaximumPrivateMiB-and
     $recoveryGrowth-le $MaximumRecoveryGrowthMiB-and $handleGrowth-le $MaximumHandleGrowth
 $result=[pscustomobject]@{Stages=$summary.Count;Missing=($missing-join ",");ExitCode=$process.ExitCode
-    PeakWorkingMiB=[math]::Round($peak,3);RecoveryGrowthMiB=[math]::Round($recoveryGrowth,3)
+    PeakWorkingMiB=[math]::Round($peak,3);PeakPrivateMiB=[math]::Round($peakPrivate,3)
+    WarmRecoveryGrowthMiB=[math]::Round($recoveryGrowth,3)
+    ColdRecoveryGrowthMiB=[math]::Round($coldRecoveryGrowth,3)
     HandleGrowth=$handleGrowth;Passed=$passed;Report=$report}
 $result|Format-List; $summary|Format-Table -AutoSize
 if(-not $passed){exit 1}

@@ -14,6 +14,10 @@ void l2dcat_input_init(L2DCatInputState *state) {
     atomic_init(&state->control, 0);
     atomic_init(&state->shift, 0);
     atomic_init(&state->dropped, 0);
+    atomic_init(&state->next_sequence, 0);
+    memset(state->recovery, 0, sizeof(state->recovery));
+    atomic_init(&state->recovery_head, 0);
+    atomic_init(&state->recovery_tail, 0);
     memset(state->releases, 0, sizeof(state->releases));
     state->release_count = 0;
 }
@@ -37,13 +41,30 @@ static void update_modifiers(L2DCatInputState *state, const L2DCatInputEvent *ev
 bool l2dcat_input_push(L2DCatInputState *state, const L2DCatInputEvent *event) {
     if (!state || !event) return false;
     update_modifiers(state, event);
+    uint64_t sequence = atomic_fetch_add_explicit(&state->next_sequence, 1,
+        memory_order_relaxed);
     uint16_t head = (uint16_t)atomic_load_explicit(&state->head, memory_order_relaxed);
-    uint16_t next = (uint16_t)((head + 1u) % 256u);
+    uint16_t next = (uint16_t)((head + 1u) % L2DCAT_INPUT_QUEUE_CAP);
     if (next == atomic_load_explicit(&state->tail, memory_order_acquire)) {
+        if (event->kind == L2DCAT_INPUT_KEY_UP || event->kind == L2DCAT_INPUT_MOUSE_UP) {
+            uint8_t recovery_head = (uint8_t)atomic_load_explicit(
+                &state->recovery_head, memory_order_relaxed);
+            uint8_t recovery_next = (uint8_t)((recovery_head + 1u) %
+                L2DCAT_INPUT_RECOVERY_CAP);
+            if (recovery_next != atomic_load_explicit(&state->recovery_tail,
+                memory_order_acquire)) {
+                state->recovery[recovery_head] = *event;
+                state->recovery[recovery_head].sequence = sequence;
+                atomic_store_explicit(&state->recovery_head, recovery_next,
+                    memory_order_release);
+                return true;
+            }
+        }
         atomic_fetch_add_explicit(&state->dropped, 1, memory_order_relaxed);
         return false;
     }
     state->queue[head] = *event;
+    state->queue[head].sequence = sequence;
     atomic_store_explicit(&state->head, next, memory_order_release);
     return true;
 }
@@ -51,17 +72,34 @@ bool l2dcat_input_push(L2DCatInputState *state, const L2DCatInputEvent *event) {
 bool l2dcat_input_pop(L2DCatInputState *state, L2DCatInputEvent *event) {
     if (!state || !event) return false;
     uint16_t tail = (uint16_t)atomic_load_explicit(&state->tail, memory_order_relaxed);
-    if (tail == atomic_load_explicit(&state->head, memory_order_acquire)) return false;
+    uint16_t head = (uint16_t)atomic_load_explicit(&state->head, memory_order_acquire);
+    uint8_t recovery_tail = (uint8_t)atomic_load_explicit(
+        &state->recovery_tail, memory_order_relaxed);
+    uint8_t recovery_head = (uint8_t)atomic_load_explicit(
+        &state->recovery_head, memory_order_acquire);
+    bool main_ready = tail != head;
+    bool recovery_ready = recovery_tail != recovery_head;
+    if (!main_ready && !recovery_ready) return false;
+    if (recovery_ready && (!main_ready || state->recovery[recovery_tail].sequence <
+        state->queue[tail].sequence)) {
+        *event = state->recovery[recovery_tail];
+        atomic_store_explicit(&state->recovery_tail,
+            (uint8_t)((recovery_tail + 1u) % L2DCAT_INPUT_RECOVERY_CAP),
+            memory_order_release);
+        return true;
+    }
     *event = state->queue[tail];
-    atomic_store_explicit(&state->tail, (tail + 1u) % 256u, memory_order_release);
+    atomic_store_explicit(&state->tail,
+        (tail + 1u) % L2DCAT_INPUT_QUEUE_CAP, memory_order_release);
     return true;
 }
 
-void l2dcat_input_mouse(L2DCatInputState *state, double x, double y) {
-    if (!state) return;
+bool l2dcat_input_mouse(L2DCatInputState *state, double x, double y) {
+    if (!state) return false;
     atomic_store_explicit(&state->mouse_x, x, memory_order_relaxed);
     atomic_store_explicit(&state->mouse_y, y, memory_order_relaxed);
-    atomic_store_explicit(&state->mouse_dirty, true, memory_order_release);
+    return !atomic_exchange_explicit(&state->mouse_dirty, true,
+        memory_order_acq_rel);
 }
 
 bool l2dcat_input_take_mouse(L2DCatInputState *state, double *x, double *y) {

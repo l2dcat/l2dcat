@@ -28,9 +28,13 @@ static void record_frame(L2DCatApp *app, const unsigned char *pixels,
     bool header = !l2dcat_path_is_file(path);
     FILE *file = l2dcat_file_open(path, "ab");
     if (!file) return;
-    if (header) fputs("ticks_ns,width,height,visible_pixels\n", file);
-    fprintf(file, "%llu,%d,%d,%u\n", (unsigned long long)SDL_GetTicksNS(),
-        width, height, visible_pixels(pixels, width, height, pitch));
+    if (header) fputs("ticks_ns,width,height,visible_pixels,scale_percent,"
+        "opacity_percent,window_opacity\n", file);
+    fprintf(file, "%llu,%d,%d,%u,%.3f,%.3f,%.5f\n",
+        (unsigned long long)SDL_GetTicksNS(), width, height,
+        visible_pixels(pixels, width, height, pitch),
+        app->config.window.scale_percent, app->config.window.opacity_percent,
+        SDL_GetWindowOpacity(app->window));
     fclose(file);
 }
 

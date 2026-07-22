@@ -46,6 +46,55 @@ void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
         visible ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW, true);
 }
 
+static const wchar_t tray_proc_property[] = L"l2dcat.TrayWindowProc";
+static L2DCatTrayClick tray_click;
+static void *tray_click_userdata;
+
+static LRESULT CALLBACK tray_window_proc(HWND window, UINT message,
+    WPARAM wparam, LPARAM lparam) {
+    WNDPROC original = (WNDPROC)GetPropW(window, tray_proc_property);
+    if (message == WM_USER + 1 && LOWORD(lparam) == WM_LBUTTONUP && tray_click) {
+        tray_click(tray_click_userdata);
+        return 0;
+    }
+    return CallWindowProcW(original ? original : DefWindowProcW,
+        window, message, wparam, lparam);
+}
+
+static void bind_tray_window(HWND window, void *tray, bool binding) {
+    wchar_t name[32]; DWORD process = 0;
+    GetWindowThreadProcessId(window, &process);
+    if (process != GetCurrentProcessId() ||
+        !GetClassNameW(window, name, (int)(sizeof(name) / sizeof(name[0]))) ||
+        wcscmp(name, L"Message") != 0 ||
+        (void *)GetWindowLongPtrW(window, GWLP_USERDATA) != tray) return;
+    WNDPROC original = (WNDPROC)GetWindowLongPtrW(window, GWLP_WNDPROC);
+    if (binding) {
+        if (!GetPropW(window, tray_proc_property) && original != tray_window_proc &&
+            SetPropW(window, tray_proc_property, (HANDLE)original)) {
+            SetLastError(ERROR_SUCCESS);
+            if (!SetWindowLongPtrW(window, GWLP_WNDPROC,
+                (LONG_PTR)tray_window_proc) && GetLastError() != ERROR_SUCCESS)
+                RemovePropW(window, tray_proc_property);
+        }
+    } else if (GetPropW(window, tray_proc_property)) {
+        if ((WNDPROC)GetWindowLongPtrW(window, GWLP_WNDPROC) == tray_window_proc)
+            SetWindowLongPtrW(window, GWLP_WNDPROC, (LONG_PTR)GetPropW(
+                window, tray_proc_property));
+        RemovePropW(window, tray_proc_property);
+    }
+}
+
+void l2dcat_platform_set_tray_left_click(void *tray, L2DCatTrayClick callback,
+    void *userdata) {
+    tray_click = callback;
+    tray_click_userdata = userdata;
+    /* Pinned SDL stores SDL_Tray* in its private message window userdata. */
+    HWND window = NULL;
+    while ((window = FindWindowExW(HWND_MESSAGE, window, L"Message", NULL)) != NULL)
+        bind_tray_window(window, tray, callback != NULL);
+}
+
 void l2dcat_platform_raise_window(SDL_Window *window) {
     if (!window) return;
     SDL_ShowWindow(window);
@@ -76,17 +125,15 @@ bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
     if (!size_changed && !position_changed) return true;
     HWND window = native_window(platform);
     if (!window) return false;
-    if (size_changed && position_changed) {
-        int midpoint_x = current_x + (x - current_x) / 2;
-        int midpoint_y = current_y + (y - current_y) / 2;
-        if (!SetWindowPos(window, NULL, midpoint_x, midpoint_y, 0, 0,
-            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE)) return false;
-    }
-    if (size_changed && !SDL_SetWindowSize(platform->window, width, height)) return false;
-    RECT bounds;
-    if (!GetWindowRect(window, &bounds) || !SetWindowPos(window, NULL, x, y,
-        bounds.right - bounds.left, bounds.bottom - bounds.top,
-        SWP_NOZORDER | SWP_NOACTIVATE)) return false;
-    return true;
+    if (size_changed &&
+        !(SDL_GetWindowFlags(platform->window) & SDL_WINDOW_RESIZABLE) &&
+        !SDL_SetWindowResizable(platform->window, true))
+        return false;
+    bool changed = SetWindowPos(window, NULL, position_changed ? x : current_x,
+        position_changed ? y : current_y, size_changed ? width : current_width,
+        size_changed ? height : current_height,
+        SWP_NOZORDER | SWP_NOACTIVATE) != 0;
+    if (!changed) return false;
+    return SDL_SyncWindow(platform->window);
 }
 #endif

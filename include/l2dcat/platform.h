@@ -62,6 +62,7 @@ typedef struct L2DCatMenuLabels {
 
 typedef void (*L2DCatDownloadProgress)(uint64_t received, uint64_t total,
     void *userdata);
+typedef void (*L2DCatTrayClick)(void *userdata);
 
 L2DCatResult l2dcat_platform_init(L2DCatPlatform *platform, SDL_Window *window,
     L2DCatInputState *input, L2DCatError *error);
@@ -76,6 +77,8 @@ bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
     int x, int y, int width, int height);
 void l2dcat_platform_begin_drag(L2DCatPlatform *platform);
 bool l2dcat_platform_global_input_supported(void);
+void l2dcat_platform_set_tray_left_click(void *tray, L2DCatTrayClick callback,
+    void *userdata);
 bool l2dcat_platform_single_instance_begin(void);
 void l2dcat_platform_single_instance_end(void);
 L2DCatResult l2dcat_platform_set_autostart(bool enabled, L2DCatError *error);

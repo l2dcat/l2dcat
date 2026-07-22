@@ -68,7 +68,13 @@ ctest --test-dir build --output-on-failure
 ```
 
 The default build downloads pinned open-source dependencies into `build`.
-Set `L2DCAT_FETCH_DEPS=OFF` to use installed SDL3 and yyjson packages.
+Set `L2DCAT_FETCH_DEPS=OFF` to use installed SDL3 and yyjson CMake packages
+plus system stb, miniaudio, and Nuklear headers. Non-standard header locations
+can be supplied with `L2DCAT_STB_INCLUDE_DIR`,
+`L2DCAT_MINIAUDIO_INCLUDE_DIR`, and `L2DCAT_NUKLEAR_INCLUDE_DIR`. An installed
+miniaudio CMake package is used automatically when no explicit include path is
+set. Configuration stops with a dependency-specific instruction when any
+required package or header cannot be found.
 
 ## GitHub Actions
 
@@ -76,7 +82,9 @@ Every push, pull request, tag, and manual run executes `.github/workflows/ci.yml
 Cppcheck, warning-clean compilation, the 300-line policy, legacy-name scanning,
 and CTest must pass before the build matrix starts. Successful runs publish
 downloadable Windows x86-64, Linux x86-64, and macOS artifacts from the run's
-Artifacts section; no signing secret is required for these CI packages. The
+Artifacts section; no signing secret is required for these CI packages. Each
+package is created from a `cmake --install` staging tree, so its resource layout
+matches a local install. The
 public CI artifacts use the diagnostic renderer unless a licensed Cubism SDK
 is provisioned on the runner.
 
@@ -114,9 +122,11 @@ openssl pkey -in update-private.pem -pubout -outform DER -out update-public.der
 
 ## Source policy
 
-All hand-written source, header, CMake, and test files must stay at or below
-300 physical lines. Run `cmake --build build --target check-lines` to enforce
-the policy.
+Native C, C++, Objective-C, header, CMake module, and native test files must
+stay at or below 300 physical lines. Run
+`cmake --build build --target check-lines` to enforce the policy. Procedural
+PowerShell audits and workflow YAML are intentionally outside this source-file
+size rule; they are not described as covered by it.
 
 ## Verification
 

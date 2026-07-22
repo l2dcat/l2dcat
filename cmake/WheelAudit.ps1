@@ -1,6 +1,7 @@
 param([string]$Exe = "", [string]$OutputDir = "", [int]$ScaleDelta = 120,
     [int]$BurstCount = 1, [int]$BurstDelayMs = 0, [switch]$AtEdge, [switch]$GlobalControl,
-    [switch]$SystemWheel, [switch]$ControlOpacity, [string]$DataRoot = "")
+    [switch]$SystemWheel, [switch]$ControlOpacity, [string]$DataRoot = "",
+    [ValidateRange(10, 100)][double]$InitialOpacity = 50)
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\l2dcat.exe" }
@@ -88,6 +89,15 @@ Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
 $data = if ($DataRoot) { [IO.Path]::GetFullPath($DataRoot) } else {
     Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 }
+$arguments = @("--ci-smoke", "--ci-frame-series", "--ci-exit-ms=9000",
+    "--data-root=$data")
+if ($ControlOpacity) {
+    $config = Join-Path $OutputDir "opacity-settings.json"
+    $json = @{ schemaVersion=2; window=@{ opacity=$InitialOpacity } } |
+        ConvertTo-Json -Compress
+    [IO.File]::WriteAllText($config, $json, [Text.UTF8Encoding]::new($false))
+    $arguments += "--config=$config"
+}
 $frameSeries = Join-Path $data "frame-series.csv"
 for ($attempt = 0; $attempt -lt 20; $attempt++) {
     try {
@@ -95,8 +105,8 @@ for ($attempt = 0; $attempt -lt 20; $attempt++) {
         break
     } catch { Start-Sleep -Milliseconds 10 }
 }
-$process = Start-Process $Exe -ArgumentList @("--ci-smoke", "--ci-frame-series", "--ci-exit-ms=9000",
-    "--data-root=$data") -WorkingDirectory (Split-Path $Exe) -PassThru
+$process = Start-Process $Exe -ArgumentList $arguments `
+    -WorkingDirectory (Split-Path $Exe) -PassThru
 $globalControlDown = $false
 try {
     $window = Wait-Window $process
@@ -145,9 +155,20 @@ try {
     $initialWorkingSet = $process.WorkingSet64
     $initialCpu = $process.TotalProcessorTime.TotalMilliseconds
     $peakWorkingSet = $initialWorkingSet
-    $frameStartCount = if (Test-Path -LiteralPath $frameSeries) {
-        @(Import-Csv -LiteralPath $frameSeries).Count
-    } else { 0 }
+    $initialFrames = if (Test-Path -LiteralPath $frameSeries) {
+        @(Import-Csv -LiteralPath $frameSeries)
+    } else { @() }
+    $frameStartCount = $initialFrames.Count
+    $initialRecordedOpacity = if ($initialFrames.Count -and
+        $null -ne $initialFrames[-1].opacity_percent) {
+        [double]$initialFrames[-1].opacity_percent
+    } else { [double]$InitialOpacity }
+    $initialRenderWidth = if ($initialFrames.Count) {
+        [double]$initialFrames[-1].width
+    } else { 0.0 }
+    $initialRenderHeight = if ($initialFrames.Count) {
+        [double]$initialFrames[-1].height
+    } else { 0.0 }
     $wheelKeys = if ($ControlOpacity) { 8 } else { 0 }
     if ($SystemWheel) {
         [void][L2DCatWheelNative]::SetCursorPos(
@@ -193,6 +214,21 @@ try {
         ($frameRows | Measure-Object -Property visible_pixels -Minimum).Minimum
     } else { 0 }
     $uniqueRenderWidths = @($frameRows.width | Select-Object -Unique).Count
+    $finalRenderWidth = if ($frameRows.Count) {
+        [double]$frameRows[-1].width
+    } else { $initialRenderWidth }
+    $finalRenderHeight = if ($frameRows.Count) {
+        [double]$frameRows[-1].height
+    } else { $initialRenderHeight }
+    $opacityRows = @($frameRows | Where-Object { $null -ne $_.opacity_percent })
+    $uniqueRenderOpacities = @($opacityRows.opacity_percent | Select-Object -Unique).Count
+    $finalRecordedOpacity = if ($opacityRows.Count) {
+        [double]$opacityRows[-1].opacity_percent
+    } else { $initialRecordedOpacity }
+    $finalWindowOpacity = if ($opacityRows.Count -and
+        $null -ne $opacityRows[-1].window_opacity) {
+        100.0 * [double]$opacityRows[-1].window_opacity
+    } else { $initialRecordedOpacity }
     $maxNormalizedRenderWidthStep = 0.0
     $maxRenderWidthStep = 0.0
     $oppositeRenderSteps = 0
@@ -263,6 +299,12 @@ try {
     $allowedWorkingSetGrowthMB = 64.0 * [Math]::Max(1.0, $frameAreaRatio)
     $result = [ordered]@{
         OpacityAvailable=$opacityAvailable; OpacityAlpha=$alpha
+        InitialOpacityPercent=$initialRecordedOpacity
+        FinalOpacityPercent=$finalRecordedOpacity
+        FinalWindowOpacityPercent=$finalWindowOpacity
+        UniqueAnimatedOpacities=$uniqueRenderOpacities
+        InitialRenderWidth=$initialRenderWidth; FinalRenderWidth=$finalRenderWidth
+        InitialRenderHeight=$initialRenderHeight; FinalRenderHeight=$finalRenderHeight
         InitialWidth=$initial.R-$initial.L; FinalWidth=$final.Width
         InitialHeight=$initial.B-$initial.T; FinalHeight=$final.Height
         UniqueAnimatedWidths=$uniqueWidths
@@ -302,21 +344,45 @@ try {
             $final.CenterY+$final.Height/2 -le $workArea.B))
     }
     $shortBurst = $BurstCount -le 3
-    $directionPassed = if ($ScaleDelta -gt 0) {
+    $expectedOpacity = if ($ControlOpacity) {
+        [Math]::Max(10.0, [Math]::Min(100.0,
+            $initialRecordedOpacity + [Math]::Sign($ScaleDelta) * 5.0 *
+            [Math]::Max(1, $BurstCount)))
+    } else { $initialRecordedOpacity }
+    $result.ExpectedOpacityPercent = $expectedOpacity
+    $renderDirectionPassed = $ControlOpacity -or
+        ($ScaleDelta -gt 0 -and $finalRenderWidth -gt $initialRenderWidth -and
+        $finalRenderHeight -gt $initialRenderHeight) -or
+        ($ScaleDelta -lt 0 -and $finalRenderWidth -lt $initialRenderWidth -and
+        $finalRenderHeight -lt $initialRenderHeight)
+    $result.RenderDirectionPassed = $renderDirectionPassed
+    $directionPassed = if ($ControlOpacity) {
+        $final.Width -eq $result.InitialWidth -and
+            $final.Height -eq $result.InitialHeight -and
+            [Math]::Abs($finalRecordedOpacity - $expectedOpacity) -le 0.1 -and
+            [Math]::Abs($finalWindowOpacity - $expectedOpacity) -le 1.0
+    } elseif ($ScaleDelta -gt 0) {
         $final.Width -gt $result.InitialWidth -and $final.Height -gt $result.InitialHeight -and
-            (-not $shortBurst -or $final.Width -le $result.InitialWidth * 1.2)
+            (-not $shortBurst -or $final.Width -le $result.InitialWidth * 1.2) -and
+            $renderDirectionPassed
     } else {
         $final.Width -lt $result.InitialWidth -and $final.Height -lt $result.InitialHeight -and
-            (-not $shortBurst -or $final.Width -ge $result.InitialWidth * 0.8)
+            (-not $shortBurst -or $final.Width -ge $result.InitialWidth * 0.8) -and
+            $renderDirectionPassed
     }
     $centerPassed = $AtEdge -or
         ($result.MaximumCenterDriftX -le 2 -and $result.MaximumCenterDriftY -le 2)
-    $animationPassed = $uniqueWidths -ge 4 -or $uniqueRenderWidths -ge 4
-    $smoothnessPassed = if ($frameRows.Count -ge 2) {
+    $animationPassed = if ($ControlOpacity) {
+        $uniqueRenderOpacities -ge 2
+    } else { $uniqueWidths -ge 4 -or $uniqueRenderWidths -ge 4 }
+    $smoothnessPassed = if ($ControlOpacity) {
+        $uniqueRenderWidths -eq 1 -and $result.MaximumCenterDriftX -le 0.5 -and
+            $result.MaximumCenterDriftY -le 0.5
+    } elseif ($frameRows.Count -ge 2) {
         $maxNormalizedRenderWidthStep -le 20 -and $stepP95 -le 16 -and
             $maxRenderWidthStepPercent -le 3.0 -and $oppositeRenderSteps -eq 0
     } else { $maxNormalizedWidthStep -le 8 }
-    $latencyPassed = -not $shortBurst -or $settledAtMs -le 350
+    $latencyPassed = $ControlOpacity -or -not $shortBurst -or $settledAtMs -le 350
     $result.Passed = $directionPassed -and
         $animationPassed -and $smoothnessPassed -and $latencyPassed -and $centerPassed -and
         $result.WithinWorkArea -and

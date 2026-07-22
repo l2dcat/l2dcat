@@ -5,6 +5,9 @@
 typedef struct MacKeyName { CGKeyCode code; const char *name; } MacKeyName;
 
 const char *l2dcat_macos_key_name(CGKeyCode code, char output[16]) {
+    if (code == 105) return "PrintScreen";
+    if (code == 107) return "ScrollLock";
+    if (code == 113) return "Pause";
     static const MacKeyName keys[] = {
         {0,"KeyA"},{1,"KeyS"},{2,"KeyD"},{3,"KeyF"},{4,"KeyH"},{5,"KeyG"},
         {6,"KeyZ"},{7,"KeyX"},{8,"KeyC"},{9,"KeyV"},{11,"KeyB"},{12,"KeyQ"},
@@ -18,6 +21,10 @@ const char *l2dcat_macos_key_name(CGKeyCode code, char output[16]) {
         {48,"Tab"},{49,"Space"},{50,"BackQuote"},{51,"Backspace"},{53,"Escape"},
         {54,"Meta"},{55,"Meta"},{56,"ShiftLeft"},{57,"CapsLock"},{58,"Alt"},
         {59,"ControlLeft"},{60,"ShiftRight"},{61,"AltGr"},{62,"ControlRight"},
+        {65,"KpDecimal"},{67,"KpMultiply"},{69,"KpPlus"},{71,"NumLock"},
+        {75,"KpDivide"},{76,"Return"},{78,"KpMinus"},{81,"Equal"},
+        {82,"Kp0"},{83,"Kp1"},{84,"Kp2"},{85,"Kp3"},{86,"Kp4"},
+        {87,"Kp5"},{88,"Kp6"},{89,"Kp7"},{91,"Kp8"},{92,"Kp9"},
         {114,"Insert"},{115,"Home"},{116,"PageUp"},{117,"Delete"},{119,"End"},
         {121,"PageDown"},{123,"LeftArrow"},{124,"RightArrow"},{125,"DownArrow"},
         {126,"UpArrow"}

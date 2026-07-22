@@ -113,6 +113,7 @@ add_library(l2dcat_runtime STATIC
   src/runtime/model_files.c
   src/runtime/model_import.c
   src/runtime/model_import_discovery.c
+  src/runtime/model_import_legacy.c src/runtime/model_import_legacy_image.c
   src/runtime/runtime_flow.c
   src/runtime/shortcuts.c
   src/runtime/tray.c
@@ -125,17 +126,16 @@ add_library(l2dcat_runtime STATIC
   src/ui/ui_input.c
   src/ui/ui_sidebar.c
   src/ui/ui_theme.c
-  src/ui/preferences.c src/ui/preferences_dialog.c
+  src/ui/preferences.c src/ui/preferences_dialog.c src/ui/preferences_import.c
   src/ui/preferences_model.c
   src/ui/preferences_pages.c
   src/ui/preferences_widgets.c
   ${L2DCAT_LIVE2D_SOURCES})
 target_include_directories(l2dcat_runtime PUBLIC include)
 target_include_directories(l2dcat_runtime SYSTEM PRIVATE
-  ${stb_SOURCE_DIR} ${miniaudio_SOURCE_DIR}
-  ${nuklear_SOURCE_DIR})
+  ${L2DCAT_STB_INCLUDE_DIR} ${L2DCAT_NUKLEAR_INCLUDE_DIR})
 target_link_libraries(l2dcat_runtime PRIVATE l2dcat_warnings)
-target_link_libraries(l2dcat_runtime PUBLIC l2dcat_core SDL3::SDL3-static OpenGL::GL miniaudio)
+target_link_libraries(l2dcat_runtime PUBLIC l2dcat_core SDL3::SDL3-static OpenGL::GL ${L2DCAT_MINIAUDIO_TARGET})
 if(MSVC)
   set_source_files_properties(src/media/stb_image_impl.c src/ui/nuklear_impl.c
     PROPERTIES COMPILE_OPTIONS "/W0")
@@ -158,7 +158,7 @@ if(WIN32)
   target_sources(l2dcat_runtime PRIVATE src/platform/windows_assets.c)
   target_sources(l2dcat_runtime PRIVATE src/platform/windows_http.c)
   target_sources(l2dcat_runtime PRIVATE src/platform/windows_update.c)
-  target_link_libraries(l2dcat_runtime PRIVATE crypt32 dwmapi ole32 psapi shell32 user32 windowscodecs winhttp wintrust)
+  target_link_libraries(l2dcat_runtime PRIVATE crypt32 dwmapi ole32 shell32 user32 windowscodecs winhttp wintrust)
 elseif(APPLE)
   enable_language(OBJC)
   target_sources(l2dcat_runtime PRIVATE src/platform/macos.m src/platform/macos_input.m
@@ -181,8 +181,8 @@ else()
 endif()
 
 add_executable(l2dcat src/main.c)
-target_link_libraries(l2dcat PRIVATE l2dcat_runtime)
-target_link_libraries(l2dcat PRIVATE l2dcat_warnings)
+target_link_libraries(l2dcat PRIVATE l2dcat_runtime l2dcat_warnings)
+l2dcat_enable_release_ipo(Framework l2dcat_core l2dcat_runtime l2dcat)
 if(APPLE)
   set_source_files_properties(resources/icons/icon.icns PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources)
@@ -263,7 +263,7 @@ add_custom_target(check-lines ALL
 if(BUILD_TESTING)
   add_executable(l2dcat_core_tests
     tests/test_main.c tests/test_config.c tests/test_input.c tests/test_models.c
-    tests/test_shortcut.c tests/test_update.c)
+    tests/test_shortcut.c tests/test_update.c src/platform/windows_keys.c)
   target_link_libraries(l2dcat_core_tests PRIVATE l2dcat_core l2dcat_warnings)
   target_compile_definitions(l2dcat_core_tests PRIVATE
     L2DCAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
@@ -274,7 +274,7 @@ if(BUILD_TESTING)
     L2DCAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
   add_test(NAME i18n COMMAND l2dcat_i18n_tests)
   add_executable(l2dcat_ui_tests tests/test_nuklear.c src/ui/nuklear_impl.c)
-  target_include_directories(l2dcat_ui_tests SYSTEM PRIVATE ${nuklear_SOURCE_DIR})
+  target_include_directories(l2dcat_ui_tests SYSTEM PRIVATE ${L2DCAT_NUKLEAR_INCLUDE_DIR})
   target_link_libraries(l2dcat_ui_tests PRIVATE l2dcat_warnings)
   add_test(NAME ui COMMAND l2dcat_ui_tests)
   add_executable(l2dcat_app_state_tests tests/test_app_state.c src/core/app_state.c)
@@ -293,7 +293,6 @@ if(BUILD_TESTING)
     add_test(NAME linux-update-signature COMMAND l2dcat_linux_update_tests)
   endif()
 endif()
-
 install(TARGETS l2dcat RUNTIME DESTINATION . BUNDLE DESTINATION .)
 if(UNIX AND NOT APPLE)
   install(DIRECTORY resources/assets DESTINATION .)

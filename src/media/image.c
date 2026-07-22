@@ -27,7 +27,8 @@ static wchar_t *wide_path(const char *path) {
     return wide;
 }
 
-static bool wic_texture_image(const char *path, L2DCatImage *image) {
+static bool wic_scaled_image(const char *path, L2DCatImage *image,
+    UINT max_width, UINT max_height) {
     memset(image, 0, sizeof(*image));
     HRESULT initialized = CoInitializeEx(NULL, COINIT_MULTITHREADED);
     bool uninitialize = initialized == S_OK || initialized == S_FALSE;
@@ -47,14 +48,17 @@ static bool wic_texture_image(const char *path, L2DCatImage *image) {
     if (SUCCEEDED(result)) result = IWICBitmapFrameDecode_GetSize(frame,
         &source_width, &source_height);
     UINT target_width = source_width, target_height = source_height;
-    if (source_width > L2DCAT_LIVE2D_TEXTURE_LIMIT ||
-        source_height > L2DCAT_LIVE2D_TEXTURE_LIMIT) {
-        if (source_width >= source_height) {
-            target_width = L2DCAT_LIVE2D_TEXTURE_LIMIT;
-            target_height = (UINT)((uint64_t)source_height * target_width / source_width);
+    if (max_width && max_height &&
+        (source_width > max_width || source_height > max_height)) {
+        if ((uint64_t)max_width * source_height <=
+            (uint64_t)max_height * source_width) {
+            target_width = max_width;
+            target_height = (UINT)((uint64_t)source_height * max_width /
+                source_width);
         } else {
-            target_height = L2DCAT_LIVE2D_TEXTURE_LIMIT;
-            target_width = (UINT)((uint64_t)source_width * target_height / source_height);
+            target_height = max_height;
+            target_width = (UINT)((uint64_t)source_width * max_height /
+                source_height);
         }
         if (!target_width) target_width = 1;
         if (!target_height) target_height = 1;
@@ -167,6 +171,16 @@ unsigned int l2dcat_image_texture(const char *path, int *width, int *height, L2D
 unsigned int l2dcat_image_texture_thumbnail(const char *path, int max_width,
     int max_height, int *width, int *height, L2DCatError *error) {
     L2DCatImage image;
+#ifdef _WIN32
+    if (max_width > 0 && max_height > 0 && wic_scaled_image(path, &image,
+        (UINT)max_width, (UINT)max_height)) {
+        GLuint texture = upload(&image, 0, false);
+        if (width) *width = image.width;
+        if (height) *height = image.height;
+        l2dcat_image_free(&image);
+        return texture;
+    }
+#endif
     if (l2dcat_image_load(path, &image, error) != L2DCAT_OK) return 0;
     int target_width = image.width, target_height = image.height;
     if (max_width > 0 && max_height > 0 &&
@@ -201,12 +215,22 @@ unsigned int l2dcat_image_texture_mipmapped(const char *path, int *width, int *h
     L2DCatError *error) {
     L2DCatImage image;
 #ifdef _WIN32
-    if (!wic_texture_image(path, &image) &&
+    if (!wic_scaled_image(path, &image, L2DCAT_LIVE2D_TEXTURE_LIMIT,
+        L2DCAT_LIVE2D_TEXTURE_LIMIT) &&
         l2dcat_image_load(path, &image, error) != L2DCAT_OK) return 0;
 #else
     if (l2dcat_image_load(path, &image, error) != L2DCAT_OK) return 0;
 #endif
+    while (glGetError() != GL_NO_ERROR) {}
     GLuint texture = upload(&image, 0, true);
+    GLenum upload_error = glGetError();
+    if (!texture || upload_error != GL_NO_ERROR) {
+        if (texture) glDeleteTextures(1, &texture);
+        texture = 0;
+        l2dcat_error_set(error, upload_error == GL_OUT_OF_MEMORY
+            ? L2DCAT_ERROR_MEMORY : L2DCAT_ERROR_PLATFORM,
+            "OpenGL texture upload failed (0x%x): %s", (unsigned)upload_error, path);
+    }
     if (width) *width = image.width;
     if (height) *height = image.height;
     l2dcat_image_free(&image);

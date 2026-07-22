@@ -25,7 +25,7 @@ void l2dcat_app_track_hover(L2DCatApp *app, double x, double y) {
     app->pointer_known = true;
     app->pointer_x = x;
     app->pointer_y = y;
-    l2dcat_window_mark_hit_dirty(app);
+    l2dcat_window_schedule_pointer_hit(app);
     if (inside == app->hover_inside) return;
     app->hover_inside = inside;
     app->hover_deadline_ns = inside ? SDL_GetTicksNS() +
@@ -65,6 +65,29 @@ static void reconcile_button(L2DCatApp *app, bool *current, bool pressed,
     app->dirty = true;
 }
 
+static void apply_mouse_tracking(L2DCatApp *app, float elapsed) {
+    double x, y;
+    if (!l2dcat_mouse_step(&app->mouse_tracking, elapsed, &x, &y)) return;
+    SDL_Point point = {(int)x, (int)y}; SDL_Rect bounds;
+    SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
+    if (!display || !SDL_GetDisplayBounds(display, &bounds) ||
+        bounds.w <= 0 || bounds.h <= 0) return;
+    float x_ratio = (float)((x - bounds.x) / bounds.w);
+    float y_ratio = (float)((y - bounds.y) / bounds.h);
+    const char *parameters[] = {"ParamMouseX", "ParamMouseY", "ParamAngleX",
+        "ParamAngleY", "ParamAngleZ", "ParamEyeBallX", "ParamEyeBallY"};
+    for (size_t i = 0; i < sizeof(parameters) / sizeof(parameters[0]); ++i)
+        set_parameter(app, parameters[i], x_ratio, y_ratio);
+    app->dirty = true;
+}
+
+void l2dcat_app_apply_mouse_position(L2DCatApp *app, double x, double y,
+    float elapsed_seconds) {
+    if (!app || app->config.model.ignore_mouse) return;
+    l2dcat_mouse_target(&app->mouse_tracking, x, y);
+    apply_mouse_tracking(app, elapsed_seconds);
+}
+
 void l2dcat_app_apply_mouse(L2DCatApp *app) {
     if (!app) return;
     double target_x, target_y;
@@ -92,17 +115,5 @@ void l2dcat_app_apply_mouse(L2DCatApp *app) {
         ? (float)((now - app->mouse_last_ns) / 1000000000.0) : 1.0f / 60.0f;
     app->mouse_last_ns = now;
     if (app->config.model.ignore_mouse) return;
-    double x, y;
-    if (!l2dcat_mouse_step(&app->mouse_tracking, elapsed, &x, &y)) return;
-    SDL_Point point = {(int)x, (int)y}; SDL_Rect bounds;
-    SDL_DisplayID display = SDL_GetDisplayForPoint(&point);
-    if (!display || !SDL_GetDisplayBounds(display, &bounds) ||
-        bounds.w <= 0 || bounds.h <= 0) return;
-    float x_ratio = (float)((x - bounds.x) / bounds.w);
-    float y_ratio = (float)((y - bounds.y) / bounds.h);
-    const char *parameters[] = {"ParamMouseX", "ParamMouseY", "ParamAngleX",
-        "ParamAngleY", "ParamAngleZ", "ParamEyeBallX", "ParamEyeBallY"};
-    for (size_t i = 0; i < sizeof(parameters) / sizeof(parameters[0]); ++i)
-        set_parameter(app, parameters[i], x_ratio, y_ratio);
-    app->dirty = true;
+    apply_mouse_tracking(app, elapsed);
 }

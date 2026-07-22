@@ -23,7 +23,7 @@ static bool set_gl_attributes(void) {
 }
 
 L2DCatResult l2dcat_window_create(L2DCatApp *app, L2DCatError *error) {
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_EVENTS)) {
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
         l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "SDL initialization failed: %s", SDL_GetError());
         return L2DCAT_ERROR_PLATFORM;
     }

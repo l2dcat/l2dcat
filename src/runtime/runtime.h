@@ -17,7 +17,10 @@ void l2dcat_window_apply(L2DCatApp *app);
 bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event);
 bool l2dcat_window_visible_at_pointer(L2DCatApp *app, float x, float y);
 void l2dcat_window_mark_hit_dirty(L2DCatApp *app);
+void l2dcat_window_schedule_pointer_hit(L2DCatApp *app);
 void l2dcat_window_schedule_hit_check(L2DCatApp *app);
+int l2dcat_window_wait_timeout(const L2DCatApp *app, uint64_t now);
+bool l2dcat_window_wait_timeout_self_test(void);
 void l2dcat_window_sync_click_through(L2DCatApp *app);
 void l2dcat_window_apply_pending_resize(L2DCatApp *app);
 void l2dcat_window_wheel(L2DCatApp *app, const SDL_MouseWheelEvent *event);
@@ -36,6 +39,8 @@ const char *l2dcat_gamepad_button_name(Uint8 button);
 void l2dcat_gamepads_set_enabled(L2DCatApp *app, bool enabled);
 void l2dcat_app_reset_gamepad(L2DCatApp *app);
 void l2dcat_app_apply_mouse(L2DCatApp *app);
+void l2dcat_app_apply_mouse_position(L2DCatApp *app, double x, double y,
+    float elapsed_seconds);
 void l2dcat_app_track_hover(L2DCatApp *app, double x, double y);
 void l2dcat_app_update_hover(L2DCatApp *app, uint64_t now);
 L2DCatResult l2dcat_copy_directory(const char *source, const char *target,

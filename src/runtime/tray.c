@@ -59,6 +59,12 @@ static void on_preferences(void *userdata, SDL_TrayEntry *entry) {
     l2dcat_preferences_show(tray->app->preferences);
 }
 
+static void on_tray_left_click(void *userdata) {
+    L2DCatTray *tray = userdata;
+    if (tray && tray->app && tray->app->preferences)
+        l2dcat_preferences_show(tray->app->preferences);
+}
+
 static void on_exit(void *userdata, SDL_TrayEntry *entry) {
     (void)entry;
     ((L2DCatTray *)userdata)->app->running = false;
@@ -110,6 +116,7 @@ L2DCatTray *l2dcat_tray_create(L2DCatApp *app, L2DCatError *error) {
         on_preferences, tray);
     tray->exit = add(menu, l2dcat_i18n_get(app->i18n,
         "composables.useAppMenu.labels.quitApp", "Exit"), SDL_TRAYENTRY_BUTTON, on_exit, tray);
+    l2dcat_platform_set_tray_left_click(tray->handle, on_tray_left_click, tray);
     l2dcat_tray_sync(tray);
     return tray;
 }
@@ -166,6 +173,7 @@ bool l2dcat_tray_self_test(L2DCatTray *tray) {
 
 void l2dcat_tray_destroy(L2DCatTray *tray) {
     if (!tray) return;
+    l2dcat_platform_set_tray_left_click(tray->handle, NULL, NULL);
     if (tray->handle) SDL_DestroyTray(tray->handle);
     l2dcat_image_free(&tray->icon);
     free(tray);

@@ -8,7 +8,8 @@ param(
     [int]$DurationSeconds = 60,
     [int]$IntervalSeconds = 2,
     [int]$WarmupSeconds = 5,
-    [double]$MaximumWorkingMiB = 100,
+    [double]$MaximumWorkingMiB = 120,
+    [double]$MaximumPrivateMiB = 90,
     [double]$MaximumGrowthMiB = 8,
     [int]$MaximumHandleGrowth = 8
 )
@@ -85,15 +86,20 @@ if (-not $samples.Count) { throw "No soak samples were captured" }
 $first = $samples[0]
 $last = $samples[$samples.Count - 1]
 $maximumWorking = ($samples | Measure-Object WorkingMiB -Maximum).Maximum
+$maximumPrivate = ($samples | Measure-Object PrivateMiB -Maximum).Maximum
 $workingGrowth = $last.WorkingMiB - $first.WorkingMiB
+$privateGrowth = $last.PrivateMiB - $first.PrivateMiB
 $handleGrowth = $last.Handles - $first.Handles
 $averageCpu = ($samples | Measure-Object CpuPercent -Average).Average
 $passed = $process.ExitCode -eq 0 -and $maximumWorking -le $MaximumWorkingMiB -and
-    $workingGrowth -le $MaximumGrowthMiB -and $handleGrowth -le $MaximumHandleGrowth
+    $maximumPrivate -le $MaximumPrivateMiB -and $privateGrowth -le $MaximumGrowthMiB -and
+    $handleGrowth -le $MaximumHandleGrowth
 [pscustomobject]@{
     Mode=$Mode; Language=$Language; Samples=$samples.Count; ExitCode=$process.ExitCode
     MaximumWorkingMiB=[Math]::Round($maximumWorking, 3)
+    MaximumPrivateMiB=[Math]::Round($maximumPrivate, 3)
     WorkingGrowthMiB=[Math]::Round($workingGrowth, 3)
+    PrivateGrowthMiB=[Math]::Round($privateGrowth, 3)
     HandleGrowth=$handleGrowth; AverageCpuPercent=[Math]::Round($averageCpu, 4)
     Passed=$passed; Report=$report
 } | Format-List

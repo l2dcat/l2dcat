@@ -29,7 +29,7 @@ NativeModel::NativeModel() {
 NativeModel::~NativeModel() {
     for (auto &item : motions_) Csm::ACubismMotion::Delete(item.second);
     for (auto &item : expressions_) Csm::ACubismMotion::Delete(item.second);
-    release_textures();
+    release_render_resources();
     delete setting_;
 }
 
@@ -79,9 +79,6 @@ bool NativeModel::load(const char *directory, const char *setting_file, L2DCatEr
     setting_->GetLayoutMap(layout);
     _modelMatrix->SetupFromLayout(layout);
     _model->SaveParameters();
-    CreateRenderer((Csm::csmUint32)width_, (Csm::csmUint32)height_);
-    renderer_width_ = width_;
-    renderer_height_ = height_;
     return true;
 }
 
@@ -212,8 +209,15 @@ bool NativeModel::load_textures(L2DCatError *error) {
     for (int i = 0; i < setting_->GetTextureCount(); ++i) {
         textures_[(size_t)i] = l2dcat_image_texture_mipmapped(
             path(setting_->GetTextureFileName(i)).c_str(), nullptr, nullptr, error);
-        if (!textures_[(size_t)i]) return false;
+        if (!textures_[(size_t)i]) {
+            release_textures();
+            return false;
+        }
     }
+    release_renderer();
+    CreateRenderer((Csm::csmUint32)width_, (Csm::csmUint32)height_);
+    renderer_width_ = width_;
+    renderer_height_ = height_;
     bind_textures();
     return true;
 }
@@ -222,6 +226,17 @@ void NativeModel::release_textures() {
     if (!textures_.empty())
         glDeleteTextures((GLsizei)textures_.size(), textures_.data());
     textures_.clear();
+}
+
+void NativeModel::release_renderer() {
+    DeleteRenderer();
+    renderer_width_ = 0;
+    renderer_height_ = 0;
+}
+
+void NativeModel::release_render_resources() {
+    release_textures();
+    release_renderer();
 }
 
 void NativeModel::bind_textures() {

@@ -2,6 +2,7 @@
 #include "l2dcat/app.h"
 #include "l2dcat/i18n.h"
 #include "l2dcat/file.h"
+#include "l2dcat/memory.h"
 #include "l2dcat/path.h"
 #include "l2dcat/platform.h"
 #include "preferences_internal.h"
@@ -23,10 +24,8 @@ struct L2DCatPreferences {
     int style_theme;
     L2DCatLanguage font_language;
     nk_rune glyph_ranges[2048];
-    bool input_active, import_requested;
-    bool import_dialog_open;
-    bool frame_checked, render_dirty;
-    uint64_t last_render_ns;
+    bool input_active, import_requested; L2DCatImportDialog *import_dialog;
+    bool frame_checked, render_dirty; uint64_t last_render_ns;
 };
 static const char *tr(const L2DCatPreferences *value, const char *key,
     const char *fallback) {
@@ -38,6 +37,9 @@ static int resolved_theme(const L2DCatPreferences *value) {
     return SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK;
 }
 static void apply_theme(L2DCatPreferences *value) {
+    bool topmost = value->app->config.window.always_on_top;
+    if (((SDL_GetWindowFlags(value->window) & SDL_WINDOW_ALWAYS_ON_TOP) != 0) != topmost)
+        SDL_SetWindowAlwaysOnTop(value->window, topmost);
     int dark = resolved_theme(value);
     if (dark == value->style_theme) return;
     value->style_theme = dark;
@@ -49,7 +51,6 @@ static bool open_window(L2DCatPreferences *value) {
     value->window = SDL_CreateWindow(L2DCAT_NAME, 900, 640, flags);
     if (!value->window) return false;
     SDL_SetWindowMinimumSize(value->window, 720, 520);
-    SDL_ShowWindow(value->window); l2dcat_platform_raise_window(value->window);
     value->gl_context = value->app->gl_context;
     if (!SDL_GL_MakeCurrent(value->window, value->gl_context)) {
         SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
@@ -80,7 +81,6 @@ static bool open_window(L2DCatPreferences *value) {
     value->font_language = value->app->config.app.language;
     SDL_GL_SetSwapInterval(1);
     SDL_StartTextInput(value->window);
-    SDL_ShowWindow(value->window); l2dcat_platform_raise_window(value->window);
     value->render_dirty = true;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     return true;
@@ -88,7 +88,9 @@ static bool open_window(L2DCatPreferences *value) {
 L2DCatPreferences *l2dcat_preferences_create(L2DCatApp *app) {
     if (!app) return NULL;
     L2DCatPreferences *value = calloc(1, sizeof(*value));
-    if (value) value->app = app;
+    if (value) { value->app = app;
+        value->import_dialog = l2dcat_preferences_import_create();
+        if (!value->import_dialog) { free(value); return NULL; } }
     if (value && app->smoke_preference_page >= 0)
         value->page = app->smoke_preference_page;
     return value;
@@ -100,9 +102,9 @@ void l2dcat_preferences_show(L2DCatPreferences *value) {
         l2dcat_preferences_close(value);
         return;
     }
-    SDL_ShowWindow(value->window);
-    l2dcat_platform_raise_window(value->window);
     value->render_dirty = true;
+    l2dcat_preferences_render(value);
+    l2dcat_platform_raise_window(value->window);
 }
 void l2dcat_preferences_close(L2DCatPreferences *value) {
     if (!value || !value->window) return;
@@ -118,6 +120,7 @@ void l2dcat_preferences_close(L2DCatPreferences *value) {
     value->gl_context = NULL;
     value->owns_gl_context = false;
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
+    l2dcat_platform_trim_memory();
     L2DCatError error = {0};
     if (!value->app->smoke && value->app->config_path[0] &&
         l2dcat_config_save(value->app->config_path,
@@ -125,25 +128,18 @@ void l2dcat_preferences_close(L2DCatPreferences *value) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
 }
 void l2dcat_preferences_destroy(L2DCatPreferences *value) {
-    if (value) { l2dcat_preferences_close(value); free(value); }
+    if (value) { l2dcat_preferences_close(value);
+        l2dcat_preferences_import_destroy(value->import_dialog);
+        free(value); }
 }
 void l2dcat_preferences_request_model_import(L2DCatPreferences *value) {
-    if (value && !value->import_dialog_open) value->import_requested = true; }
-static void SDLCALL model_imported(void *userdata, const char *const *files,
-    int filter) {
-    (void)filter;
-    L2DCatPreferences *value = userdata;
-    value->import_dialog_open = false; value->render_dirty = true;
-    if (!files || !files[0]) { l2dcat_preferences_render(value); return; }
-    for (size_t i = 0; files[i]; ++i) l2dcat_preferences_import_path(value->app, value->window, files[i]);
-}
-bool l2dcat_preferences_visible(const L2DCatPreferences *value) {
-    return value && value->window; }
+    if (value && !l2dcat_preferences_import_is_open(value->import_dialog))
+        value->import_requested = true; }
+bool l2dcat_preferences_visible(const L2DCatPreferences *value) { return value && value->window; }
 void l2dcat_preferences_input_begin(L2DCatPreferences *value) {
     if (!value || !value->window || value->input_active) return;
     l2dcat_ui_input_begin(&value->ui);
-    value->input_active = true;
-}
+    value->input_active = true; }
 void l2dcat_preferences_input_end(L2DCatPreferences *value) {
     if (!value || !value->window || !value->input_active) return;
     l2dcat_ui_input_end(&value->ui);
@@ -164,7 +160,11 @@ static Uint32 event_window(const SDL_Event *event) {
     }
 }
 bool l2dcat_preferences_event(L2DCatPreferences *value, const SDL_Event *event) {
-    if (!value || !value->window || !event) return false;
+    if (!value || !event) return false;
+    if (l2dcat_preferences_import_event(value->import_dialog, value->app,
+        value->window, event)) { value->render_dirty = value->window != NULL;
+        return true; }
+    if (!value->window) return false;
     if (event->type == SDL_EVENT_SYSTEM_THEME_CHANGED) {
         value->render_dirty = true; return false;
     }
@@ -277,10 +277,11 @@ void l2dcat_preferences_render(L2DCatPreferences *value) {
         if (!l2dcat_ui_frame_valid(&value->ui)) value->app->exit_code = 1;
     }
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context); l2dcat_ui_cursor_apply(&value->ui);
-    if (value->import_requested && !value->import_dialog_open) {
+    if (value->import_requested && !l2dcat_preferences_import_is_open(
+        value->import_dialog)) {
         value->import_requested = false;
-        value->import_dialog_open = true;
-        SDL_ShowOpenFolderDialog(model_imported, value, value->window, NULL, true);
+        if (!l2dcat_preferences_import_open(value->import_dialog, value->window))
+            value->render_dirty = true;
     }
     if (value->font_language != value->app->config.app.language) {
         L2DCatError error = {0};
@@ -296,5 +297,4 @@ void l2dcat_preferences_render(L2DCatPreferences *value) {
 }
 
 void l2dcat_preferences_invalidate(L2DCatPreferences *value) {
-    if (value) value->render_dirty = true;
-}
+    if (value) value->render_dirty = true; }

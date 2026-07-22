@@ -36,6 +36,8 @@ static const char *key_name(KeySym key, char output[16]) {
     }
     switch (key) {
     case XK_Escape: return "Escape"; case XK_Tab: return "Tab";
+    case XK_Pause: return "Pause"; case XK_Print: return "PrintScreen";
+    case XK_Menu: return "Apps";
     case XK_Caps_Lock: return "CapsLock"; case XK_space: return "Space";
     case XK_BackSpace: return "Backspace"; case XK_Delete: return "Delete";
     case XK_Insert: return "Insert"; case XK_Home: return "Home";
@@ -47,6 +49,21 @@ static const char *key_name(KeySym key, char output[16]) {
     case XK_Control_L: return "ControlLeft"; case XK_Control_R: return "ControlRight";
     case XK_Alt_L: return "Alt"; case XK_Alt_R: case XK_ISO_Level3_Shift: return "AltGr";
     case XK_Return: return "Return"; case XK_grave: return "BackQuote";
+    case XK_Num_Lock: return "NumLock"; case XK_Scroll_Lock: return "ScrollLock";
+    case XK_KP_0: return "Kp0"; case XK_KP_1: return "Kp1";
+    case XK_KP_2: return "Kp2"; case XK_KP_3: return "Kp3";
+    case XK_KP_4: return "Kp4"; case XK_KP_5: return "Kp5";
+    case XK_KP_6: return "Kp6"; case XK_KP_7: return "Kp7";
+    case XK_KP_8: return "Kp8"; case XK_KP_9: return "Kp9";
+    case XK_KP_Insert: return "Kp0"; case XK_KP_End: return "Kp1";
+    case XK_KP_Down: return "Kp2"; case XK_KP_Page_Down: return "Kp3";
+    case XK_KP_Left: return "Kp4"; case XK_KP_Begin: return "Kp5";
+    case XK_KP_Right: return "Kp6"; case XK_KP_Home: return "Kp7";
+    case XK_KP_Up: return "Kp8"; case XK_KP_Page_Up: return "Kp9";
+    case XK_KP_Delete: return "KpDecimal"; case XK_KP_Enter: return "Return";
+    case XK_KP_Multiply: return "KpMultiply"; case XK_KP_Add: return "KpPlus";
+    case XK_KP_Subtract: return "KpMinus"; case XK_KP_Decimal: return "KpDecimal";
+    case XK_KP_Divide: return "KpDivide";
     case XK_minus: return "Minus"; case XK_equal: return "Equal";
     case XK_bracketleft: return "BracketLeft"; case XK_bracketright: return "BracketRight";
     case XK_backslash: return "Backslash"; case XK_semicolon: return "Semicolon";
@@ -66,12 +83,19 @@ static void push(LinuxX11State *state, L2DCatInputKind kind,
     }
 }
 
+static void wake_mouse(LinuxX11State *state, double x, double y) {
+    if (l2dcat_input_mouse(state->platform->input, x, y)) {
+        SDL_Event wake = {.type = SDL_EVENT_USER};
+        SDL_PushEvent(&wake);
+    }
+}
+
 static void pointer(LinuxX11State *state, Display *display) {
     Window root = DefaultRootWindow(display), child;
     int root_x, root_y, window_x, window_y; unsigned int mask;
     if (XQueryPointer(display, root, &root, &child, &root_x, &root_y,
         &window_x, &window_y, &mask))
-        l2dcat_input_mouse(state->platform->input, root_x, root_y);
+        wake_mouse(state, root_x, root_y);
 }
 
 static void raw_event(LinuxX11State *state, Display *display, XIRawEvent *raw) {

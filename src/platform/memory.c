@@ -1,8 +1,7 @@
 #include "l2dcat/memory.h"
 
 #ifdef _WIN32
-#include <windows.h>
-#include <psapi.h>
+#include <malloc.h>
 #elif defined(__APPLE__)
 #include <malloc/malloc.h>
 #elif defined(__GLIBC__)
@@ -11,7 +10,8 @@
 
 void l2dcat_platform_trim_memory(void) {
 #ifdef _WIN32
-    EmptyWorkingSet(GetCurrentProcess());
+    /* Return free CRT heap regions without evicting active code and data pages. */
+    _heapmin();
 #elif defined(__APPLE__)
     malloc_zone_pressure_relief(NULL, 0);
 #elif defined(__GLIBC__)
