@@ -47,7 +47,7 @@ static bool form_begin(struct nk_context *context, const char *id,
     context->style.window.group_padding = nk_vec2(18, 12);
     context->style.window.spacing = nk_vec2(8, 5);
     context->style.window.group_border = 0;
-    nk_layout_row_dynamic(context, lines ? 76.0f + lines * 18.0f : 72.0f, 1);
+    nk_layout_row_dynamic(context, lines ? 80.0f + lines * 22.0f : 76.0f, 1);
     if (!nk_group_begin(context, id, NK_WINDOW_NO_SCROLLBAR)) {
         restore_style(context, saved);
         return false;
@@ -72,7 +72,7 @@ static float left_width(struct nk_context *context) {
 
 static void form_title(struct nk_context *context, const char *title) {
     float left = left_width(context);
-    nk_layout_row_begin(context, NK_STATIC, 44, 2);
+    nk_layout_row_begin(context, NK_STATIC, 48, 2);
     nk_layout_row_push(context, left);
     nk_style_push_font(context, bongo_cat_neo_ui_label_font(context));
     nk_label(context, title, NK_TEXT_LEFT);
@@ -86,7 +86,7 @@ static void description(struct nk_context *context, const char *text,
     if (!lines) return;
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     float left = left_width(context);
-    nk_layout_row_begin(context, NK_STATIC, 18.0f * lines, 2);
+    nk_layout_row_begin(context, NK_STATIC, 22.0f * lines, 2);
     nk_layout_row_push(context, left);
     nk_style_push_font(context, bongo_cat_neo_ui_caption_font(context));
     nk_label_colored_wrap(context, text, p.muted);
@@ -139,11 +139,11 @@ static bool secondary_button(struct nk_context *context, const char *label) {
 
 void bongo_cat_neo_pref_section(struct nk_context *context, const char *title) {
     struct nk_rect bounds;
-    nk_layout_row_dynamic(context, 50, 1);
+    nk_layout_row_dynamic(context, 54, 1);
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    nk_fill_rect(canvas, nk_rect(bounds.x, bounds.y + 15, 4, 22), 2, p.accent);
+    nk_fill_rect(canvas, nk_rect(bounds.x, bounds.y + 15, 4, 24), 2, p.accent);
     const struct nk_user_font *font = bongo_cat_neo_ui_label_font(context);
     struct nk_rect text = nk_rect(bounds.x + 14,
         bounds.y + (bounds.h - font->height) * .5f, bounds.w - 14, font->height);
@@ -250,10 +250,10 @@ void bongo_cat_neo_pref_status(struct nk_context *context, const char *id,
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return;
     BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
-    nk_layout_row_dynamic(context, 40, 1);
+    nk_layout_row_dynamic(context, 44, 1);
     struct nk_rect row; nk_widget(&row, context);
     nk_fill_circle(nk_window_get_canvas(context),
-        nk_rect(row.x, row.y + 15, 10, 10), p.accent);
+        nk_rect(row.x, row.y + (row.h - 10) * .5f, 10, 10), p.accent);
     const struct nk_user_font *font = bongo_cat_neo_ui_label_font(context);
     struct nk_rect text = nk_rect(row.x + 20,
         row.y + (row.h - font->height) * .5f, row.w - 20, font->height);

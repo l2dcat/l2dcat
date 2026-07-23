@@ -18,7 +18,7 @@ const char *bongo_cat_neo_ui_system_font(char *path, size_t capacity, bool multi
     const char *windows = SDL_getenv("WINDIR");
     if (!windows) windows = SDL_getenv("SystemRoot");
     if (windows) {
-        const char *multi[] = {"Fonts/msyhl.ttc", "Fonts/msyh.ttc"};
+        const char *multi[] = {"Fonts/msyh.ttc", "Fonts/msyhl.ttc"};
         const char *latin[] = {"Fonts/segoeui.ttf", "Fonts/msyhl.ttc"};
         const char **candidates = multilingual ? multi : latin;
         for (size_t i = 0; i < 2; ++i) {

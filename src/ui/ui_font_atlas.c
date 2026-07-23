@@ -118,13 +118,13 @@ bool bongo_cat_neo_ui_font_atlas_create(BongoCatNeoUIBackend *ui,
     nk_font_atlas_init_default(&ui->atlas);
     nk_font_atlas_begin(&ui->atlas);
     struct nk_font *caption_font = add_font(&ui->atlas,
-        body_loaded ? &body : NULL, 15.0f, glyph_ranges);
-    struct nk_font *body_font = add_font(&ui->atlas,
         body_loaded ? &body : NULL, 18.0f, glyph_ranges);
+    struct nk_font *body_font = add_font(&ui->atlas,
+        body_loaded ? &body : NULL, 20.0f, glyph_ranges);
     struct nk_font *label_font = add_font(&ui->atlas,
-        heading_source, 17.0f, glyph_ranges);
+        heading_source, 20.0f, glyph_ranges);
     struct nk_font *heading_font = add_font(&ui->atlas,
-        heading_source, 24.0f, glyph_ranges);
+        heading_source, 28.0f, glyph_ranges);
     bool uploaded = caption_font && body_font && label_font && heading_font &&
         upload_atlas(ui);
     if (uploaded) {
