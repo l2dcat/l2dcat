@@ -1,4 +1,4 @@
-name: l2dcat CI
+name: Bongo Cat Neo CI
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: l2dcat-ci-${{ github.workflow }}-${{ github.ref }}
+  group: bongo-cat-neo-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -27,12 +27,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             cmake ninja-build cppcheck \
-            libgl1-mesa-dev libx11-dev libxi-dev libxfixes-dev \
-            libcurl4-openssl-dev libssl-dev
+            libgl1-mesa-dev libx11-dev libxi-dev libxfixes-dev
 
       - name: Reject legacy product-name references
         run: |
-          legacy='bon''go'
+          legacy='l2d''cat'
           if grep -RIni --exclude-dir=.git --exclude-dir=build \
               --exclude='*.png' --exclude='*.flac' "$legacy" .; then
             echo "Legacy product-name reference found"
@@ -61,7 +60,7 @@ jobs:
         run: |
           cmake -S . -B build-quality -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DL2DCAT_WARNINGS_AS_ERRORS=ON
+            -DBONGO_CAT_NEO_WARNINGS_AS_ERRORS=ON
 
       - name: Register GCC diagnostics
         run: echo "::add-matcher::$GITHUB_WORKSPACE/.github/gcc-problem-matcher.json"
@@ -96,21 +95,21 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             cmake ninja-build libgl1-mesa-dev libx11-dev libxi-dev \
-            libxfixes-dev libcurl4-openssl-dev libssl-dev
+            libxfixes-dev
 
       - name: Configure Windows release
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           cmake -S . -B build -A x64 `
-            -DL2DCAT_WARNINGS_AS_ERRORS=ON
+            -DBONGO_CAT_NEO_WARNINGS_AS_ERRORS=ON
 
       - name: Configure Unix release
         if: runner.os != 'Windows'
         run: |
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DL2DCAT_WARNINGS_AS_ERRORS=ON
+            -DBONGO_CAT_NEO_WARNINGS_AS_ERRORS=ON
 
       - name: Register GCC diagnostics
         if: runner.os == 'Linux'
@@ -139,11 +138,11 @@ jobs:
       - name: Stage Windows install tree
         if: runner.os == 'Windows'
         shell: pwsh
-        run: cmake --install build --config Release --prefix package/l2dcat
+        run: cmake --install build --config Release --prefix package/BongoCatNeo
 
       - name: Stage Linux install tree
         if: runner.os == 'Linux'
-        run: cmake --install build --prefix "$PWD/package/l2dcat"
+        run: cmake --install build --prefix "$PWD/package/BongoCatNeo"
 
       - name: Stage macOS install tree
         if: runner.os == 'macOS'
@@ -154,38 +153,38 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          $executable = 'package/l2dcat/l2dcat.exe'
+          $executable = 'package/BongoCatNeo/BongoCatNeo.exe'
           if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
-            throw "The install staging tree did not contain l2dcat.exe"
+            throw "The install staging tree did not contain BongoCatNeo.exe"
           }
-          Copy-Item -LiteralPath $executable -Destination dist/l2dcat.exe
-          (Get-FileHash dist/l2dcat.exe -Algorithm SHA256).Hash |
-            Set-Content -NoNewline dist/l2dcat.exe.sha256
+          Copy-Item -LiteralPath $executable -Destination dist/BongoCatNeo.exe
+          (Get-FileHash dist/BongoCatNeo.exe -Algorithm SHA256).Hash |
+            Set-Content -NoNewline dist/BongoCatNeo.exe.sha256
 
       - name: Package Linux application
         if: runner.os == 'Linux'
         run: |
-          test -x package/l2dcat/l2dcat
-          test -d package/l2dcat/assets
+          test -x package/BongoCatNeo/BongoCatNeo
+          test -d package/BongoCatNeo/assets
           mkdir -p dist
-          tar -C package -czf dist/l2dcat-linux-x86_64.tar.gz l2dcat
-          sha256sum dist/l2dcat-linux-x86_64.tar.gz > \
-            dist/l2dcat-linux-x86_64.tar.gz.sha256
+          tar -C package -czf dist/BongoCatNeo-linux-x86_64.tar.gz BongoCatNeo
+          sha256sum dist/BongoCatNeo-linux-x86_64.tar.gz > \
+            dist/BongoCatNeo-linux-x86_64.tar.gz.sha256
 
       - name: Package macOS application
         if: runner.os == 'macOS'
         run: |
           mkdir -p dist
-          test -d package/l2dcat.app
+          test -d package/BongoCatNeo.app
           ditto -c -k --sequesterRsrc --keepParent \
-            package/l2dcat.app dist/l2dcat-macos.zip
-          shasum -a 256 dist/l2dcat-macos.zip > \
-            dist/l2dcat-macos.zip.sha256
+            package/BongoCatNeo.app dist/BongoCatNeo-macos.zip
+          shasum -a 256 dist/BongoCatNeo-macos.zip > \
+            dist/BongoCatNeo-macos.zip.sha256
 
       - name: Upload downloadable build
         uses: actions/upload-artifact@v7
         with:
-          name: l2dcat-${{ matrix.artifact }}-${{ github.run_number }}
+          name: BongoCatNeo-${{ matrix.artifact }}-${{ github.run_number }}
           path: dist/*
           if-no-files-found: error
           retention-days: 30

@@ -57,7 +57,7 @@ static int repeat_direction(struct nk_context *context, const char *id,
     return repeat_state.direction;
 }
 
-bool l2dcat_pref_controls_animating(struct nk_context *context) {
+bool bongo_cat_neo_pref_controls_animating(struct nk_context *context) {
     return repeat_state.context == context &&
         nk_input_is_mouse_down(&context->input, NK_BUTTON_LEFT);
 }
@@ -68,7 +68,7 @@ static double stepper(struct nk_context *context, const char *id,
     struct nk_rect bounds;
     *changed = false;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return value;
-    L2DCatUIPalette p = l2dcat_ui_palette(l2dcat_ui_dark(context));
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     struct nk_rect minus = nk_rect(bounds.x, bounds.y, 40, bounds.h);
     struct nk_rect plus = nk_rect(bounds.x + bounds.w - 40, bounds.y, 40, bounds.h);
@@ -100,9 +100,9 @@ static double stepper(struct nk_context *context, const char *id,
     else if (step < .1) snprintf(number, sizeof(number), "%.2f", value);
     else if (step < 1.0) snprintf(number, sizeof(number), "%.1f", value);
     else snprintf(number, sizeof(number), "%.0f", value);
-    centered(canvas, number_box, number, l2dcat_ui_body_font(context), p.text);
-    if (hover) l2dcat_ui_cursor_hover_rect(context, bounds,
-        L2DCAT_UI_CURSOR_POINTER);
+    centered(canvas, number_box, number, bongo_cat_neo_ui_body_font(context), p.text);
+    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
+        BONGO_CAT_NEO_UI_CURSOR_POINTER);
     int direction = repeat_direction(context, id, minus, plus);
     float wheel = context->input.mouse.scroll_delta.y;
     if (nk_input_is_mouse_hovering_rect(&context->input, number_box) && wheel != 0) {
@@ -114,7 +114,7 @@ static double stepper(struct nk_context *context, const char *id,
     return value;
 }
 
-bool l2dcat_pref_control_float(struct nk_context *context, const char *id,
+bool bongo_cat_neo_pref_control_float(struct nk_context *context, const char *id,
     float minimum, float *value, float maximum, float step) {
     bool changed;
     double result = stepper(context, id, minimum, *value, maximum, step,
@@ -123,7 +123,7 @@ bool l2dcat_pref_control_float(struct nk_context *context, const char *id,
     return changed;
 }
 
-bool l2dcat_pref_control_int(struct nk_context *context, const char *id,
+bool bongo_cat_neo_pref_control_int(struct nk_context *context, const char *id,
     int minimum, int *value, int maximum, int step) {
     bool changed;
     double result = stepper(context, id, minimum, *value, maximum, step,
@@ -132,12 +132,12 @@ bool l2dcat_pref_control_int(struct nk_context *context, const char *id,
     return changed;
 }
 
-bool l2dcat_pref_control_slider(struct nk_context *context, const char *id,
+bool bongo_cat_neo_pref_control_slider(struct nk_context *context, const char *id,
     float minimum, float *value, float maximum, float step) {
     (void)id;
     struct nk_rect bounds;
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
-    L2DCatUIPalette p = l2dcat_ui_palette(l2dcat_ui_dark(context));
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     struct nk_rect value_box = nk_rect(bounds.x + bounds.w - 52,
         bounds.y, 52, bounds.h);
@@ -170,10 +170,10 @@ bool l2dcat_pref_control_slider(struct nk_context *context, const char *id,
     nk_fill_rect(canvas, value_box, 10, p.field);
     nk_stroke_rect(canvas, value_box, 10, 1, p.border);
     char number[24]; snprintf(number, sizeof(number), "%.0f", *value);
-    centered(canvas, value_box, number, l2dcat_ui_body_font(context), p.text);
-    if (hover || value_hover) l2dcat_ui_cursor_hover_rect(context,
+    centered(canvas, value_box, number, bongo_cat_neo_ui_body_font(context), p.text);
+    if (hover || value_hover) bongo_cat_neo_ui_cursor_hover_rect(context,
         hover ? hit : value_box,
-        L2DCAT_UI_CURSOR_POINTER);
+        BONGO_CAT_NEO_UI_CURSOR_POINTER);
     return before != *value;
 }
 
@@ -185,13 +185,13 @@ static void combo_chevron(struct nk_command_buffer *canvas,
 }
 
 static void combo_item(struct nk_context *context, struct nk_rect bounds,
-    const char *label, bool selected, bool hover, L2DCatUIPalette p) {
+    const char *label, bool selected, bool hover, BongoCatNeoUIPalette p) {
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     struct nk_rect selection = nk_rect(bounds.x + 6, bounds.y + 3,
         bounds.w - 12, bounds.h - 6);
     if (selected || hover) nk_fill_rect(canvas, selection, 9,
         selected ? p.selection : p.field);
-    const struct nk_user_font *font = l2dcat_ui_body_font(context);
+    const struct nk_user_font *font = bongo_cat_neo_ui_body_font(context);
     struct nk_rect text = nk_rect(bounds.x + 12,
         bounds.y + (bounds.h - font->height) * .5f, bounds.w - 48, font->height);
     nk_draw_text(canvas, text, label, nk_strlen(label), font,
@@ -203,11 +203,11 @@ static void combo_item(struct nk_context *context, struct nk_rect bounds,
     }
 }
 
-int l2dcat_pref_control_combo(struct nk_context *context,
+int bongo_cat_neo_pref_control_combo(struct nk_context *context,
     const char *const *items, int count, int selected) {
     if (count <= 0) return selected;
     selected = NK_CLAMP(0, selected, count - 1);
-    L2DCatUIPalette p = l2dcat_ui_palette(l2dcat_ui_dark(context));
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     struct nk_rect bounds = nk_widget_bounds(context);
     struct nk_command_buffer *parent = nk_window_get_canvas(context);
     struct nk_style_combo saved_combo = context->style.combo;
@@ -233,8 +233,8 @@ int l2dcat_pref_control_combo(struct nk_context *context,
     nk_stroke_rect(parent, bounds, 10, open ? 2.0f : 1.0f,
         open || hover ? p.accent : p.border);
     combo_chevron(parent, bounds, open || hover ? p.accent : p.muted);
-    if (hover) l2dcat_ui_cursor_hover_rect(context, bounds,
-        L2DCAT_UI_CURSOR_POINTER);
+    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds,
+        BONGO_CAT_NEO_UI_CURSOR_POINTER);
     if (open) {
         nk_layout_row_dynamic(context, 38, 1);
         for (int i = 0; i < count; ++i) {
@@ -242,8 +242,8 @@ int l2dcat_pref_control_combo(struct nk_context *context,
             if (nk_widget(&item, context) == NK_WIDGET_INVALID) continue;
             bool item_hover = nk_input_is_mouse_hovering_rect(&context->input, item);
             combo_item(context, item, items[i], i == selected, item_hover, p);
-            if (item_hover) l2dcat_ui_cursor_hover_rect(context, item,
-                L2DCAT_UI_CURSOR_POINTER);
+            if (item_hover) bongo_cat_neo_ui_cursor_hover_rect(context, item,
+                BONGO_CAT_NEO_UI_CURSOR_POINTER);
             if (item_hover && clicked(context, item)) {
                 selected = i; nk_combo_close(context);
             }

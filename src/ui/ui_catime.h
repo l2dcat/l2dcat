@@ -1,14 +1,14 @@
-#ifndef L2DCAT_UI_CATIME_H
-#define L2DCAT_UI_CATIME_H
+#ifndef BONGO_CAT_NEO_UI_CATIME_H
+#define BONGO_CAT_NEO_UI_CATIME_H
 
 #include <stdbool.h>
 #include "nuklear_config.h"
 
-#define L2DCAT_UI_MARGIN 10.0f
-#define L2DCAT_UI_HEADER_HEIGHT 76.0f
-#define L2DCAT_UI_TABS_HEIGHT 58.0f
+#define BONGO_CAT_NEO_UI_MARGIN 10.0f
+#define BONGO_CAT_NEO_UI_HEADER_HEIGHT 76.0f
+#define BONGO_CAT_NEO_UI_TABS_HEIGHT 58.0f
 
-typedef struct L2DCatUIPalette {
+typedef struct BongoCatNeoUIPalette {
     struct nk_color background;
     struct nk_color surface;
     struct nk_color field;
@@ -22,18 +22,18 @@ typedef struct L2DCatUIPalette {
     struct nk_color selection;
     struct nk_color danger;
     struct nk_color danger_background;
-} L2DCatUIPalette;
+} BongoCatNeoUIPalette;
 
-L2DCatUIPalette l2dcat_ui_palette(bool dark);
-bool l2dcat_ui_dark(const struct nk_context *context);
-void l2dcat_ui_apply_theme(struct nk_context *context, bool dark);
-void l2dcat_ui_shell_draw(struct nk_context *context, float width,
+BongoCatNeoUIPalette bongo_cat_neo_ui_palette(bool dark);
+bool bongo_cat_neo_ui_dark(const struct nk_context *context);
+void bongo_cat_neo_ui_apply_theme(struct nk_context *context, bool dark);
+void bongo_cat_neo_ui_shell_draw(struct nk_context *context, float width,
     float height, bool dark);
-bool l2dcat_ui_header(struct nk_context *context, const char *title,
+bool bongo_cat_neo_ui_header(struct nk_context *context, const char *title,
     const struct nk_user_font *font, bool interactive, bool dark);
-void l2dcat_ui_tabs(struct nk_context *context, const char *const *labels,
+void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels,
     int count, int *active, bool interactive, bool dark);
-bool l2dcat_ui_close_hit(float x, float y, float width);
-bool l2dcat_ui_title_drag_hit(float x, float y, float width);
+bool bongo_cat_neo_ui_close_hit(float x, float y, float width);
+bool bongo_cat_neo_ui_title_drag_hit(float x, float y, float width);
 
 #endif

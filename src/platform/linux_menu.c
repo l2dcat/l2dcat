@@ -10,16 +10,16 @@
 
 typedef struct LinuxMenuRow {
     const char *label;
-    L2DCatMenuAction action;
+    BongoCatNeoMenuAction action;
 } LinuxMenuRow;
 
 typedef struct LinuxMenuPalette {
     unsigned long surface, field, border, text, accent;
 } LinuxMenuPalette;
 
-static L2DCatMenuAction finish(const L2DCatMenuLabels *labels,
-    L2DCatMenuAction action) {
-    if (labels->preview && action != L2DCAT_MENU_NONE)
+static BongoCatNeoMenuAction finish(const BongoCatNeoMenuLabels *labels,
+    BongoCatNeoMenuAction action) {
+    if (labels->preview && action != BONGO_CAT_NEO_MENU_NONE)
         labels->preview(labels->preview_userdata, action);
     if (labels->restore) labels->restore(labels->preview_userdata, action);
     return action;
@@ -111,47 +111,47 @@ static int popup_rows(Display *display, Window owner, const LinuxMenuRow *rows,
     XUngrabPointer(display, CurrentTime); XUngrabKeyboard(display, CurrentTime);
     XFreeGC(display, gc);
     XDestroyWindow(display, menu); XFlush(display);
-    return selected >= 0 ? rows[selected].action : L2DCAT_MENU_NONE;
+    return selected >= 0 ? rows[selected].action : BONGO_CAT_NEO_MENU_NONE;
 }
 
-L2DCatMenuAction l2dcat_linux_context_menu(L2DCatPlatform *platform,
-    const L2DCatMenuLabels *labels) {
-    if (!platform || !labels) return L2DCAT_MENU_NONE;
+BongoCatNeoMenuAction bongo_cat_neo_linux_context_menu(BongoCatNeoPlatform *platform,
+    const BongoCatNeoMenuLabels *labels) {
+    if (!platform || !labels) return BONGO_CAT_NEO_MENU_NONE;
     SDL_PropertiesID properties = SDL_GetWindowProperties(platform->window);
     Display *display = SDL_GetPointerProperty(properties,
         SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
     Window owner = (Window)SDL_GetNumberProperty(properties,
         SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
-    if (!display || !owner) return finish(labels, L2DCAT_MENU_NONE);
-    char pass[L2DCAT_ID_CAP], top[L2DCAT_ID_CAP];
+    if (!display || !owner) return finish(labels, BONGO_CAT_NEO_MENU_NONE);
+    char pass[BONGO_CAT_NEO_ID_CAP], top[BONGO_CAT_NEO_ID_CAP];
     snprintf(pass, sizeof(pass), "%s%s", labels->pass_through_checked ? "[x] " : "",
         labels->pass_through);
     snprintf(top, sizeof(top), "%s%s", labels->always_on_top_checked ? "[x] " : "",
         labels->always_on_top);
     LinuxMenuRow main_rows[] = {
-        {labels->preferences, L2DCAT_MENU_PREFERENCES}, {labels->hide, L2DCAT_MENU_HIDE},
-        {pass, L2DCAT_MENU_PASS_THROUGH}, {top, L2DCAT_MENU_ALWAYS_ON_TOP},
+        {labels->preferences, BONGO_CAT_NEO_MENU_PREFERENCES}, {labels->hide, BONGO_CAT_NEO_MENU_HIDE},
+        {pass, BONGO_CAT_NEO_MENU_PASS_THROUGH}, {top, BONGO_CAT_NEO_MENU_ALWAYS_ON_TOP},
         {labels->window_size, -1}, {labels->opacity, -2}, {labels->model, -3},
-        {labels->exit, L2DCAT_MENU_EXIT}};
-    L2DCatMenuAction action = popup_rows(display, owner, main_rows,
+        {labels->exit, BONGO_CAT_NEO_MENU_EXIT}};
+    BongoCatNeoMenuAction action = popup_rows(display, owner, main_rows,
         (int)(sizeof(main_rows) / sizeof(main_rows[0])), labels->dark_theme);
-    if (action == (L2DCatMenuAction)-1) {
+    if (action == (BongoCatNeoMenuAction)-1) {
         const int values[] = {50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200};
         LinuxMenuRow rows[16]; char text[16][16];
         for (int i = 0; i < 16; ++i) { snprintf(text[i], sizeof(text[i]), "%d%%", values[i]);
-            rows[i] = (LinuxMenuRow){text[i], L2DCAT_MENU_SCALE_50 + i}; }
+            rows[i] = (LinuxMenuRow){text[i], BONGO_CAT_NEO_MENU_SCALE_50 + i}; }
         action = popup_rows(display, owner, rows, 16, labels->dark_theme);
-    } else if (action == (L2DCatMenuAction)-2) {
+    } else if (action == (BongoCatNeoMenuAction)-2) {
         const int values[] = {10,20,30,40,50,60,70,80,90,100};
         LinuxMenuRow rows[10]; char text[10][16];
         for (int i = 0; i < 10; ++i) { snprintf(text[i], sizeof(text[i]), "%d%%", values[i]);
-            rows[i] = (LinuxMenuRow){text[i], L2DCAT_MENU_OPACITY_10 + i}; }
+            rows[i] = (LinuxMenuRow){text[i], BONGO_CAT_NEO_MENU_OPACITY_10 + i}; }
         action = popup_rows(display, owner, rows, 10, labels->dark_theme);
-    } else if (action == (L2DCatMenuAction)-3 && labels->model_count) {
-        LinuxMenuRow rows[L2DCAT_MODEL_CAP];
+    } else if (action == (BongoCatNeoMenuAction)-3 && labels->model_count) {
+        LinuxMenuRow rows[BONGO_CAT_NEO_MODEL_CAP];
         for (size_t i = 0; i < labels->model_count; ++i)
             rows[i] = (LinuxMenuRow){labels->model_names[i],
-                L2DCAT_MENU_MODEL_FIRST + (int)i};
+                BONGO_CAT_NEO_MENU_MODEL_FIRST + (int)i};
         action = popup_rows(display, owner, rows, (int)labels->model_count,
             labels->dark_theme);
     }

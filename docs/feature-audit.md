@@ -7,7 +7,7 @@ A diagnostic drawing never counts as a Live2D visual pass.
 
 ## Current evidence
 
-- Windows Cubism Release build: `build-cubism/Release/l2dcat.exe` - PASS.
+- Windows Cubism Release build: `build-cubism/Release/BongoCatNeo.exe` - PASS.
 - Native tests: `ctest --test-dir build-cubism -C Release` - PASS, 4/4.
 - Source policy: `check-lines` - PASS, every checked file is at most 300 lines.
 - Preferences matrix: `build-cubism/visual-audit-preferences/audit.csv` - PASS, 50/50.
@@ -15,7 +15,7 @@ A diagnostic drawing never counts as a Live2D visual pass.
 - Pointer/mouse-mirror matrix: `build-cubism/visual-audit-mouse/audit.csv` - PASS, 5/5.
 - Visible Cubism working set: 57.32 MiB - PASS, below 100 MiB.
 - Standalone smoke: 22 embedded shaders, `renderer=cubism-native`, GL error 0.
-- Desktop binary SHA-256 matches `build-cubism/Release/l2dcat.exe` - PASS.
+- Desktop binary SHA-256 matches `build-cubism/Release/BongoCatNeo.exe` - PASS.
 - Cubism Native SDK under `vendor/CubismSdkForNative` - PASS, SDK 5 r.5.
 - Tauri-parity pointer mapping and frame-rate-independent damping - PASS.
 
@@ -66,7 +66,6 @@ A diagnostic drawing never counts as a Live2D visual pass.
 | Right-click context menu | PASS | Production Win32 popup opens Preferences. |
 | Single instance | PASS | A second process exits while the first remains alive. |
 | Autostart | PENDING | Platform implementations exist; OS login testing remains. |
-| Independent update channel | PASS | Empty by default; HTTPS and signature validation tests pass. |
 | Hidden rendering suspension | PASS | Main loop skips model updates while hidden. |
 
 ## Preferences, localization and data
@@ -80,7 +79,7 @@ A diagnostic drawing never counts as a Live2D visual pass.
 | System theme | PASS | Auto mode resolves through the native SDL system theme. |
 | Click and drag model import | PASS | Both paths use the validated shared importer. |
 | Atomic configuration persistence | PASS | Tests include truncated-write recovery. |
-| No Electron, Tauri or upstream update dependency | PASS | Native source/config scan is clean. |
+| No Electron or Tauri dependency | PASS | Native source/config scan is clean. |
 
 ## Performance and platform gates
 

@@ -1,7 +1,7 @@
 #include "model_import_legacy_internal.h"
-#include "l2dcat/file.h"
-#include "l2dcat/image.h"
-#include "l2dcat/path.h"
+#include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/image.h"
+#include "bongo_cat_neo/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,11 +17,11 @@ static void write_png(void *context, void *data, int size) {
 }
 
 static bool compose(const char *base_path, const char *hand_path,
-    const char *target, L2DCatError *error) {
-    L2DCatImage base, hand;
-    if (l2dcat_image_load(base_path, &base, error) != L2DCAT_OK) return false;
-    if (l2dcat_image_load(hand_path, &hand, error) != L2DCAT_OK) {
-        l2dcat_image_free(&base); return false;
+    const char *target, BongoCatNeoError *error) {
+    BongoCatNeoImage base, hand;
+    if (bongo_cat_neo_image_load(base_path, &base, error) != BONGO_CAT_NEO_OK) return false;
+    if (bongo_cat_neo_image_load(hand_path, &hand, error) != BONGO_CAT_NEO_OK) {
+        bongo_cat_neo_image_free(&base); return false;
     }
     int width = SDL_min(base.width, hand.width), height = SDL_min(base.height, hand.height);
     size_t bytes = (size_t)width * (size_t)height * 4;
@@ -43,38 +43,38 @@ static bool compose(const char *base_path, const char *hand_path,
         }
         dst[3] = (unsigned char)((output_alpha + 127) / 255);
     }
-    FILE *file = pixels ? l2dcat_file_open(target, "wb") : NULL;
+    FILE *file = pixels ? bongo_cat_neo_file_open(target, "wb") : NULL;
     PngWriter writer = {file, file != NULL};
     bool ok = file && stbi_write_png_to_func(write_png, &writer, width, height, 4,
         pixels, width * 4) && writer.ok;
     if (file && fclose(file) != 0) ok = false;
-    free(pixels); l2dcat_image_free(&hand); l2dcat_image_free(&base);
-    if (!ok) l2dcat_error_set(error, allocated ? L2DCAT_ERROR_IO : L2DCAT_ERROR_MEMORY,
+    free(pixels); bongo_cat_neo_image_free(&hand); bongo_cat_neo_image_free(&base);
+    if (!ok) bongo_cat_neo_error_set(error, allocated ? BONGO_CAT_NEO_ERROR_IO : BONGO_CAT_NEO_ERROR_MEMORY,
         "Cannot compose legacy input image: %s", target);
     return ok;
 }
 
-bool l2dcat_legacy_emit_pair(const char *hand, const char *keyboard,
-    const char *directory, L2DCatLegacyKeyNames names, L2DCatError *error) {
+bool bongo_cat_neo_legacy_emit_pair(const char *hand, const char *keyboard,
+    const char *directory, BongoCatNeoLegacyKeyNames names, BongoCatNeoError *error) {
     if (!names.count) return true;
-    char first_name[32], first[L2DCAT_PATH_CAP];
+    char first_name[32], first[BONGO_CAT_NEO_PATH_CAP];
     const char *first_item = names.items[0] ? names.items[0] : names.generated;
     snprintf(first_name, sizeof(first_name), "%s.png", first_item);
-    if (!l2dcat_path_join(first, sizeof(first), directory, first_name)) return false;
+    if (!bongo_cat_neo_path_join(first, sizeof(first), directory, first_name)) return false;
     bool ok;
     if (keyboard) ok = compose(keyboard, hand, first, error);
     else {
-        L2DCatImage image;
-        ok = l2dcat_image_load(hand, &image, error) == L2DCAT_OK;
-        if (ok) { l2dcat_image_free(&image); ok = SDL_CopyFile(hand, first); }
+        BongoCatNeoImage image;
+        ok = bongo_cat_neo_image_load(hand, &image, error) == BONGO_CAT_NEO_OK;
+        if (ok) { bongo_cat_neo_image_free(&image); ok = SDL_CopyFile(hand, first); }
     }
     if (!ok && error && !error->message[0])
-        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot copy legacy input image: %s", hand);
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot copy legacy input image: %s", hand);
     for (size_t i = 1; ok && i < names.count; ++i) {
-        char filename[32], target[L2DCAT_PATH_CAP];
+        char filename[32], target[BONGO_CAT_NEO_PATH_CAP];
         const char *item = names.items[i] ? names.items[i] : names.generated;
         snprintf(filename, sizeof(filename), "%s.png", item);
-        ok = l2dcat_path_join(target, sizeof(target), directory, filename) &&
+        ok = bongo_cat_neo_path_join(target, sizeof(target), directory, filename) &&
             SDL_CopyFile(first, target);
     }
     return ok;

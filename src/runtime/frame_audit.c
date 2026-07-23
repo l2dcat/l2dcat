@@ -1,6 +1,6 @@
 #include "runtime.h"
-#include "l2dcat/file.h"
-#include "l2dcat/path.h"
+#include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/path.h"
 
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
@@ -20,13 +20,13 @@ static unsigned visible_pixels(const unsigned char *pixels,
     return visible;
 }
 
-static void record_frame(L2DCatApp *app, const unsigned char *pixels,
+static void record_frame(BongoCatNeoApp *app, const unsigned char *pixels,
     int width, int height, size_t pitch) {
     if (!app->smoke_frame_series) return;
-    char path[L2DCAT_PATH_CAP];
-    l2dcat_path_join(path, sizeof(path), app->data_root, "frame-series.csv");
-    bool header = !l2dcat_path_is_file(path);
-    FILE *file = l2dcat_file_open(path, "ab");
+    char path[BONGO_CAT_NEO_PATH_CAP];
+    bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "frame-series.csv");
+    bool header = !bongo_cat_neo_path_is_file(path);
+    FILE *file = bongo_cat_neo_file_open(path, "ab");
     if (!file) return;
     if (header) fputs("ticks_ns,width,height,visible_pixels,scale_percent,"
         "opacity_percent,window_opacity\n", file);
@@ -38,9 +38,9 @@ static void record_frame(L2DCatApp *app, const unsigned char *pixels,
     fclose(file);
 }
 
-void l2dcat_frame_audit(L2DCatApp *app, int width, int height) {
+void bongo_cat_neo_frame_audit(BongoCatNeoApp *app, int width, int height) {
     if (!app || !app->smoke || width < 2 || height < 2) return;
-    char path[L2DCAT_PATH_CAP];
+    char path[BONGO_CAT_NEO_PATH_CAP];
     if (!app->smoke_frame_audited) {
         app->smoke_frame_audited = true;
         const int points[][2] = {{0, 0}, {width - 1, 0}, {0, height - 1},
@@ -53,8 +53,8 @@ void l2dcat_frame_audit(L2DCatApp *app, int width, int height) {
             if (pixel[3] < 16) transparent++;
             if (pixel[3] > 239) opaque++;
         }
-        l2dcat_path_join(path, sizeof(path), app->data_root, "frame-alpha.txt");
-        FILE *file = l2dcat_file_open(path, "wb");
+        bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "frame-alpha.txt");
+        FILE *file = bongo_cat_neo_file_open(path, "wb");
         if (file) {
             fprintf(file, "samples=5 transparent=%u opaque=%u gl_error=%u\n",
                 transparent, opaque, (unsigned)glGetError());
@@ -81,7 +81,7 @@ void l2dcat_frame_audit(L2DCatApp *app, int width, int height) {
     }
     SDL_Surface *surface = SDL_CreateSurfaceFrom(width, height,
         SDL_PIXELFORMAT_RGBA32, pixels, (int)pitch);
-    l2dcat_path_join(path, sizeof(path), app->data_root, "frame.bmp");
+    bongo_cat_neo_path_join(path, sizeof(path), app->data_root, "frame.bmp");
     if (surface) { SDL_SaveBMP(surface, path); SDL_DestroySurface(surface); }
     free(row); free(pixels);
 }

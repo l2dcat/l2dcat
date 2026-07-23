@@ -1,19 +1,19 @@
-#ifndef L2DCAT_UI_BACKEND_H
-#define L2DCAT_UI_BACKEND_H
+#ifndef BONGO_CAT_NEO_UI_BACKEND_H
+#define BONGO_CAT_NEO_UI_BACKEND_H
 
-#include "l2dcat/gl_api.h"
+#include "bongo_cat_neo/gl_api.h"
 #include <SDL3/SDL.h>
 #include "nuklear_config.h"
 
-typedef enum L2DCatUICursor {
-    L2DCAT_UI_CURSOR_DEFAULT,
-    L2DCAT_UI_CURSOR_POINTER,
-    L2DCAT_UI_CURSOR_TEXT
-} L2DCatUICursor;
+typedef enum BongoCatNeoUICursor {
+    BONGO_CAT_NEO_UI_CURSOR_DEFAULT,
+    BONGO_CAT_NEO_UI_CURSOR_POINTER,
+    BONGO_CAT_NEO_UI_CURSOR_TEXT
+} BongoCatNeoUICursor;
 
-typedef struct L2DCatUIBackend {
+typedef struct BongoCatNeoUIBackend {
     SDL_Window *window;
-    L2DCatGL gl;
+    BongoCatNeoGL gl;
     struct nk_context context;
     struct nk_font_atlas atlas;
     struct nk_buffer commands;
@@ -48,35 +48,35 @@ typedef struct L2DCatUIBackend {
     bool dark_theme;
     SDL_Cursor *pointer_cursor;
     SDL_Cursor *text_cursor;
-    L2DCatUICursor requested_cursor;
-} L2DCatUIBackend;
+    BongoCatNeoUICursor requested_cursor;
+} BongoCatNeoUIBackend;
 
-bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window,
+bool bongo_cat_neo_ui_init(BongoCatNeoUIBackend *ui, SDL_Window *window,
     const char *body_font_path, const char *heading_font_path,
-    const nk_rune *glyph_ranges, L2DCatError *error);
-void l2dcat_ui_destroy(L2DCatUIBackend *ui);
-void l2dcat_ui_input_begin(L2DCatUIBackend *ui);
-void l2dcat_ui_input_end(L2DCatUIBackend *ui);
-bool l2dcat_ui_event(L2DCatUIBackend *ui, const SDL_Event *event);
-void l2dcat_ui_render(L2DCatUIBackend *ui);
-bool l2dcat_ui_frame_valid(const L2DCatUIBackend *ui);
-L2DCatUIBackend *l2dcat_ui_backend_for_context(
+    const nk_rune *glyph_ranges, BongoCatNeoError *error);
+void bongo_cat_neo_ui_destroy(BongoCatNeoUIBackend *ui);
+void bongo_cat_neo_ui_input_begin(BongoCatNeoUIBackend *ui);
+void bongo_cat_neo_ui_input_end(BongoCatNeoUIBackend *ui);
+bool bongo_cat_neo_ui_event(BongoCatNeoUIBackend *ui, const SDL_Event *event);
+void bongo_cat_neo_ui_render(BongoCatNeoUIBackend *ui);
+bool bongo_cat_neo_ui_frame_valid(const BongoCatNeoUIBackend *ui);
+BongoCatNeoUIBackend *bongo_cat_neo_ui_backend_for_context(
     const struct nk_context *context);
-const struct nk_user_font *l2dcat_ui_caption_font(
+const struct nk_user_font *bongo_cat_neo_ui_caption_font(
     const struct nk_context *context);
-const struct nk_user_font *l2dcat_ui_body_font(
+const struct nk_user_font *bongo_cat_neo_ui_body_font(
     const struct nk_context *context);
-const struct nk_user_font *l2dcat_ui_label_font(
+const struct nk_user_font *bongo_cat_neo_ui_label_font(
     const struct nk_context *context);
-const struct nk_user_font *l2dcat_ui_heading_font(
+const struct nk_user_font *bongo_cat_neo_ui_heading_font(
     const struct nk_context *context);
-void l2dcat_ui_cursor_begin(L2DCatUIBackend *ui);
-void l2dcat_ui_cursor_apply(L2DCatUIBackend *ui);
-void l2dcat_ui_cursor_destroy(L2DCatUIBackend *ui);
-void l2dcat_ui_cursor_reset(struct nk_context *context);
-void l2dcat_ui_cursor_hover_rect(struct nk_context *context,
-    struct nk_rect bounds, L2DCatUICursor cursor);
-void l2dcat_ui_cursor_hover_widget(struct nk_context *context,
-    L2DCatUICursor cursor);
+void bongo_cat_neo_ui_cursor_begin(BongoCatNeoUIBackend *ui);
+void bongo_cat_neo_ui_cursor_apply(BongoCatNeoUIBackend *ui);
+void bongo_cat_neo_ui_cursor_destroy(BongoCatNeoUIBackend *ui);
+void bongo_cat_neo_ui_cursor_reset(struct nk_context *context);
+void bongo_cat_neo_ui_cursor_hover_rect(struct nk_context *context,
+    struct nk_rect bounds, BongoCatNeoUICursor cursor);
+void bongo_cat_neo_ui_cursor_hover_widget(struct nk_context *context,
+    BongoCatNeoUICursor cursor);
 
 #endif

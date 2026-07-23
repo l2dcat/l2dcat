@@ -6,14 +6,14 @@
 #include <SDL3/SDL.h>
 #include <stdio.h>
 
-void l2dcat_preferences_notice_show(L2DCatApp *app,
+void bongo_cat_neo_preferences_notice_show(BongoCatNeoApp *app,
     const char *message, bool error) {
     if (!app || !app->preferences || !message || !message[0]) return;
-    L2DCatPreferences *value = app->preferences;
+    BongoCatNeoPreferences *value = app->preferences;
     snprintf(value->notice, sizeof(value->notice), "%s", message);
     value->notice_error = error;
     value->notice_until_ns = SDL_GetTicksNS() + 4000000000ULL;
-    l2dcat_preferences_invalidate(value);
+    bongo_cat_neo_preferences_invalidate(value);
 }
 
 static void notice_icon(struct nk_command_buffer *canvas,
@@ -30,7 +30,7 @@ static void notice_icon(struct nk_command_buffer *canvas,
     }
 }
 
-void l2dcat_preferences_notice_draw(L2DCatPreferences *value,
+void bongo_cat_neo_preferences_notice_draw(BongoCatNeoPreferences *value,
     struct nk_context *context, float width, float height) {
     if (!value || !value->notice[0]) return;
     uint64_t now = SDL_GetTicksNS();
@@ -40,8 +40,8 @@ void l2dcat_preferences_notice_draw(L2DCatPreferences *value,
         return;
     }
     value->render_dirty = true;
-    bool dark = l2dcat_ui_dark(context);
-    L2DCatUIPalette p = l2dcat_ui_palette(dark);
+    bool dark = bongo_cat_neo_ui_dark(context);
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
     float toast_width = NK_MIN(390.0f, width - 64.0f);
     struct nk_rect bounds = nk_rect(width - toast_width - 30.0f,
         height - 30.0f - 62.0f, toast_width, 62.0f);
@@ -55,7 +55,7 @@ void l2dcat_preferences_notice_draw(L2DCatPreferences *value,
         bounds.h - 20), 2, tone);
     notice_icon(canvas, nk_rect(bounds.x + 18, bounds.y + 19, 24, 24),
         value->notice_error, tone);
-    const struct nk_user_font *font = l2dcat_ui_body_font(context);
+    const struct nk_user_font *font = bongo_cat_neo_ui_body_font(context);
     struct nk_rect text = nk_rect(bounds.x + 54,
         bounds.y + (bounds.h - font->height) * .5f,
         bounds.w - 70, font->height);

@@ -28,9 +28,9 @@ static void draw_centered(struct nk_command_buffer *canvas,
         nk_rgba(0, 0, 0, 0), color);
 }
 
-void l2dcat_ui_shell_draw(struct nk_context *context, float width,
+void bongo_cat_neo_ui_shell_draw(struct nk_context *context, float width,
     float height, bool dark) {
-    L2DCatUIPalette p = l2dcat_ui_palette(dark);
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     struct nk_color shadow = rgb(dark ? 0x0D0E11 : 0xD6DBE5);
     struct nk_rect shade = nk_rect(11, 15, width - 22, height - 24);
@@ -41,7 +41,7 @@ void l2dcat_ui_shell_draw(struct nk_context *context, float width,
 }
 
 static void signature(struct nk_command_buffer *canvas, struct nk_rect bounds,
-    float title_width, L2DCatUIPalette p) {
+    float title_width, BongoCatNeoUIPalette p) {
     float width = NK_CLAMP(86.0f, title_width + 16.0f, 188.0f);
     float x = bounds.x + 24.0f, y = bounds.y + 52.0f;
     bool dark = p.surface.r < 128;
@@ -69,12 +69,12 @@ static struct nk_rect close_rect(struct nk_rect bounds) {
     return nk_rect(bounds.x + bounds.w - 56, bounds.y + 16, 36, 36);
 }
 
-bool l2dcat_ui_header(struct nk_context *context, const char *title,
+bool bongo_cat_neo_ui_header(struct nk_context *context, const char *title,
     const struct nk_user_font *font, bool interactive, bool dark) {
     struct nk_rect bounds;
-    nk_layout_row_dynamic(context, L2DCAT_UI_HEADER_HEIGHT, 1);
+    nk_layout_row_dynamic(context, BONGO_CAT_NEO_UI_HEADER_HEIGHT, 1);
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
-    L2DCatUIPalette p = l2dcat_ui_palette(dark);
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     if (!font) font = context->style.font;
     float title_width = text_width(font, title);
@@ -93,7 +93,7 @@ bool l2dcat_ui_header(struct nk_context *context, const char *title,
         nk_input_is_mouse_hovering_rect(&context->input, close);
     if (hover) {
         nk_fill_circle(canvas, close, p.field);
-        l2dcat_ui_cursor_hover_rect(context, close, L2DCAT_UI_CURSOR_POINTER);
+        bongo_cat_neo_ui_cursor_hover_rect(context, close, BONGO_CAT_NEO_UI_CURSOR_POINTER);
     }
     struct nk_color icon = hover ? p.accent : p.muted;
     nk_stroke_line(canvas, close.x + 11, close.y + 11,
@@ -104,14 +104,14 @@ bool l2dcat_ui_header(struct nk_context *context, const char *title,
         NK_BUTTON_LEFT, close);
 }
 
-void l2dcat_ui_tabs(struct nk_context *context, const char *const *labels,
+void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels,
     int count, int *active, bool interactive, bool dark) {
     struct nk_rect bounds;
-    nk_layout_row_dynamic(context, L2DCAT_UI_TABS_HEIGHT, 1);
+    nk_layout_row_dynamic(context, BONGO_CAT_NEO_UI_TABS_HEIGHT, 1);
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID || count < 1) return;
-    L2DCatUIPalette p = l2dcat_ui_palette(dark);
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
-    const struct nk_user_font *font = l2dcat_ui_label_font(context);
+    const struct nk_user_font *font = bongo_cat_neo_ui_label_font(context);
     float widths[8] = {0}, gap = 4.0f, total = gap * (count - 1);
     for (int i = 0; i < count && i < 8; ++i) {
         widths[i] = NK_MAX(82.0f, text_width(font, labels[i]) + 34.0f);
@@ -138,21 +138,21 @@ void l2dcat_ui_tabs(struct nk_context *context, const char *const *labels,
         struct nk_color text_color = selected ? p.accent :
             (hover ? p.text : p.muted);
         draw_centered(canvas, tab, labels[i], font, text_color);
-        if (hover) l2dcat_ui_cursor_hover_rect(context, tab,
-            L2DCAT_UI_CURSOR_POINTER);
+        if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, tab,
+            BONGO_CAT_NEO_UI_CURSOR_POINTER);
         if (interactive && nk_input_is_mouse_click_in_rect(&context->input,
             NK_BUTTON_LEFT, tab)) *active = i;
         x += widths[i] + gap;
     }
 }
 
-bool l2dcat_ui_close_hit(float x, float y, float width) {
+bool bongo_cat_neo_ui_close_hit(float x, float y, float width) {
     return x >= width - 72.0f && x <= width - 22.0f &&
         y >= 20.0f && y <= 68.0f;
 }
 
-bool l2dcat_ui_title_drag_hit(float x, float y, float width) {
-    return x >= L2DCAT_UI_MARGIN && x <= width - L2DCAT_UI_MARGIN &&
-        y >= L2DCAT_UI_MARGIN && y <= L2DCAT_UI_HEADER_HEIGHT &&
-        !l2dcat_ui_close_hit(x, y, width);
+bool bongo_cat_neo_ui_title_drag_hit(float x, float y, float width) {
+    return x >= BONGO_CAT_NEO_UI_MARGIN && x <= width - BONGO_CAT_NEO_UI_MARGIN &&
+        y >= BONGO_CAT_NEO_UI_MARGIN && y <= BONGO_CAT_NEO_UI_HEADER_HEIGHT &&
+        !bongo_cat_neo_ui_close_hit(x, y, width);
 }

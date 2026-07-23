@@ -1,24 +1,24 @@
-#ifndef L2DCAT_PREFERENCES_STATE_H
-#define L2DCAT_PREFERENCES_STATE_H
+#ifndef BONGO_CAT_NEO_PREFERENCES_STATE_H
+#define BONGO_CAT_NEO_PREFERENCES_STATE_H
 
 #include "preferences_internal.h"
 #include "ui_backend.h"
-#include "l2dcat/i18n.h"
-#include "l2dcat/preferences.h"
+#include "bongo_cat_neo/i18n.h"
+#include "bongo_cat_neo/preferences.h"
 
-struct L2DCatPreferences {
-    L2DCatApp *app;
+struct BongoCatNeoPreferences {
+    BongoCatNeoApp *app;
     SDL_Window *window;
     SDL_GLContext gl_context;
     bool owns_gl_context;
-    L2DCatUIBackend ui;
+    BongoCatNeoUIBackend ui;
     int page;
     int style_theme;
-    L2DCatLanguage font_language;
+    BongoCatNeoLanguage font_language;
     nk_rune glyph_ranges[2048];
     bool input_active;
     bool import_requested;
-    L2DCatImportDialog *import_dialog;
+    BongoCatNeoImportDialog *import_dialog;
     bool frame_checked;
     bool render_dirty;
     uint64_t last_render_ns;
@@ -36,7 +36,7 @@ struct L2DCatPreferences {
     float drag_pointer_y;
 };
 
-int l2dcat_preferences_resolved_theme(const L2DCatPreferences *value);
-void l2dcat_preferences_apply_theme(L2DCatPreferences *value);
+int bongo_cat_neo_preferences_resolved_theme(const BongoCatNeoPreferences *value);
+void bongo_cat_neo_preferences_apply_theme(BongoCatNeoPreferences *value);
 
 #endif

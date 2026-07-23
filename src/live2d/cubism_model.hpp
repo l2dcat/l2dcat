@@ -1,7 +1,7 @@
-#ifndef L2DCAT_CUBISM_MODEL_HPP
-#define L2DCAT_CUBISM_MODEL_HPP
+#ifndef BONGO_CAT_NEO_CUBISM_MODEL_HPP
+#define BONGO_CAT_NEO_CUBISM_MODEL_HPP
 
-#include "l2dcat/common.h"
+#include "bongo_cat_neo/common.h"
 
 #include <Model/CubismUserModel.hpp>
 #include <CubismModelSettingJson.hpp>
@@ -12,14 +12,14 @@
 #include <string>
 #include <vector>
 
-namespace l2dcat {
+namespace bongo_cat_neo {
 
 class NativeModel final : public Csm::CubismUserModel {
 public:
     NativeModel();
     ~NativeModel() override;
-    bool load(const char *directory, const char *setting_file, L2DCatError *error);
-    bool load_textures(L2DCatError *error);
+    bool load(const char *directory, const char *setting_file, BongoCatNeoError *error);
+    bool load_textures(BongoCatNeoError *error);
     void release_render_resources();
     void resize(int width, int height);
     void reshape(int width, int height);
@@ -38,7 +38,7 @@ private:
         std::vector<float> initial_values;
         bool enabled = false;
     };
-    bool load_model(L2DCatError *error);
+    bool load_model(BongoCatNeoError *error);
     void load_expressions();
     void load_effects();
     void load_motions();
@@ -75,6 +75,6 @@ private:
     float opacity_snapshot_ = -1.0f;
 };
 
-} // namespace l2dcat
+} // namespace bongo_cat_neo
 
 #endif

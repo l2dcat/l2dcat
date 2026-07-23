@@ -1,5 +1,5 @@
 #include "ui_font_atlas.h"
-#include "l2dcat/file.h"
+#include "bongo_cat_neo/file.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +17,7 @@ typedef struct UIFontSource {
 } UIFontSource;
 
 static bool source_load(UIFontSource *source, const char *path) {
-    source->file = l2dcat_file_open(path, "rb");
+    source->file = bongo_cat_neo_file_open(path, "rb");
     if (!source->file || fseek(source->file, 0, SEEK_END) != 0) return false;
     long size = ftell(source->file);
     if (size <= 0 || fseek(source->file, 0, SEEK_SET) != 0) return false;
@@ -82,7 +82,7 @@ static bool font_has_ranges(const struct nk_font *font, const nk_rune *ranges) {
     return true;
 }
 
-static bool upload_atlas(L2DCatUIBackend *ui) {
+static bool upload_atlas(BongoCatNeoUIBackend *ui) {
     int width = 0, height = 0;
     const void *pixels = nk_font_atlas_bake(&ui->atlas, &width, &height,
         NK_FONT_ATLAS_ALPHA8);
@@ -104,7 +104,7 @@ static bool upload_atlas(L2DCatUIBackend *ui) {
     return ui->font_texture != 0;
 }
 
-bool l2dcat_ui_font_atlas_create(L2DCatUIBackend *ui,
+bool bongo_cat_neo_ui_font_atlas_create(BongoCatNeoUIBackend *ui,
     const char *body_path, const char *heading_path,
     const nk_rune *glyph_ranges) {
     UIFontSource body = {0}, heading = {0};
@@ -144,7 +144,7 @@ bool l2dcat_ui_font_atlas_create(L2DCatUIBackend *ui,
     return uploaded;
 }
 
-void l2dcat_ui_font_atlas_destroy(L2DCatUIBackend *ui) {
+void bongo_cat_neo_ui_font_atlas_destroy(BongoCatNeoUIBackend *ui) {
     if (!ui) return;
     nk_font_atlas_clear(&ui->atlas);
     ui->caption_font = NULL;

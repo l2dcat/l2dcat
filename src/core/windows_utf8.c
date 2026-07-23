@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <windows.h>
 
-wchar_t *l2dcat_windows_wide(const char *text) {
+wchar_t *bongo_cat_neo_windows_wide(const char *text) {
     int length = text ? MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
         text, -1, NULL, 0) : 0;
     wchar_t *wide = length > 0 ? malloc((size_t)length * sizeof(*wide)) : NULL;
@@ -15,7 +15,7 @@ wchar_t *l2dcat_windows_wide(const char *text) {
     return wide;
 }
 
-bool l2dcat_windows_utf8(const wchar_t *text, char *output, size_t capacity) {
+bool bongo_cat_neo_windows_utf8(const wchar_t *text, char *output, size_t capacity) {
     if (!text || !output || !capacity) return false;
     int required = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
         text, -1, NULL, 0, NULL, NULL);

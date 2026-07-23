@@ -1,69 +1,69 @@
-#include "l2dcat/i18n.h"
-#include "l2dcat/file.h"
-#include "l2dcat/path.h"
+#include "bongo_cat_neo/i18n.h"
+#include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/path.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <yyjson.h>
 
-struct L2DCatI18n {
-    char root[L2DCAT_PATH_CAP];
-    L2DCatLanguage language;
+struct BongoCatNeoI18n {
+    char root[BONGO_CAT_NEO_PATH_CAP];
+    BongoCatNeoLanguage language;
     yyjson_doc *fallback;
     yyjson_doc *active;
 };
 
-static yyjson_doc *load_locale(const char *root, L2DCatLanguage language,
-    L2DCatError *error) {
-    char name[32], path[L2DCAT_PATH_CAP];
-    snprintf(name, sizeof(name), "%s.json", l2dcat_language_name(language));
-    if (!l2dcat_path_join(path, sizeof(path), root, name)) return NULL;
+static yyjson_doc *load_locale(const char *root, BongoCatNeoLanguage language,
+    BongoCatNeoError *error) {
+    char name[32], path[BONGO_CAT_NEO_PATH_CAP];
+    snprintf(name, sizeof(name), "%s.json", bongo_cat_neo_language_name(language));
+    if (!bongo_cat_neo_path_join(path, sizeof(path), root, name)) return NULL;
     yyjson_read_err json_error = {0};
-    FILE *file = l2dcat_file_open(path, "rb");
+    FILE *file = bongo_cat_neo_file_open(path, "rb");
     yyjson_doc *doc = file ? yyjson_read_fp(file, 0, NULL, &json_error) : NULL;
     if (file) fclose(file);
-    if (!doc) l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
+    if (!doc) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
         "Cannot load locale %s: %s", path,
         json_error.msg ? json_error.msg : "cannot open file");
     return doc;
 }
 
-L2DCatI18n *l2dcat_i18n_create(const char *root, L2DCatLanguage language,
-    L2DCatError *error) {
+BongoCatNeoI18n *bongo_cat_neo_i18n_create(const char *root, BongoCatNeoLanguage language,
+    BongoCatNeoError *error) {
     if (!root) return NULL;
-    L2DCatI18n *value = calloc(1, sizeof(*value));
+    BongoCatNeoI18n *value = calloc(1, sizeof(*value));
     if (!value) return NULL;
     snprintf(value->root, sizeof(value->root), "%s", root);
-    value->fallback = load_locale(root, L2DCAT_LANG_EN_US, error);
+    value->fallback = load_locale(root, BONGO_CAT_NEO_LANG_EN_US, error);
     if (!value->fallback) {
         free(value);
         return NULL;
     }
-    if (l2dcat_i18n_reload(value, language, error) != L2DCAT_OK) {
-        l2dcat_i18n_destroy(value);
+    if (bongo_cat_neo_i18n_reload(value, language, error) != BONGO_CAT_NEO_OK) {
+        bongo_cat_neo_i18n_destroy(value);
         return NULL;
     }
     return value;
 }
 
-void l2dcat_i18n_destroy(L2DCatI18n *value) {
+void bongo_cat_neo_i18n_destroy(BongoCatNeoI18n *value) {
     if (!value) return;
     if (value->active && value->active != value->fallback) yyjson_doc_free(value->active);
     yyjson_doc_free(value->fallback);
     free(value);
 }
 
-L2DCatResult l2dcat_i18n_reload(L2DCatI18n *value, L2DCatLanguage language,
-    L2DCatError *error) {
-    if (!value) return L2DCAT_ERROR_ARGUMENT;
-    yyjson_doc *next = language == L2DCAT_LANG_EN_US
+BongoCatNeoResult bongo_cat_neo_i18n_reload(BongoCatNeoI18n *value, BongoCatNeoLanguage language,
+    BongoCatNeoError *error) {
+    if (!value) return BONGO_CAT_NEO_ERROR_ARGUMENT;
+    yyjson_doc *next = language == BONGO_CAT_NEO_LANG_EN_US
         ? value->fallback : load_locale(value->root, language, error);
-    if (!next) return L2DCAT_ERROR_FORMAT;
+    if (!next) return BONGO_CAT_NEO_ERROR_FORMAT;
     if (value->active && value->active != value->fallback) yyjson_doc_free(value->active);
     value->active = next;
     value->language = language;
-    return L2DCAT_OK;
+    return BONGO_CAT_NEO_OK;
 }
 
 static yyjson_val *find_value(yyjson_doc *doc, const char *key) {
@@ -82,7 +82,7 @@ static yyjson_val *find_value(yyjson_doc *doc, const char *key) {
     return value;
 }
 
-const char *l2dcat_i18n_get(const L2DCatI18n *value, const char *key,
+const char *bongo_cat_neo_i18n_get(const BongoCatNeoI18n *value, const char *key,
     const char *fallback) {
     if (!value || !key) return fallback;
     yyjson_val *found = find_value(value->active, key);
@@ -160,7 +160,7 @@ static size_t build_ranges(uint32_t *points, size_t count,
     return written + 1;
 }
 
-size_t l2dcat_i18n_glyph_ranges(const L2DCatI18n *value, uint32_t *ranges,
+size_t bongo_cat_neo_i18n_glyph_ranges(const BongoCatNeoI18n *value, uint32_t *ranges,
     size_t capacity) {
     if (!value || !ranges || capacity < 3) return 0;
     uint32_t points[4096]; size_t count = 0;
@@ -168,15 +168,15 @@ size_t l2dcat_i18n_glyph_ranges(const L2DCatI18n *value, uint32_t *ranges,
     return build_ranges(points, count, ranges, capacity);
 }
 
-size_t l2dcat_i18n_all_glyph_ranges(const L2DCatI18n *value, uint32_t *ranges,
+size_t bongo_cat_neo_i18n_all_glyph_ranges(const BongoCatNeoI18n *value, uint32_t *ranges,
     size_t capacity) {
     if (!value || !ranges || capacity < 3) return 0;
     uint32_t points[4096]; size_t count = 0;
     collect_value(yyjson_doc_get_root(value->fallback), points, &count);
-    for (int language = L2DCAT_LANG_ZH_CN; language <= L2DCAT_LANG_VI_VN;
+    for (int language = BONGO_CAT_NEO_LANG_ZH_CN; language <= BONGO_CAT_NEO_LANG_VI_VN;
         ++language) {
-        L2DCatError ignored = {0};
-        yyjson_doc *doc = load_locale(value->root, (L2DCatLanguage)language,
+        BongoCatNeoError ignored = {0};
+        yyjson_doc *doc = load_locale(value->root, (BongoCatNeoLanguage)language,
             &ignored);
         if (doc) { collect_value(yyjson_doc_get_root(doc), points, &count);
             yyjson_doc_free(doc); }

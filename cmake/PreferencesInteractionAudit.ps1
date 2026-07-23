@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\l2dcat.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCatNeo.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-cubism\preferences-interaction" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -19,7 +19,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class L2DCatPreferencesNative {
+public static class BongoCatNeoPreferencesNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X,Y; }
@@ -39,17 +39,17 @@ public static class L2DCatPreferencesNative {
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
-[void][L2DCatPreferencesNative]::SetProcessDPIAware()
+[void][BongoCatNeoPreferencesNative]::SetProcessDPIAware()
 
 function Get-AppWindows([int]$ProcessId) {
     $windows = [Collections.Generic.List[object]]::new()
-    [L2DCatPreferencesNative]::EnumWindows({
+    [BongoCatNeoPreferencesNative]::EnumWindows({
         param($handle, $unused)
         [uint32]$owner = 0
-        [void][L2DCatPreferencesNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-        if ($owner -eq $ProcessId -and [L2DCatPreferencesNative]::IsWindowVisible($handle)) {
-            $rect = [L2DCatPreferencesNative+Rect]::new()
-            if ([L2DCatPreferencesNative]::GetWindowRect($handle, [ref]$rect)) {
+        [void][BongoCatNeoPreferencesNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+        if ($owner -eq $ProcessId -and [BongoCatNeoPreferencesNative]::IsWindowVisible($handle)) {
+            $rect = [BongoCatNeoPreferencesNative+Rect]::new()
+            if ([BongoCatNeoPreferencesNative]::GetWindowRect($handle, [ref]$rect)) {
                     $width = $rect.R - $rect.L; $height = $rect.B - $rect.T
                     $area = $width * $height
                     if ($area -gt 400) { $windows.Add([pscustomobject]@{
@@ -77,75 +77,75 @@ function Wait-Preferences([int]$ProcessId) {
 }
 
 function Get-ClientPoint([IntPtr]$Window, [double]$X, [double]$Y) {
-    $client = [L2DCatPreferencesNative+Rect]::new()
-    [void][L2DCatPreferencesNative]::GetClientRect($Window, [ref]$client)
-    $point = [L2DCatPreferencesNative+Point]::new()
+    $client = [BongoCatNeoPreferencesNative+Rect]::new()
+    [void][BongoCatNeoPreferencesNative]::GetClientRect($Window, [ref]$client)
+    $point = [BongoCatNeoPreferencesNative+Point]::new()
     $point.X = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
     $point.Y = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
-    [void][L2DCatPreferencesNative]::ClientToScreen($Window, [ref]$point)
+    [void][BongoCatNeoPreferencesNative]::ClientToScreen($Window, [ref]$point)
     return $point
 }
 
 function Focus-Window([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
-    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
-    [void][L2DCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 300
 }
 
 function Invoke-Click([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
-    $client = [L2DCatPreferencesNative+Rect]::new()
-    [void][L2DCatPreferencesNative]::GetClientRect($Window, [ref]$client)
+    $client = [BongoCatNeoPreferencesNative+Rect]::new()
+    [void][BongoCatNeoPreferencesNative]::GetClientRect($Window, [ref]$client)
     $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
     $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
     $position = [IntPtr]([long](($clientY -band 0xFFFF) -shl 16) -bor
         [long]($clientX -band 0xFFFF))
-    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
-    [void][L2DCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 50
-    [void][L2DCatPreferencesNative]::PostMessageW(
+    [void][BongoCatNeoPreferencesNative]::PostMessageW(
         $Window, 0x0200, [IntPtr]::Zero, $position)
-    [void][L2DCatPreferencesNative]::PostMessageW(
+    [void][BongoCatNeoPreferencesNative]::PostMessageW(
         $Window, 0x0201, [IntPtr]1, $position)
     Start-Sleep -Milliseconds 180
-    [void][L2DCatPreferencesNative]::PostMessageW(
+    [void][BongoCatNeoPreferencesNative]::PostMessageW(
         $Window, 0x0202, [IntPtr]::Zero, $position)
     Start-Sleep -Milliseconds 250
 }
 
 function Invoke-PhysicalClick([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
-    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
-    [void][L2DCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 80
-    [L2DCatPreferencesNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 80
-    [L2DCatPreferencesNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 300
 }
 
 function Invoke-Wheel([IntPtr]$Window, [double]$X, [double]$Y) {
     $point = Get-ClientPoint $Window $X $Y
-    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
-    [void][L2DCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
+    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatNeoPreferencesNative]::SetCursorPos($point.X, $point.Y)
     Start-Sleep -Milliseconds 50
     $position = [IntPtr]([long](($point.Y -band 0xFFFF) -shl 16) -bor
         [long]($point.X -band 0xFFFF))
     $wheel = [IntPtr]([long][uint32]4287102976)
-    [void][L2DCatPreferencesNative]::PostMessageW($Window, 0x020A, $wheel, $position)
+    [void][BongoCatNeoPreferencesNative]::PostMessageW($Window, 0x020A, $wheel, $position)
     Start-Sleep -Milliseconds 80
-    [void][L2DCatPreferencesNative]::PostMessageW($Window, 0x020A, $wheel, $position)
+    [void][BongoCatNeoPreferencesNative]::PostMessageW($Window, 0x020A, $wheel, $position)
     Start-Sleep -Milliseconds 300
 }
 
 function Invoke-Text([IntPtr]$Window, [string]$Text) {
-    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
-    [void][L2DCatPreferencesNative]::PostMessageW(
+    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatNeoPreferencesNative]::PostMessageW(
         $Window, 0x0007, [IntPtr]::Zero, [IntPtr]::Zero)
     Start-Sleep -Milliseconds 80
     foreach ($character in $Text.ToCharArray()) {
-        [void][L2DCatPreferencesNative]::SendMessageW(
+        [void][BongoCatNeoPreferencesNative]::SendMessageW(
             $Window, 0x0109, [IntPtr][int]$character, [IntPtr]::Zero)
         Start-Sleep -Milliseconds 40
     }
@@ -153,29 +153,29 @@ function Invoke-Text([IntPtr]$Window, [string]$Text) {
 
 function Invoke-Paste([IntPtr]$Window, [string]$Text) {
     [Windows.Forms.Clipboard]::SetText($Text)
-    [L2DCatPreferencesNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
-    [L2DCatPreferencesNative]::keybd_event(0x56, 0, 0, [UIntPtr]::Zero)
-    [L2DCatPreferencesNative]::keybd_event(0x56, 0, 2, [UIntPtr]::Zero)
-    [L2DCatPreferencesNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x56, 0, 0, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x56, 0, 2, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 300
 }
 
 function Invoke-KeyText([IntPtr]$Window, [string]$Text) {
-    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
     [Windows.Forms.SendKeys]::SendWait($Text)
     Start-Sleep -Milliseconds 300
 }
 
 function Save-Window([IntPtr]$Window, [string]$Name) {
-    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
+    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
     Start-Sleep -Milliseconds 120
-    $rect = [L2DCatPreferencesNative+Rect]::new()
-    [void][L2DCatPreferencesNative]::GetWindowRect($Window, [ref]$rect)
+    $rect = [BongoCatNeoPreferencesNative+Rect]::new()
+    [void][BongoCatNeoPreferencesNative]::GetWindowRect($Window, [ref]$rect)
     $bitmap = [Drawing.Bitmap]::new($rect.R - $rect.L, $rect.B - $rect.T)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
     $printed = $false
     $dc = $graphics.GetHdc()
-    try { $printed = [L2DCatPreferencesNative]::PrintWindow($Window, $dc, 2) }
+    try { $printed = [BongoCatNeoPreferencesNative]::PrintWindow($Window, $dc, 2) }
     finally { $graphics.ReleaseHdc($dc) }
     if (-not $printed) { $graphics.CopyFromScreen($rect.L, $rect.T, 0, 0, $bitmap.Size) }
     $path = Join-Path $OutputDir $Name
@@ -198,7 +198,7 @@ function Measure-Difference([string]$First, [string]$Second) {
     } finally { $a.Dispose(); $b.Dispose() }
 }
 
-Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
 $arguments = @("--ci-preferences", "--ci-preference-page=0", "--ci-language=zh-CN",
     "--ci-theme=light", "--config=$configPath", "--data-root=$dataRoot")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
@@ -211,9 +211,9 @@ try {
     $toggled = Save-Window $window "02-toggle-card.png"
     Invoke-Wheel $window 450 540
     Focus-Window $window 450 520
-    [L2DCatPreferencesNative]::keybd_event(0x22, 0, 0, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x22, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 80
-    [L2DCatPreferencesNative]::keybd_event(0x22, 0, 2, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x22, 0, 2, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 250
     $scrolled = Save-Window $window "03-scrolled.png"
     Invoke-Wheel $window 450 540
@@ -239,7 +239,7 @@ try {
 
     Invoke-Click $window 622 114
     $about = Save-Window $window "08-about.png"
-    [void][L2DCatPreferencesNative]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+    [void][BongoCatNeoPreferencesNative]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
     for ($i = 0; $i -lt 50 -and -not (Test-Path $configPath); $i++) {
         Start-Sleep -Milliseconds 50
     }

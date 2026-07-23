@@ -1,14 +1,14 @@
 #include "model_import.h"
 #include "model_import_legacy_internal.h"
-#include "l2dcat/file.h"
-#include "l2dcat/path.h"
+#include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <yyjson.h>
 
-typedef L2DCatLegacyKeyNames KeyNames;
+typedef BongoCatNeoLegacyKeyNames KeyNames;
 
 static bool parent_path(const char *path, char *parent, size_t capacity) {
     size_t length = path ? strlen(path) : 0;
@@ -21,13 +21,13 @@ static bool parent_path(const char *path, char *parent, size_t capacity) {
     return true;
 }
 
-static bool find_config(const char *source, char path[L2DCAT_PATH_CAP]) {
-    char directory[L2DCAT_PATH_CAP];
+static bool find_config(const char *source, char path[BONGO_CAT_NEO_PATH_CAP]) {
+    char directory[BONGO_CAT_NEO_PATH_CAP];
     snprintf(directory, sizeof(directory), "%s", source);
     for (int depth = 0; depth < 4; ++depth) {
-        if (l2dcat_path_join(path, L2DCAT_PATH_CAP, directory, "config.json") &&
-            l2dcat_path_is_file(path)) return true;
-        char parent[L2DCAT_PATH_CAP];
+        if (bongo_cat_neo_path_join(path, BONGO_CAT_NEO_PATH_CAP, directory, "config.json") &&
+            bongo_cat_neo_path_is_file(path)) return true;
+        char parent[BONGO_CAT_NEO_PATH_CAP];
         if (!parent_path(directory, parent, sizeof(parent))) break;
         snprintf(directory, sizeof(directory), "%s", parent);
     }
@@ -35,8 +35,8 @@ static bool find_config(const char *source, char path[L2DCAT_PATH_CAP]) {
 }
 
 static bool child_is_dir(const char *root, const char *name) {
-    char path[L2DCAT_PATH_CAP];
-    return l2dcat_path_join(path, sizeof(path), root, name) && l2dcat_path_is_dir(path);
+    char path[BONGO_CAT_NEO_PATH_CAP];
+    return bongo_cat_neo_path_join(path, sizeof(path), root, name) && bongo_cat_neo_path_is_dir(path);
 }
 
 static int modifier_index(int code) {
@@ -128,17 +128,17 @@ static bool keyboard_index(yyjson_val *matrix, int code, size_t *result) {
     return false;
 }
 
-static bool process_matrix(const L2DCatImportCandidate *candidate, yyjson_val *matrix,
+static bool process_matrix(const BongoCatNeoImportCandidate *candidate, yyjson_val *matrix,
     yyjson_val *before, yyjson_val *after, yyjson_val *keyboard_matrix,
     const char *hand_name, const char *key_group, const char *target,
-    L2DCatError *error) {
+    BongoCatNeoError *error) {
     if (!yyjson_is_arr(matrix)) return false;
-    char hand_dir[L2DCAT_PATH_CAP], keyboard_dir[L2DCAT_PATH_CAP];
-    char resources[L2DCAT_PATH_CAP], output_dir[L2DCAT_PATH_CAP];
-    if (!l2dcat_path_join(hand_dir, sizeof(hand_dir), candidate->assets, hand_name) ||
-        !l2dcat_path_join(keyboard_dir, sizeof(keyboard_dir), candidate->assets, "keyboard") ||
-        !l2dcat_path_join(resources, sizeof(resources), target, "resources") ||
-        !l2dcat_path_join(output_dir, sizeof(output_dir), resources, key_group) ||
+    char hand_dir[BONGO_CAT_NEO_PATH_CAP], keyboard_dir[BONGO_CAT_NEO_PATH_CAP];
+    char resources[BONGO_CAT_NEO_PATH_CAP], output_dir[BONGO_CAT_NEO_PATH_CAP];
+    if (!bongo_cat_neo_path_join(hand_dir, sizeof(hand_dir), candidate->assets, hand_name) ||
+        !bongo_cat_neo_path_join(keyboard_dir, sizeof(keyboard_dir), candidate->assets, "keyboard") ||
+        !bongo_cat_neo_path_join(resources, sizeof(resources), target, "resources") ||
+        !bongo_cat_neo_path_join(output_dir, sizeof(output_dir), resources, key_group) ||
         !SDL_CreateDirectory(output_dir)) return false;
     size_t modifier_total[3] = {0}, modifier_seen[3] = {0};
     count_modifiers(before, modifier_seen);
@@ -147,10 +147,10 @@ static bool process_matrix(const L2DCatImportCandidate *candidate, yyjson_val *m
     count_modifiers(after, modifier_total);
     size_t index, count; yyjson_val *keys;
     yyjson_arr_foreach(matrix, index, count, keys) {
-        char hand[L2DCAT_PATH_CAP], filename[32];
+        char hand[BONGO_CAT_NEO_PATH_CAP], filename[32];
         snprintf(filename, sizeof(filename), "%zu.png", index);
-        if (!l2dcat_path_join(hand, sizeof(hand), hand_dir, filename) ||
-            !l2dcat_path_is_file(hand)) {
+        if (!bongo_cat_neo_path_join(hand, sizeof(hand), hand_dir, filename) ||
+            !bongo_cat_neo_path_is_file(hand)) {
             size_t missing_index, missing_count; yyjson_val *missing;
             yyjson_arr_foreach(keys, missing_index, missing_count, missing) {
                 int modifier = (yyjson_is_int(missing) || yyjson_is_uint(missing))
@@ -163,51 +163,51 @@ static bool process_matrix(const L2DCatImportCandidate *candidate, yyjson_val *m
         yyjson_arr_foreach(keys, key_index, key_count, key) {
             if (!yyjson_is_int(key) && !yyjson_is_uint(key)) continue;
             int code = (int)yyjson_get_int(key);
-            char keyboard[L2DCAT_PATH_CAP];
+            char keyboard[BONGO_CAT_NEO_PATH_CAP];
             size_t keyboard_row;
             const char *keyboard_path = NULL;
             if (keyboard_index(keyboard_matrix, code, &keyboard_row)) {
                 snprintf(filename, sizeof(filename), "%zu.png", keyboard_row);
-                if (l2dcat_path_join(keyboard, sizeof(keyboard), keyboard_dir, filename) &&
-                    l2dcat_path_is_file(keyboard)) keyboard_path = keyboard;
+                if (bongo_cat_neo_path_join(keyboard, sizeof(keyboard), keyboard_dir, filename) &&
+                    bongo_cat_neo_path_is_file(keyboard)) keyboard_path = keyboard;
             }
             int modifier = modifier_index(code);
             size_t occurrence = modifier >= 0 ? modifier_seen[modifier]++ : 0;
-            KeyNames names = candidate->mode == L2DCAT_MODE_GAMEPAD
+            KeyNames names = candidate->mode == BONGO_CAT_NEO_MODE_GAMEPAD
                 ? gamepad_names(code) : device_names(code, occurrence,
                     modifier >= 0 ? modifier_total[modifier] : 0);
-            if (!l2dcat_legacy_emit_pair(hand, keyboard_path, output_dir, names, error)) return false;
+            if (!bongo_cat_neo_legacy_emit_pair(hand, keyboard_path, output_dir, names, error)) return false;
         }
     }
     return true;
 }
 
-bool l2dcat_import_legacy_assets(const L2DCatImportCandidate *candidate,
-    const char *source_root, const char *target, L2DCatError *error) {
-    const char *left = candidate->mode == L2DCAT_MODE_STANDARD ? "hand" : "lefthand";
+bool bongo_cat_neo_import_legacy_assets(const BongoCatNeoImportCandidate *candidate,
+    const char *source_root, const char *target, BongoCatNeoError *error) {
+    const char *left = candidate->mode == BONGO_CAT_NEO_MODE_STANDARD ? "hand" : "lefthand";
     if (!child_is_dir(candidate->assets, left)) return true;
-    char config_path[L2DCAT_PATH_CAP];
+    char config_path[BONGO_CAT_NEO_PATH_CAP];
     /* A native model may legitimately use a directory named hand. Only a
        nearby config.json identifies the old Mver package layout. */
     if (!find_config(source_root, config_path)) return true;
-    FILE *file = l2dcat_file_open(config_path, "rb");
+    FILE *file = bongo_cat_neo_file_open(config_path, "rb");
     yyjson_doc *document = file ? yyjson_read_fp(file,
         YYJSON_READ_JSON5 | YYJSON_READ_ALLOW_INVALID_UNICODE, NULL, NULL) : NULL;
     if (file) fclose(file);
     yyjson_val *root = document ? yyjson_doc_get_root(document) : NULL;
     yyjson_val *mode = yyjson_is_obj(root)
-        ? yyjson_obj_get(root, l2dcat_mode_name(candidate->mode)) : NULL;
+        ? yyjson_obj_get(root, bongo_cat_neo_mode_name(candidate->mode)) : NULL;
     if (!yyjson_is_obj(mode)) {
         bool native_layout = strcmp(candidate->assets, candidate->directory) == 0;
         yyjson_doc_free(document);
         if (native_layout) return true;
-        l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
             "Cannot parse legacy input configuration: %s", config_path);
         return false;
     }
     bool ok = false;
     yyjson_val *keyboard = yyjson_obj_get(mode, "keyboard");
-    if (candidate->mode == L2DCAT_MODE_STANDARD) {
+    if (candidate->mode == BONGO_CAT_NEO_MODE_STANDARD) {
         yyjson_val *hand = yyjson_obj_get(mode, "hand");
         if (yyjson_is_arr(hand)) ok = process_matrix(candidate, hand, NULL, NULL,
             keyboard, "hand", "left-keys", target, error);
@@ -221,7 +221,7 @@ bool l2dcat_import_legacy_assets(const L2DCatImportCandidate *candidate,
                 "righthand", "right-keys", target, error);
     }
     yyjson_doc_free(document);
-    if (!ok && error && !error->message[0]) l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
+    if (!ok && error && !error->message[0]) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
         "Cannot convert legacy input configuration: %s", config_path);
     return ok;
 }

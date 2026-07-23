@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\l2dcat.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\BongoCatNeo.exe" }
 if (-not $ModelDirectory) {
     $ModelDirectory = Join-Path $root "resources\assets\models\standard"
 }
@@ -21,7 +21,7 @@ Add-Type @'
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
-public static class L2DCatDropNative {
+public static class BongoCatNeoDropNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
@@ -58,12 +58,12 @@ public static class L2DCatDropNative {
 '@
 
 function Save-Window([IntPtr]$Handle, [string]$Path) {
-    $rect = [L2DCatDropNative+Rect]::new()
-    if (-not [L2DCatDropNative]::GetWindowRect($Handle, [ref]$rect)) { return $null }
-    [void][L2DCatDropNative]::ShowWindow($Handle, 9)
-    [void][L2DCatDropNative]::SetWindowPos(
+    $rect = [BongoCatNeoDropNative+Rect]::new()
+    if (-not [BongoCatNeoDropNative]::GetWindowRect($Handle, [ref]$rect)) { return $null }
+    [void][BongoCatNeoDropNative]::ShowWindow($Handle, 9)
+    [void][BongoCatNeoDropNative]::SetWindowPos(
         $Handle, [IntPtr](-1), 0, 0, 0, 0, 0x43)
-    [void][L2DCatDropNative]::SetForegroundWindow($Handle)
+    [void][BongoCatNeoDropNative]::SetForegroundWindow($Handle)
     Start-Sleep -Milliseconds 500
     $bitmap = [Drawing.Bitmap]::new($rect.R-$rect.L, $rect.B-$rect.T)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
@@ -78,23 +78,23 @@ function Save-Window([IntPtr]$Handle, [string]$Path) {
     }}
     $bitmap.Save($Path, [Drawing.Imaging.ImageFormat]::Png)
     $bitmap.Dispose()
-    [void][L2DCatDropNative]::SetWindowPos(
+    [void][BongoCatNeoDropNative]::SetWindowPos(
         $Handle, [IntPtr](-2), 0, 0, 0, 0, 0x03)
     return [pscustomobject]@{ Colors=$colors.Count; DarkPixels=$dark }
 }
 
 function Get-AppWindows([int]$Id) {
     $items = [Collections.Generic.List[object]]::new()
-    [L2DCatDropNative]::EnumWindows({
+    [BongoCatNeoDropNative]::EnumWindows({
         param($handle, $data)
         [uint32]$owner = 0
-        [void][L2DCatDropNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-        if ($owner -eq $Id -and [L2DCatDropNative]::IsWindowVisible($handle)) {
-            $rect = [L2DCatDropNative+Rect]::new()
-            if ([L2DCatDropNative]::GetWindowRect($handle, [ref]$rect)) {
+        [void][BongoCatNeoDropNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+        if ($owner -eq $Id -and [BongoCatNeoDropNative]::IsWindowVisible($handle)) {
+            $rect = [BongoCatNeoDropNative+Rect]::new()
+            if ([BongoCatNeoDropNative]::GetWindowRect($handle, [ref]$rect)) {
                 $items.Add([pscustomobject]@{
                     Handle=$handle; Area=($rect.R-$rect.L)*($rect.B-$rect.T)
-                    Class=[L2DCatDropNative]::ClassName($handle)
+                    Class=[BongoCatNeoDropNative]::ClassName($handle)
                 })
             }
         }
@@ -103,7 +103,7 @@ function Get-AppWindows([int]$Id) {
     return $items
 }
 
-Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds $(if ($NativePrompt) { 1500 } else { 350 })
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $dataRoot = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
@@ -117,7 +117,7 @@ do {
     if ($windows.Count -lt 2) { Start-Sleep -Milliseconds 100 }
 } until ($windows.Count -ge 2 -or [DateTime]::UtcNow -ge $windowDeadline)
 $target = ($windows | Sort-Object Area -Descending | Select-Object -First 1).Handle
-$posted = $target -and [L2DCatDropNative]::Drop($target, $ModelDirectory)
+$posted = $target -and [BongoCatNeoDropNative]::Drop($target, $ModelDirectory)
 $deadline = [DateTime]::UtcNow.AddSeconds(5)
 do {
     Start-Sleep -Milliseconds 100
@@ -133,7 +133,7 @@ if ($NativePrompt) {
         if ($dialogs.Count) {
             $sawDialog = $true
             foreach ($dialog in $dialogs) {
-                [void][L2DCatDropNative]::PostMessageW(
+                [void][BongoCatNeoDropNative]::PostMessageW(
                     $dialog.Handle, 0x111, [IntPtr]1, [IntPtr]::Zero)
             }
         }

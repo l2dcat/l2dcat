@@ -14,7 +14,7 @@ typedef struct FormStyle {
 
 static int detail_lines(const struct nk_context *context, const char *text) {
     if (!text || !text[0]) return 0;
-    const struct nk_user_font *font = l2dcat_ui_caption_font(context);
+    const struct nk_user_font *font = bongo_cat_neo_ui_caption_font(context);
     float width = nk_window_get_content_region(context).w - 310.0f;
     if (width < 220.0f) width = 220.0f;
     float measured = font->width(font->userdata, font->height,
@@ -53,7 +53,7 @@ static bool form_begin(struct nk_context *context, const char *id,
         return false;
     }
     struct nk_rect bounds = nk_window_get_bounds(context);
-    L2DCatUIPalette p = l2dcat_ui_palette(l2dcat_ui_dark(context));
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     bool hover = nk_input_is_mouse_hovering_rect(&context->input, bounds);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     nk_fill_rect(canvas, bounds, 14, hover ? p.hover : p.surface);
@@ -74,7 +74,7 @@ static void form_title(struct nk_context *context, const char *title) {
     float left = left_width(context);
     nk_layout_row_begin(context, NK_STATIC, 44, 2);
     nk_layout_row_push(context, left);
-    nk_style_push_font(context, l2dcat_ui_label_font(context));
+    nk_style_push_font(context, bongo_cat_neo_ui_label_font(context));
     nk_label(context, title, NK_TEXT_LEFT);
     nk_style_pop_font(context);
     nk_layout_row_push(context, NK_MAX(190.0f,
@@ -84,11 +84,11 @@ static void form_title(struct nk_context *context, const char *title) {
 static void description(struct nk_context *context, const char *text,
     int lines) {
     if (!lines) return;
-    L2DCatUIPalette p = l2dcat_ui_palette(l2dcat_ui_dark(context));
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     float left = left_width(context);
     nk_layout_row_begin(context, NK_STATIC, 18.0f * lines, 2);
     nk_layout_row_push(context, left);
-    nk_style_push_font(context, l2dcat_ui_caption_font(context));
+    nk_style_push_font(context, bongo_cat_neo_ui_caption_font(context));
     nk_label_colored_wrap(context, text, p.muted);
     nk_style_pop_font(context);
     nk_layout_row_push(context, NK_MAX(1.0f,
@@ -106,7 +106,7 @@ static bool toggle(struct nk_context *context, bool *value) {
     bool changed = hover && nk_input_is_mouse_click_in_rect(&context->input,
         NK_BUTTON_LEFT, track);
     if (changed) *value = !*value;
-    L2DCatUIPalette p = l2dcat_ui_palette(l2dcat_ui_dark(context));
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     nk_fill_rect(canvas, track, 14, *value ? p.accent : p.field);
     nk_stroke_rect(canvas, track, 14, hover ? 2.0f : 1.0f,
@@ -114,13 +114,13 @@ static bool toggle(struct nk_context *context, bool *value) {
     float knob_x = *value ? track.x + 24 : track.x + 4;
     nk_fill_circle(canvas, nk_rect(knob_x, track.y + 4, 20, 20),
         nk_rgb(255, 255, 255));
-    if (hover) l2dcat_ui_cursor_hover_rect(context, track,
-        L2DCAT_UI_CURSOR_POINTER);
+    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, track,
+        BONGO_CAT_NEO_UI_CURSOR_POINTER);
     return changed;
 }
 
 static bool secondary_button(struct nk_context *context, const char *label) {
-    L2DCatUIPalette p = l2dcat_ui_palette(l2dcat_ui_dark(context));
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     struct nk_style_button style = context->style.button;
     style.normal = nk_style_item_color(p.field);
     style.hover = nk_style_item_color(p.selection);
@@ -133,25 +133,25 @@ static bool secondary_button(struct nk_context *context, const char *label) {
     style.text_active = p.accent;
     struct nk_rect bounds = nk_widget_bounds(context);
     if (nk_input_is_mouse_hovering_rect(&context->input, bounds))
-        l2dcat_ui_cursor_hover_rect(context, bounds, L2DCAT_UI_CURSOR_POINTER);
+        bongo_cat_neo_ui_cursor_hover_rect(context, bounds, BONGO_CAT_NEO_UI_CURSOR_POINTER);
     return nk_button_label_styled(context, &style, label) != 0;
 }
 
-void l2dcat_pref_section(struct nk_context *context, const char *title) {
+void bongo_cat_neo_pref_section(struct nk_context *context, const char *title) {
     struct nk_rect bounds;
     nk_layout_row_dynamic(context, 50, 1);
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return;
-    L2DCatUIPalette p = l2dcat_ui_palette(l2dcat_ui_dark(context));
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     nk_fill_rect(canvas, nk_rect(bounds.x, bounds.y + 15, 4, 22), 2, p.accent);
-    const struct nk_user_font *font = l2dcat_ui_label_font(context);
+    const struct nk_user_font *font = bongo_cat_neo_ui_label_font(context);
     struct nk_rect text = nk_rect(bounds.x + 14,
         bounds.y + (bounds.h - font->height) * .5f, bounds.w - 14, font->height);
     nk_draw_text(canvas, text, title, nk_strlen(title), font,
         nk_rgba(0, 0, 0, 0), p.text);
 }
 
-bool l2dcat_pref_toggle(struct nk_context *context, const char *id,
+bool bongo_cat_neo_pref_toggle(struct nk_context *context, const char *id,
     const char *title, const char *detail, bool *value) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
@@ -160,61 +160,61 @@ bool l2dcat_pref_toggle(struct nk_context *context, const char *id,
     form_end(context, &saved); return changed;
 }
 
-bool l2dcat_pref_float(struct nk_context *context, const char *id,
+bool bongo_cat_neo_pref_float(struct nk_context *context, const char *id,
     const char *title, const char *detail, float minimum, float *value,
     float maximum, float step) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
     form_title(context, title);
-    bool changed = l2dcat_pref_control_float(context, id,
+    bool changed = bongo_cat_neo_pref_control_float(context, id,
         minimum, value, maximum, step);
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved); return changed;
 }
 
-bool l2dcat_pref_int(struct nk_context *context, const char *id,
+bool bongo_cat_neo_pref_int(struct nk_context *context, const char *id,
     const char *title, const char *detail, int minimum, int *value,
     int maximum, int step) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
     form_title(context, title);
-    bool changed = l2dcat_pref_control_int(context, id,
+    bool changed = bongo_cat_neo_pref_control_int(context, id,
         minimum, value, maximum, step);
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved); return changed;
 }
 
-bool l2dcat_pref_slider(struct nk_context *context, const char *id,
+bool bongo_cat_neo_pref_slider(struct nk_context *context, const char *id,
     const char *title, const char *detail, float minimum, float *value,
     float maximum, float step) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
     form_title(context, title);
-    bool changed = l2dcat_pref_control_slider(context, id,
+    bool changed = bongo_cat_neo_pref_control_slider(context, id,
         minimum, value, maximum, step);
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved); return changed;
 }
 
-int l2dcat_pref_combo(struct nk_context *context, const char *id,
+int bongo_cat_neo_pref_combo(struct nk_context *context, const char *id,
     const char *title, const char *detail, const char *const *items,
     int count, int selected) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return selected;
     form_title(context, title);
-    selected = l2dcat_pref_control_combo(context, items, count, selected);
+    selected = bongo_cat_neo_pref_control_combo(context, items, count, selected);
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved); return selected;
 }
 
-void l2dcat_pref_edit(struct nk_context *context, const char *id,
+void bongo_cat_neo_pref_edit(struct nk_context *context, const char *id,
     const char *title, const char *detail, char *value, int capacity) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return;
     form_title(context, title);
     struct nk_rect bounds = nk_widget_bounds(context);
     struct nk_style_edit edit = context->style.edit;
-    L2DCatUIPalette p = l2dcat_ui_palette(l2dcat_ui_dark(context));
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     context->style.edit.normal = context->style.edit.hover =
         context->style.edit.active = nk_style_item_color(p.field);
     context->style.edit.border_color = p.border;
@@ -230,13 +230,13 @@ void l2dcat_pref_edit(struct nk_context *context, const char *id,
     if (hover || (state & NK_EDIT_ACTIVE)) nk_stroke_rect(
         nk_window_get_canvas(context), bounds, 10,
         state & NK_EDIT_ACTIVE ? 2.0f : 1.0f, p.accent);
-    if (hover) l2dcat_ui_cursor_hover_rect(context, bounds, L2DCAT_UI_CURSOR_TEXT);
+    if (hover) bongo_cat_neo_ui_cursor_hover_rect(context, bounds, BONGO_CAT_NEO_UI_CURSOR_TEXT);
     context->style.edit = edit;
     nk_layout_row_end(context); description(context, detail, lines);
     form_end(context, &saved);
 }
 
-bool l2dcat_pref_button(struct nk_context *context, const char *id,
+bool bongo_cat_neo_pref_button(struct nk_context *context, const char *id,
     const char *title, const char *detail, const char *button) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return false;
@@ -245,16 +245,16 @@ bool l2dcat_pref_button(struct nk_context *context, const char *id,
     form_end(context, &saved); return result;
 }
 
-void l2dcat_pref_status(struct nk_context *context, const char *id,
+void bongo_cat_neo_pref_status(struct nk_context *context, const char *id,
     const char *title, const char *detail) {
     int lines = detail_lines(context, detail); FormStyle saved;
     if (!form_begin(context, id, lines, &saved)) return;
-    L2DCatUIPalette p = l2dcat_ui_palette(l2dcat_ui_dark(context));
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(bongo_cat_neo_ui_dark(context));
     nk_layout_row_dynamic(context, 40, 1);
     struct nk_rect row; nk_widget(&row, context);
     nk_fill_circle(nk_window_get_canvas(context),
         nk_rect(row.x, row.y + 15, 10, 10), p.accent);
-    const struct nk_user_font *font = l2dcat_ui_label_font(context);
+    const struct nk_user_font *font = bongo_cat_neo_ui_label_font(context);
     struct nk_rect text = nk_rect(row.x + 20,
         row.y + (row.h - font->height) * .5f, row.w - 20, font->height);
     nk_draw_text(nk_window_get_canvas(context), text, title, nk_strlen(title),

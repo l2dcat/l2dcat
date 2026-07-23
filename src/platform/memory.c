@@ -1,4 +1,4 @@
-#include "l2dcat/memory.h"
+#include "bongo_cat_neo/memory.h"
 
 #ifdef _WIN32
 #include <malloc.h>
@@ -8,7 +8,7 @@
 #include <malloc.h>
 #endif
 
-void l2dcat_platform_trim_memory(void) {
+void bongo_cat_neo_platform_trim_memory(void) {
 #ifdef _WIN32
     /* Return free CRT heap regions without evicting active code and data pages. */
     _heapmin();

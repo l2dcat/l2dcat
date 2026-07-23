@@ -13,7 +13,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-desktop\l2dcat.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-desktop\BongoCatNeo.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\visual-audit" }
 if (-not [IO.Path]::IsPathRooted($Exe)) { $Exe = Join-Path (Get-Location) $Exe }
 if (-not [IO.Path]::IsPathRooted($OutputDir)) {
@@ -22,12 +22,12 @@ if (-not [IO.Path]::IsPathRooted($OutputDir)) {
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
-Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
 Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class L2DCatVisualNative {
+public static class BongoCatNeoVisualNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
     [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr handle);
@@ -43,17 +43,17 @@ public static class L2DCatVisualNative {
     public struct Rect { public int Left, Top, Right, Bottom; }
 }
 '@
-[void][L2DCatVisualNative]::SetProcessDPIAware()
+[void][BongoCatNeoVisualNative]::SetProcessDPIAware()
 
 function Get-AppWindows([int]$ProcessId) {
     $windows = [Collections.Generic.List[object]]::new()
-    [L2DCatVisualNative]::EnumWindows({
+    [BongoCatNeoVisualNative]::EnumWindows({
         param($handle, $data)
         [uint32]$owner = 0
-        [void][L2DCatVisualNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-        if ($owner -eq $ProcessId -and [L2DCatVisualNative]::IsWindowVisible($handle)) {
-            $rect = [L2DCatVisualNative+Rect]::new()
-            if ([L2DCatVisualNative]::GetWindowRect($handle, [ref]$rect)) {
+        [void][BongoCatNeoVisualNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+        if ($owner -eq $ProcessId -and [BongoCatNeoVisualNative]::IsWindowVisible($handle)) {
+            $rect = [BongoCatNeoVisualNative+Rect]::new()
+            if ([BongoCatNeoVisualNative]::GetWindowRect($handle, [ref]$rect)) {
                 $width = $rect.Right - $rect.Left
                 $height = $rect.Bottom - $rect.Top
                 if ($width -gt 20 -and $height -gt 20) {
@@ -84,15 +84,15 @@ function Wait-AppWindow([int]$ProcessId, [bool]$Largest) {
 }
 
 function Save-Window([object]$Window, [string]$Path) {
-    [void][L2DCatVisualNative]::ShowWindow($Window.Handle, 9)
+    [void][BongoCatNeoVisualNative]::ShowWindow($Window.Handle, 9)
     if ($Window.Width -gt 700) {
-        [void][L2DCatVisualNative]::SetWindowPos($Window.Handle, [IntPtr](-1),
+        [void][BongoCatNeoVisualNative]::SetWindowPos($Window.Handle, [IntPtr](-1),
             40, 40, 0, 0, 0x0041)
     }
-    [void][L2DCatVisualNative]::SetForegroundWindow($Window.Handle)
+    [void][BongoCatNeoVisualNative]::SetForegroundWindow($Window.Handle)
     Start-Sleep -Milliseconds $(if ($Window.Width -gt 700) { 650 } else { 80 })
-    $rect = [L2DCatVisualNative+Rect]::new()
-    [void][L2DCatVisualNative]::GetWindowRect($Window.Handle, [ref]$rect)
+    $rect = [BongoCatNeoVisualNative+Rect]::new()
+    [void][BongoCatNeoVisualNative]::GetWindowRect($Window.Handle, [ref]$rect)
     $width = $rect.Right - $rect.Left
     $height = $rect.Bottom - $rect.Top
     $bitmap = [Drawing.Bitmap]::new($width, $height)
@@ -100,7 +100,7 @@ function Save-Window([object]$Window, [string]$Path) {
     $printed = $false
     if ($width -gt 700) {
         $dc = $graphics.GetHdc()
-        try { $printed = [L2DCatVisualNative]::PrintWindow($Window.Handle, $dc, 2) }
+        try { $printed = [BongoCatNeoVisualNative]::PrintWindow($Window.Handle, $dc, 2) }
         finally { $graphics.ReleaseHdc($dc) }
     }
     if (-not $printed) {
@@ -113,7 +113,7 @@ function Save-Window([object]$Window, [string]$Path) {
     }
     $graphics.Dispose()
     $bitmap.Dispose()
-    [void][L2DCatVisualNative]::SetWindowPos($Window.Handle, [IntPtr](-2), 0, 0, 0, 0, 0x0013)
+    [void][BongoCatNeoVisualNative]::SetWindowPos($Window.Handle, [IntPtr](-2), 0, 0, 0, 0, 0x0013)
     return [pscustomobject]@{ Width=$width; Height=$height; SampleColors=$colors.Count }
 }
 
@@ -312,7 +312,7 @@ foreach ($specification in $ExternalKeys) {
     if ($parts.Count -ne 3) { throw "External key must be model:hex-vk:scenario" }
     $model = $parts[0]
     $virtualKey = [Convert]::ToByte($parts[1], 16)
-    $scanCode = [byte]([L2DCatVisualNative]::MapVirtualKeyW($virtualKey, 0) -band 0xff)
+    $scanCode = [byte]([BongoCatNeoVisualNative]::MapVirtualKeyW($virtualKey, 0) -band 0xff)
     $extended = if ($virtualKey -in 0x21,0x22,0x23,0x24,0x25,0x26,0x27,0x28,
         0x2d,0x2e,0x5b,0x5c,0xa3,0xa5) { 1 } else { 0 }
     $scenario = $parts[2]
@@ -324,7 +324,7 @@ foreach ($specification in $ExternalKeys) {
     $pressed = $false
     try {
         $window = Wait-AppWindow $process.Id $false
-        [L2DCatVisualNative]::keybd_event($virtualKey, $scanCode, $extended, [UIntPtr]::Zero)
+        [BongoCatNeoVisualNative]::keybd_event($virtualKey, $scanCode, $extended, [UIntPtr]::Zero)
         $pressed = $true
         Start-Sleep -Milliseconds 80
         $path = Join-Path $OutputDir "external-key-$model-$scenario.png"
@@ -341,7 +341,7 @@ foreach ($specification in $ExternalKeys) {
             Passed=($audit.SampleColors -ge 8 -and $difference -ge 0.0005); Path=$path })
     } finally {
         if ($pressed) {
-            [L2DCatVisualNative]::keybd_event($virtualKey, $scanCode,
+            [BongoCatNeoVisualNative]::keybd_event($virtualKey, $scanCode,
                 ($extended -bor 2), [UIntPtr]::Zero)
         }
         Stop-AuditProcess $process

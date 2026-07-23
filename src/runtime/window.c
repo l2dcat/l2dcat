@@ -1,6 +1,6 @@
 #include "runtime.h"
-#include "l2dcat/i18n.h"
-#include "l2dcat/preferences.h"
+#include "bongo_cat_neo/i18n.h"
+#include "bongo_cat_neo/preferences.h"
 
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
@@ -8,7 +8,7 @@
 static bool set_gl_attributes(void) {
 #ifdef __APPLE__
     const int major = 4, minor = 1, profile = SDL_GL_CONTEXT_PROFILE_CORE;
-#elif defined(L2DCAT_HAS_CUBISM)
+#elif defined(BONGO_CAT_NEO_HAS_CUBISM)
     const int major = 3, minor = 3, profile = SDL_GL_CONTEXT_PROFILE_COMPATIBILITY;
 #else
     const int major = 3, minor = 3, profile = SDL_GL_CONTEXT_PROFILE_CORE;
@@ -18,140 +18,139 @@ static bool set_gl_attributes(void) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, profile) &&
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) &&
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0) &&
-        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8) &&
         SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8) &&
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1) &&
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 }
 
-L2DCatResult l2dcat_window_create(L2DCatApp *app, L2DCatError *error) {
+BongoCatNeoResult bongo_cat_neo_window_create(BongoCatNeoApp *app, BongoCatNeoError *error) {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "SDL initialization failed: %s", SDL_GetError());
-        return L2DCAT_ERROR_PLATFORM;
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "SDL initialization failed: %s", SDL_GetError());
+        return BONGO_CAT_NEO_ERROR_PLATFORM;
     }
     if (!set_gl_attributes()) {
-        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "OpenGL attributes failed: %s", SDL_GetError());
-        return L2DCAT_ERROR_PLATFORM;
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "OpenGL attributes failed: %s", SDL_GetError());
+        return BONGO_CAT_NEO_ERROR_PLATFORM;
     }
     SDL_WindowFlags flags = SDL_WINDOW_OPENGL | SDL_WINDOW_TRANSPARENT |
         SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    app->window = SDL_CreateWindow(L2DCAT_NAME, app->config.window.width,
+    app->window = SDL_CreateWindow(BONGO_CAT_NEO_NAME, app->config.window.width,
         app->config.window.height, flags);
     if (!app->window) {
-        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Window creation failed: %s", SDL_GetError());
-        return L2DCAT_ERROR_PLATFORM;
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "Window creation failed: %s", SDL_GetError());
+        return BONGO_CAT_NEO_ERROR_PLATFORM;
     }
     app->gl_context = SDL_GL_CreateContext(app->window);
     if (!app->gl_context || !SDL_GL_MakeCurrent(app->window, app->gl_context)) {
-        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "OpenGL context failed: %s", SDL_GetError());
-        return L2DCAT_ERROR_PLATFORM;
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "OpenGL context failed: %s", SDL_GetError());
+        return BONGO_CAT_NEO_ERROR_PLATFORM;
     }
     SDL_GL_SetSwapInterval(1);
-    return L2DCAT_OK;
+    return BONGO_CAT_NEO_OK;
 }
 
-void l2dcat_window_apply(L2DCatApp *app) {
-    L2DCatWindowOptions *value = &app->config.window;
+void bongo_cat_neo_window_apply(BongoCatNeoApp *app) {
+    BongoCatNeoWindowOptions *value = &app->config.window;
     SDL_SetWindowOpacity(app->window, value->opacity_percent / 100.0f);
     SDL_SetWindowSize(app->window, value->width, value->height);
     if (value->x || value->y) SDL_SetWindowPosition(app->window, value->x, value->y);
     value->visible ? SDL_ShowWindow(app->window) : SDL_HideWindow(app->window);
-    l2dcat_window_sync_click_through(app);
-    l2dcat_platform_set_always_on_top(&app->platform, value->always_on_top);
-    l2dcat_platform_set_taskbar(&app->platform, value->taskbar_visible);
+    bongo_cat_neo_window_sync_click_through(app);
+    bongo_cat_neo_platform_set_always_on_top(&app->platform, value->always_on_top);
+    bongo_cat_neo_platform_set_taskbar(&app->platform, value->taskbar_visible);
 }
 
-static void begin_drag_candidate(L2DCatApp *app, const SDL_MouseButtonEvent *event) {
-    l2dcat_window_cancel_wheel_animation(app);
-    app->drag_candidate = l2dcat_window_visible_at_pointer(app, event->x, event->y);
+static void begin_drag_candidate(BongoCatNeoApp *app, const SDL_MouseButtonEvent *event) {
+    bongo_cat_neo_window_cancel_wheel_animation(app);
+    app->drag_candidate = bongo_cat_neo_window_visible_at_pointer(app, event->x, event->y);
     app->drag_start_x = event->x;
     app->drag_start_y = event->y;
 }
 
-static void update_drag_candidate(L2DCatApp *app, const SDL_MouseMotionEvent *event) {
+static void update_drag_candidate(BongoCatNeoApp *app, const SDL_MouseMotionEvent *event) {
     if (!app->drag_candidate) return;
     if (!(event->state & SDL_BUTTON_LMASK)) { app->drag_candidate = false; return; }
     float x = event->x - app->drag_start_x, y = event->y - app->drag_start_y;
     if (x * x + y * y < 9.0f) return;
     app->drag_candidate = false;
-    l2dcat_platform_begin_drag(&app->platform);
+    bongo_cat_neo_platform_begin_drag(&app->platform);
 }
 
-static const char *tr(L2DCatApp *app, const char *key, const char *fallback) {
-    return l2dcat_i18n_get(app->i18n, key, fallback);
+static const char *tr(BongoCatNeoApp *app, const char *key, const char *fallback) {
+    return bongo_cat_neo_i18n_get(app->i18n, key, fallback);
 }
 
-typedef struct MenuPreview { L2DCatApp *app; char model[L2DCAT_ID_CAP];
-    float scale, opacity; L2DCatMenuAction last; } MenuPreview;
-static void menu_restore(void *userdata, L2DCatMenuAction selected);
-static bool previewable(L2DCatMenuAction action) {
-    return (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_OPACITY_100) ||
-        action >= L2DCAT_MENU_MODEL_FIRST;
+typedef struct MenuPreview { BongoCatNeoApp *app; char model[BONGO_CAT_NEO_ID_CAP];
+    float scale, opacity; BongoCatNeoMenuAction last; } MenuPreview;
+static void menu_restore(void *userdata, BongoCatNeoMenuAction selected);
+static bool previewable(BongoCatNeoMenuAction action) {
+    return (action >= BONGO_CAT_NEO_MENU_SCALE_50 && action <= BONGO_CAT_NEO_MENU_OPACITY_100) ||
+        action >= BONGO_CAT_NEO_MENU_MODEL_FIRST;
 }
-static int preview_group(L2DCatMenuAction action) {
-    if (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_SCALE_200) return 1;
-    if (action >= L2DCAT_MENU_OPACITY_10 && action <= L2DCAT_MENU_OPACITY_100) return 2;
-    if (action >= L2DCAT_MENU_MODEL_FIRST) return 3;
+static int preview_group(BongoCatNeoMenuAction action) {
+    if (action >= BONGO_CAT_NEO_MENU_SCALE_50 && action <= BONGO_CAT_NEO_MENU_SCALE_200) return 1;
+    if (action >= BONGO_CAT_NEO_MENU_OPACITY_10 && action <= BONGO_CAT_NEO_MENU_OPACITY_100) return 2;
+    if (action >= BONGO_CAT_NEO_MENU_MODEL_FIRST) return 3;
     return 0;
 }
-static void menu_preview(void *userdata, L2DCatMenuAction action) {
-    MenuPreview *state = userdata; L2DCatApp *app = state->app;
+static void menu_preview(void *userdata, BongoCatNeoMenuAction action) {
+    MenuPreview *state = userdata; BongoCatNeoApp *app = state->app;
     if (action == state->last) return;
     int previous_group = preview_group(state->last);
     int next_group = preview_group(action);
-    if (state->last != L2DCAT_MENU_NONE && previous_group != next_group)
-        menu_restore(state, L2DCAT_MENU_NONE);
+    if (state->last != BONGO_CAT_NEO_MENU_NONE && previous_group != next_group)
+        menu_restore(state, BONGO_CAT_NEO_MENU_NONE);
     if (!previewable(action)) {
-        if (previous_group == 0) menu_restore(state, L2DCAT_MENU_NONE);
+        if (previous_group == 0) menu_restore(state, BONGO_CAT_NEO_MENU_NONE);
         state->last = action; return;
     }
     state->last = action;
-    if (action >= L2DCAT_MENU_MODEL_FIRST &&
-        (size_t)(action - L2DCAT_MENU_MODEL_FIRST) < app->models.count)
-        l2dcat_app_select_model(app, app->models.entries[action - L2DCAT_MENU_MODEL_FIRST].id);
-    else if (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_SCALE_200)
-        l2dcat_window_set_scale(app, (float)(50 + 10 * (action-L2DCAT_MENU_SCALE_50)));
-    else if (action >= L2DCAT_MENU_OPACITY_10 && action <= L2DCAT_MENU_OPACITY_100) {
-        app->config.window.opacity_percent = (float)(10 * (action-L2DCAT_MENU_OPACITY_10+1));
+    if (action >= BONGO_CAT_NEO_MENU_MODEL_FIRST &&
+        (size_t)(action - BONGO_CAT_NEO_MENU_MODEL_FIRST) < app->models.count)
+        bongo_cat_neo_app_select_model(app, app->models.entries[action - BONGO_CAT_NEO_MENU_MODEL_FIRST].id);
+    else if (action >= BONGO_CAT_NEO_MENU_SCALE_50 && action <= BONGO_CAT_NEO_MENU_SCALE_200)
+        bongo_cat_neo_window_set_scale(app, (float)(50 + 10 * (action-BONGO_CAT_NEO_MENU_SCALE_50)));
+    else if (action >= BONGO_CAT_NEO_MENU_OPACITY_10 && action <= BONGO_CAT_NEO_MENU_OPACITY_100) {
+        app->config.window.opacity_percent = (float)(10 * (action-BONGO_CAT_NEO_MENU_OPACITY_10+1));
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
     }
-    l2dcat_app_render_now(app);
+    bongo_cat_neo_app_render_now(app);
 }
-static void menu_restore(void *userdata, L2DCatMenuAction selected) {
-    MenuPreview *state = userdata; L2DCatApp *app = state->app;
+static void menu_restore(void *userdata, BongoCatNeoMenuAction selected) {
+    MenuPreview *state = userdata; BongoCatNeoApp *app = state->app;
     bool changed = false;
-    bool keep_model = selected >= L2DCAT_MENU_MODEL_FIRST;
-    bool keep_scale = selected >= L2DCAT_MENU_SCALE_50 && selected <= L2DCAT_MENU_SCALE_200;
-    bool keep_opacity = selected >= L2DCAT_MENU_OPACITY_10 && selected <= L2DCAT_MENU_OPACITY_100;
+    bool keep_model = selected >= BONGO_CAT_NEO_MENU_MODEL_FIRST;
+    bool keep_scale = selected >= BONGO_CAT_NEO_MENU_SCALE_50 && selected <= BONGO_CAT_NEO_MENU_SCALE_200;
+    bool keep_opacity = selected >= BONGO_CAT_NEO_MENU_OPACITY_10 && selected <= BONGO_CAT_NEO_MENU_OPACITY_100;
     if (!keep_model && strcmp(app->config.current_model, state->model) != 0) {
-        l2dcat_app_select_model(app, state->model); changed = true;
+        bongo_cat_neo_app_select_model(app, state->model); changed = true;
     }
     if (!keep_scale && SDL_fabsf(app->config.window.scale_percent - state->scale) > .01f) {
-        l2dcat_window_set_scale(app, state->scale); changed = true;
+        bongo_cat_neo_window_set_scale(app, state->scale); changed = true;
     }
     if (!keep_opacity && SDL_fabsf(app->config.window.opacity_percent - state->opacity) > .01f) {
         app->config.window.opacity_percent = state->opacity;
         SDL_SetWindowOpacity(app->window, state->opacity / 100.0f); changed = true;
     }
-    if (changed) l2dcat_app_render_now(app);
+    if (changed) bongo_cat_neo_app_render_now(app);
     (void)selected;
 }
 
-static void context_menu(L2DCatApp *app) {
+static void context_menu(BongoCatNeoApp *app) {
     MenuPreview preview = {app, "", app->config.window.scale_percent,
-        app->config.window.opacity_percent, L2DCAT_MENU_NONE};
+        app->config.window.opacity_percent, BONGO_CAT_NEO_MENU_NONE};
     snprintf(preview.model, sizeof(preview.model), "%s", app->config.current_model);
-    const char *model_names[L2DCAT_MODEL_CAP];
+    const char *model_names[BONGO_CAT_NEO_MODEL_CAP];
     size_t current_model = app->models.count;
     for (size_t i = 0; i < app->models.count; ++i) {
         model_names[i] = app->models.entries[i].id;
         if (strcmp(app->models.entries[i].id, app->config.current_model) == 0)
             current_model = i;
     }
-    bool dark_theme = app->config.app.theme == L2DCAT_THEME_DARK ||
-        (app->config.app.theme == L2DCAT_THEME_AUTO &&
+    bool dark_theme = app->config.app.theme == BONGO_CAT_NEO_THEME_DARK ||
+        (app->config.app.theme == BONGO_CAT_NEO_THEME_AUTO &&
             SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK);
-    L2DCatMenuLabels labels = {
+    BongoCatNeoMenuLabels labels = {
         tr(app, "composables.useAppMenu.labels.preference", "Preferences"),
         tr(app, "composables.useAppMenu.labels.hideCat", "Hide Cat"),
         tr(app, "composables.useAppMenu.labels.passThrough", "Pass Through"),
@@ -165,59 +164,59 @@ static void context_menu(L2DCatApp *app) {
         app->config.window.pass_through, app->config.window.always_on_top,
         dark_theme,
         menu_preview, menu_restore, &preview};
-    L2DCatMenuAction action = l2dcat_platform_context_menu(&app->platform, &labels);
-    l2dcat_window_menu_action(app, action);
+    BongoCatNeoMenuAction action = bongo_cat_neo_platform_context_menu(&app->platform, &labels);
+    bongo_cat_neo_window_menu_action(app, action);
 }
 
-void l2dcat_window_show_context_menu(L2DCatApp *app) { context_menu(app); }
+void bongo_cat_neo_window_show_context_menu(BongoCatNeoApp *app) { context_menu(app); }
 
-void l2dcat_window_menu_action(L2DCatApp *app, L2DCatMenuAction action) {
-    if (action == L2DCAT_MENU_PREFERENCES) l2dcat_preferences_show(app->preferences);
-    else if (action == L2DCAT_MENU_HIDE) {
+void bongo_cat_neo_window_menu_action(BongoCatNeoApp *app, BongoCatNeoMenuAction action) {
+    if (action == BONGO_CAT_NEO_MENU_PREFERENCES) bongo_cat_neo_preferences_show(app->preferences);
+    else if (action == BONGO_CAT_NEO_MENU_HIDE) {
         app->config.window.visible = false; SDL_HideWindow(app->window);
-    } else if (action == L2DCAT_MENU_PASS_THROUGH) {
+    } else if (action == BONGO_CAT_NEO_MENU_PASS_THROUGH) {
         app->config.window.pass_through = !app->config.window.pass_through;
-        l2dcat_window_mark_hit_dirty(app);
-        l2dcat_window_sync_click_through(app);
-    } else if (action == L2DCAT_MENU_ALWAYS_ON_TOP) {
+        bongo_cat_neo_window_mark_hit_dirty(app);
+        bongo_cat_neo_window_sync_click_through(app);
+    } else if (action == BONGO_CAT_NEO_MENU_ALWAYS_ON_TOP) {
         app->config.window.always_on_top = !app->config.window.always_on_top;
-        l2dcat_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
-    } else if (action >= L2DCAT_MENU_SCALE_50 && action <= L2DCAT_MENU_SCALE_200) {
-        l2dcat_window_cancel_wheel_animation(app);
-        l2dcat_window_set_scale(app,
-            (float)(50 + 10 * (action - L2DCAT_MENU_SCALE_50)));
-    } else if (action >= L2DCAT_MENU_OPACITY_10 && action <= L2DCAT_MENU_OPACITY_100) {
-        l2dcat_window_cancel_wheel_animation(app);
-        app->config.window.opacity_percent = (float)(10 * (action-L2DCAT_MENU_OPACITY_10+1));
+        bongo_cat_neo_platform_set_always_on_top(&app->platform, app->config.window.always_on_top);
+    } else if (action >= BONGO_CAT_NEO_MENU_SCALE_50 && action <= BONGO_CAT_NEO_MENU_SCALE_200) {
+        bongo_cat_neo_window_cancel_wheel_animation(app);
+        bongo_cat_neo_window_set_scale(app,
+            (float)(50 + 10 * (action - BONGO_CAT_NEO_MENU_SCALE_50)));
+    } else if (action >= BONGO_CAT_NEO_MENU_OPACITY_10 && action <= BONGO_CAT_NEO_MENU_OPACITY_100) {
+        bongo_cat_neo_window_cancel_wheel_animation(app);
+        app->config.window.opacity_percent = (float)(10 * (action-BONGO_CAT_NEO_MENU_OPACITY_10+1));
         SDL_SetWindowOpacity(app->window, app->config.window.opacity_percent / 100.0f);
-    } else if (action >= L2DCAT_MENU_MODEL_FIRST &&
-        (size_t)(action - L2DCAT_MENU_MODEL_FIRST) < app->models.count) {
-        l2dcat_app_select_model(app,
-            app->models.entries[action - L2DCAT_MENU_MODEL_FIRST].id);
-    } else if (action == L2DCAT_MENU_EXIT) app->running = false;
-    l2dcat_preferences_invalidate(app->preferences);
+    } else if (action >= BONGO_CAT_NEO_MENU_MODEL_FIRST &&
+        (size_t)(action - BONGO_CAT_NEO_MENU_MODEL_FIRST) < app->models.count) {
+        bongo_cat_neo_app_select_model(app,
+            app->models.entries[action - BONGO_CAT_NEO_MENU_MODEL_FIRST].id);
+    } else if (action == BONGO_CAT_NEO_MENU_EXIT) app->running = false;
+    bongo_cat_neo_preferences_invalidate(app->preferences);
 }
 
-bool l2dcat_window_menu_self_test(L2DCatApp *app) {
+bool bongo_cat_neo_window_menu_self_test(BongoCatNeoApp *app) {
     if (!app || !app->preferences) return false;
     app->config.window.pass_through = false;
     app->config.window.always_on_top = false;
     app->config.window.scale_percent = 100.0f;
     app->config.window.opacity_percent = 100.0f;
-    l2dcat_window_menu_action(app, L2DCAT_MENU_PASS_THROUGH);
-    l2dcat_window_menu_action(app, L2DCAT_MENU_ALWAYS_ON_TOP);
-    l2dcat_window_menu_action(app, L2DCAT_MENU_SCALE_120);
-    l2dcat_window_menu_action(app, L2DCAT_MENU_OPACITY_50);
-    l2dcat_window_menu_action(app, L2DCAT_MENU_PREFERENCES);
+    bongo_cat_neo_window_menu_action(app, BONGO_CAT_NEO_MENU_PASS_THROUGH);
+    bongo_cat_neo_window_menu_action(app, BONGO_CAT_NEO_MENU_ALWAYS_ON_TOP);
+    bongo_cat_neo_window_menu_action(app, BONGO_CAT_NEO_MENU_SCALE_120);
+    bongo_cat_neo_window_menu_action(app, BONGO_CAT_NEO_MENU_OPACITY_50);
+    bongo_cat_neo_window_menu_action(app, BONGO_CAT_NEO_MENU_PREFERENCES);
     bool result = app->config.window.pass_through && app->config.window.always_on_top &&
         app->config.window.scale_percent == 120.0f &&
         app->config.window.opacity_percent == 50.0f &&
-        l2dcat_preferences_visible(app->preferences);
-    l2dcat_preferences_close(app->preferences);
+        bongo_cat_neo_preferences_visible(app->preferences);
+    bongo_cat_neo_preferences_close(app->preferences);
     return result;
 }
 
-bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
+bool bongo_cat_neo_window_event(BongoCatNeoApp *app, const SDL_Event *event) {
     if (event->type >= SDL_EVENT_WINDOW_FIRST && event->type <= SDL_EVENT_WINDOW_LAST &&
         event->window.windowID != SDL_GetWindowID(app->window)) return true;
     if (event->type == SDL_EVENT_QUIT) return false;
@@ -229,7 +228,7 @@ bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
     if (event->type == SDL_EVENT_WINDOW_RESIZED) {
         app->config.window.width = event->window.data1;
         app->config.window.height = event->window.data2;
-        l2dcat_window_clamp_to_display(app);
+        bongo_cat_neo_window_clamp_to_display(app);
         app->dirty = true;
     }
     if (event->type == SDL_EVENT_WINDOW_RESIZED ||
@@ -237,34 +236,34 @@ bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event) {
         SDL_GetWindowSizeInPixels(app->window,
             &app->resize_pixel_width, &app->resize_pixel_height);
         app->resize_pending = true;
-        l2dcat_window_mark_hit_dirty(app);
+        bongo_cat_neo_window_mark_hit_dirty(app);
     } else if (event->type == SDL_EVENT_WINDOW_MOVED) {
         app->config.window.x = event->window.data1;
         app->config.window.y = event->window.data2;
-        l2dcat_window_clamp_to_display(app);
-        l2dcat_window_mark_hit_dirty(app);
+        bongo_cat_neo_window_clamp_to_display(app);
+        bongo_cat_neo_window_mark_hit_dirty(app);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
         event->button.button == SDL_BUTTON_LEFT) {
         begin_drag_candidate(app, &event->button);
     } else if (event->type == SDL_EVENT_MOUSE_MOTION) {
-        l2dcat_window_resize_by_pointer(app, event);
+        bongo_cat_neo_window_resize_by_pointer(app, event);
         update_drag_candidate(app, &event->motion);
     } else if (event->type == SDL_EVENT_MOUSE_WHEEL) {
-        l2dcat_window_wheel(app, &event->wheel);
+        bongo_cat_neo_window_wheel(app, &event->wheel);
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_LEFT) {
-        l2dcat_window_mark_hit_dirty(app);
+        bongo_cat_neo_window_mark_hit_dirty(app);
         app->drag_candidate = false;
     } else if (event->type == SDL_EVENT_MOUSE_BUTTON_UP &&
         event->button.button == SDL_BUTTON_RIGHT) {
-        l2dcat_window_mark_hit_dirty(app);
+        bongo_cat_neo_window_mark_hit_dirty(app);
         if (app->resize_gesture) app->resize_gesture = false;
         else context_menu(app);
     }
     return true;
 }
 
-void l2dcat_window_destroy(L2DCatApp *app) {
+void bongo_cat_neo_window_destroy(BongoCatNeoApp *app) {
     if (app->gl_context) SDL_GL_DestroyContext(app->gl_context);
     if (app->window) SDL_DestroyWindow(app->window);
     app->gl_context = NULL;

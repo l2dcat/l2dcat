@@ -8,7 +8,7 @@
 #include <Rendering/OpenGL/CubismOffscreenManager_OpenGLES2.hpp>
 #include <cmath>
 
-namespace l2dcat {
+namespace bongo_cat_neo {
 
 void NativeModel::resize(int width, int height) {
     if (width <= 0 || height <= 0) return;
@@ -160,4 +160,4 @@ bool NativeModel::set_expression(int index) {
     return true;
 }
 
-} // namespace l2dcat
+} // namespace bongo_cat_neo

@@ -10,7 +10,7 @@
 #include <string.h>
 
 typedef struct MacInputState {
-    L2DCatPlatform *platform;
+    BongoCatNeoPlatform *platform;
     SDL_Thread *thread;
     SDL_Semaphore *ready;
     CFMachPortRef tap;
@@ -21,12 +21,12 @@ typedef struct MacInputState {
 
 static atomic_bool global_supported = ATOMIC_VAR_INIT(false);
 
-static void push(MacInputState *state, L2DCatInputKind kind,
+static void push(MacInputState *state, BongoCatNeoInputKind kind,
     const char *name, float value) {
     if (!state || !name) return;
-    L2DCatInputEvent input = {.kind = kind, .timestamp_ms = SDL_GetTicks(), .value = value};
+    BongoCatNeoInputEvent input = {.kind = kind, .timestamp_ms = SDL_GetTicks(), .value = value};
     snprintf(input.name, sizeof(input.name), "%s", name);
-    if (l2dcat_input_push(state->platform->input, &input)) {
+    if (bongo_cat_neo_input_push(state->platform->input, &input)) {
         SDL_Event wake = {.type = SDL_EVENT_USER};
         SDL_PushEvent(&wake);
     }
@@ -52,7 +52,7 @@ static CGEventRef event_tap(CGEventTapProxy proxy, CGEventType type,
     if (type == kCGEventMouseMoved || type == kCGEventLeftMouseDragged ||
         type == kCGEventRightMouseDragged || type == kCGEventOtherMouseDragged) {
         CGPoint point = CGEventGetLocation(event);
-        if (l2dcat_input_mouse(state->platform->input, point.x, point.y)) {
+        if (bongo_cat_neo_input_mouse(state->platform->input, point.x, point.y)) {
             SDL_Event wake = {.type = SDL_EVENT_USER};
             SDL_PushEvent(&wake);
         }
@@ -61,13 +61,13 @@ static CGEventRef event_tap(CGEventTapProxy proxy, CGEventType type,
     if (type == kCGEventKeyDown || type == kCGEventKeyUp || type == kCGEventFlagsChanged) {
         CGKeyCode code = (CGKeyCode)CGEventGetIntegerValueField(event,
             kCGKeyboardEventKeycode);
-        char buffer[16]; const char *name = l2dcat_macos_key_name(code, buffer);
+        char buffer[16]; const char *name = bongo_cat_neo_macos_key_name(code, buffer);
         bool down = type == kCGEventKeyDown;
         if (type == kCGEventFlagsChanged) {
             CGEventFlags flag = modifier_flag(code);
             down = flag && (CGEventGetFlags(event) & flag) != 0;
         }
-        if (name) push(state, down ? L2DCAT_INPUT_KEY_DOWN : L2DCAT_INPUT_KEY_UP,
+        if (name) push(state, down ? BONGO_CAT_NEO_INPUT_KEY_DOWN : BONGO_CAT_NEO_INPUT_KEY_UP,
             name, down ? 1.0f : 0.0f);
         return event;
     }
@@ -76,7 +76,7 @@ static CGEventRef event_tap(CGEventTapProxy proxy, CGEventType type,
         ? "Right" : "Middle";
     bool down = type == kCGEventLeftMouseDown || type == kCGEventRightMouseDown ||
         type == kCGEventOtherMouseDown;
-    push(state, down ? L2DCAT_INPUT_MOUSE_DOWN : L2DCAT_INPUT_MOUSE_UP,
+    push(state, down ? BONGO_CAT_NEO_INPUT_MOUSE_DOWN : BONGO_CAT_NEO_INPUT_MOUSE_UP,
         name, down ? 1.0f : 0.0f);
     return event;
 }
@@ -110,7 +110,7 @@ static int SDLCALL input_thread(void *userdata) {
     return 0;
 }
 
-bool l2dcat_macos_input_start(L2DCatPlatform *platform, L2DCatError *error) {
+bool bongo_cat_neo_macos_input_start(BongoCatNeoPlatform *platform, BongoCatNeoError *error) {
     if (@available(macOS 10.15, *)) {
         if (!CGPreflightListenEventAccess()) CGRequestListenEventAccess();
     }
@@ -120,18 +120,18 @@ bool l2dcat_macos_input_start(L2DCatPlatform *platform, L2DCatError *error) {
     atomic_init(&state->supported, false);
     state->ready = SDL_CreateSemaphore(0);
     state->thread = state->ready ? SDL_CreateThread(input_thread,
-        "l2dcat-macos-input", state) : NULL;
+        "bongo-cat-neo-macos-input", state) : NULL;
     platform->native = state;
     if (!state->thread || !SDL_WaitSemaphoreTimeout(state->ready, 3000) ||
         !atomic_load(&state->supported)) {
-        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM,
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
             "macOS input monitoring permission is required for global input");
         return false;
     }
     return true;
 }
 
-void l2dcat_macos_input_stop(L2DCatPlatform *platform) {
+void bongo_cat_neo_macos_input_stop(BongoCatNeoPlatform *platform) {
     MacInputState *state = platform ? platform->native : NULL;
     if (!state) return;
     if (state->loop) CFRunLoopStop(state->loop);
@@ -142,5 +142,5 @@ void l2dcat_macos_input_stop(L2DCatPlatform *platform) {
     atomic_store(&global_supported, false);
 }
 
-bool l2dcat_macos_input_supported(void) { return atomic_load(&global_supported); }
+bool bongo_cat_neo_macos_input_supported(void) { return atomic_load(&global_supported); }
 #endif

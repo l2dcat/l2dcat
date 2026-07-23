@@ -1,58 +1,58 @@
-#ifndef L2DCAT_RUNTIME_INTERNAL_H
-#define L2DCAT_RUNTIME_INTERNAL_H
+#ifndef BONGO_CAT_NEO_RUNTIME_INTERNAL_H
+#define BONGO_CAT_NEO_RUNTIME_INTERNAL_H
 
-#include "l2dcat/app.h"
+#include "bongo_cat_neo/app.h"
 #include <SDL3/SDL.h>
 
-#ifdef L2DCAT_HAS_CUBISM
-#define L2DCAT_FRAME_WAIT(app) (1000 / (app)->config.model.max_fps)
+#ifdef BONGO_CAT_NEO_HAS_CUBISM
+#define BONGO_CAT_NEO_FRAME_WAIT(app) (1000 / (app)->config.model.max_fps)
 #else
-#define L2DCAT_FRAME_WAIT(app) 100
+#define BONGO_CAT_NEO_FRAME_WAIT(app) 100
 #endif
 
-L2DCatResult l2dcat_window_create(L2DCatApp *app, L2DCatError *error);
-void l2dcat_app_locate_assets(L2DCatApp *app);
-void l2dcat_window_destroy(L2DCatApp *app);
-void l2dcat_window_apply(L2DCatApp *app);
-bool l2dcat_window_event(L2DCatApp *app, const SDL_Event *event);
-bool l2dcat_window_visible_at_pointer(L2DCatApp *app, float x, float y);
-void l2dcat_window_mark_hit_dirty(L2DCatApp *app);
-void l2dcat_window_schedule_pointer_hit(L2DCatApp *app);
-void l2dcat_window_schedule_hit_check(L2DCatApp *app);
-int l2dcat_window_wait_timeout(const L2DCatApp *app, uint64_t now);
-bool l2dcat_window_wait_timeout_self_test(void);
-void l2dcat_window_sync_click_through(L2DCatApp *app);
-void l2dcat_window_apply_pending_resize(L2DCatApp *app);
-void l2dcat_window_wheel(L2DCatApp *app, const SDL_MouseWheelEvent *event);
-void l2dcat_window_update_wheel_animation(L2DCatApp *app, uint64_t now);
-void l2dcat_window_cancel_wheel_animation(L2DCatApp *app);
-bool l2dcat_window_wheel_self_test(L2DCatApp *app);
-bool l2dcat_window_scaled_size(int base_width, int base_height, float base_scale,
+BongoCatNeoResult bongo_cat_neo_window_create(BongoCatNeoApp *app, BongoCatNeoError *error);
+void bongo_cat_neo_app_locate_assets(BongoCatNeoApp *app);
+void bongo_cat_neo_window_destroy(BongoCatNeoApp *app);
+void bongo_cat_neo_window_apply(BongoCatNeoApp *app);
+bool bongo_cat_neo_window_event(BongoCatNeoApp *app, const SDL_Event *event);
+bool bongo_cat_neo_window_visible_at_pointer(BongoCatNeoApp *app, float x, float y);
+void bongo_cat_neo_window_mark_hit_dirty(BongoCatNeoApp *app);
+void bongo_cat_neo_window_schedule_pointer_hit(BongoCatNeoApp *app);
+void bongo_cat_neo_window_schedule_hit_check(BongoCatNeoApp *app);
+int bongo_cat_neo_window_wait_timeout(const BongoCatNeoApp *app, uint64_t now);
+bool bongo_cat_neo_window_wait_timeout_self_test(void);
+void bongo_cat_neo_window_sync_click_through(BongoCatNeoApp *app);
+void bongo_cat_neo_window_apply_pending_resize(BongoCatNeoApp *app);
+void bongo_cat_neo_window_wheel(BongoCatNeoApp *app, const SDL_MouseWheelEvent *event);
+void bongo_cat_neo_window_update_wheel_animation(BongoCatNeoApp *app, uint64_t now);
+void bongo_cat_neo_window_cancel_wheel_animation(BongoCatNeoApp *app);
+bool bongo_cat_neo_window_wheel_self_test(BongoCatNeoApp *app);
+bool bongo_cat_neo_window_scaled_size(int base_width, int base_height, float base_scale,
     float requested_scale, float *actual_scale, int *width, int *height);
-bool l2dcat_window_apply_geometry(L2DCatApp *app, int x, int y,
+bool bongo_cat_neo_window_apply_geometry(BongoCatNeoApp *app, int x, int y,
     float scale, int width, int height);
-bool l2dcat_window_set_scale(L2DCatApp *app, float scale);
-void l2dcat_window_clamp_to_display(L2DCatApp *app);
-void l2dcat_window_resize_by_pointer(L2DCatApp *app, const SDL_Event *event);
-const char *l2dcat_gamepad_axis_name(Uint8 axis);
-const char *l2dcat_gamepad_button_name(Uint8 button);
-void l2dcat_gamepads_set_enabled(L2DCatApp *app, bool enabled);
-void l2dcat_app_reset_gamepad(L2DCatApp *app);
-void l2dcat_app_apply_mouse(L2DCatApp *app);
-void l2dcat_app_apply_mouse_position(L2DCatApp *app, double x, double y,
+bool bongo_cat_neo_window_set_scale(BongoCatNeoApp *app, float scale);
+void bongo_cat_neo_window_clamp_to_display(BongoCatNeoApp *app);
+void bongo_cat_neo_window_resize_by_pointer(BongoCatNeoApp *app, const SDL_Event *event);
+const char *bongo_cat_neo_gamepad_axis_name(Uint8 axis);
+const char *bongo_cat_neo_gamepad_button_name(Uint8 button);
+void bongo_cat_neo_gamepads_set_enabled(BongoCatNeoApp *app, bool enabled);
+void bongo_cat_neo_app_reset_gamepad(BongoCatNeoApp *app);
+void bongo_cat_neo_app_apply_mouse(BongoCatNeoApp *app);
+void bongo_cat_neo_app_apply_mouse_position(BongoCatNeoApp *app, double x, double y,
     float elapsed_seconds);
-void l2dcat_app_track_hover(L2DCatApp *app, double x, double y);
-void l2dcat_app_update_hover(L2DCatApp *app, uint64_t now);
-L2DCatResult l2dcat_copy_directory(const char *source, const char *target,
-    L2DCatError *error);
-bool l2dcat_app_shortcuts_self_test(L2DCatApp *app);
-void l2dcat_window_menu_action(L2DCatApp *app, L2DCatMenuAction action);
-bool l2dcat_window_menu_self_test(L2DCatApp *app);
-bool l2dcat_window_geometry_self_test(L2DCatApp *app);
-void l2dcat_window_show_context_menu(L2DCatApp *app);
-void l2dcat_live2d_audit_run(L2DCatApp *app);
-void l2dcat_frame_audit(L2DCatApp *app, int width, int height);
-void l2dcat_app_render_now(L2DCatApp *app);
-void l2dcat_runtime_flow_update(L2DCatApp *app, uint64_t now);
+void bongo_cat_neo_app_track_hover(BongoCatNeoApp *app, double x, double y);
+void bongo_cat_neo_app_update_hover(BongoCatNeoApp *app, uint64_t now);
+BongoCatNeoResult bongo_cat_neo_copy_directory(const char *source, const char *target,
+    BongoCatNeoError *error);
+bool bongo_cat_neo_app_shortcuts_self_test(BongoCatNeoApp *app);
+void bongo_cat_neo_window_menu_action(BongoCatNeoApp *app, BongoCatNeoMenuAction action);
+bool bongo_cat_neo_window_menu_self_test(BongoCatNeoApp *app);
+bool bongo_cat_neo_window_geometry_self_test(BongoCatNeoApp *app);
+void bongo_cat_neo_window_show_context_menu(BongoCatNeoApp *app);
+void bongo_cat_neo_live2d_audit_run(BongoCatNeoApp *app);
+void bongo_cat_neo_frame_audit(BongoCatNeoApp *app, int width, int height);
+void bongo_cat_neo_app_render_now(BongoCatNeoApp *app);
+void bongo_cat_neo_runtime_flow_update(BongoCatNeoApp *app, uint64_t now);
 
 #endif

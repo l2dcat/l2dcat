@@ -21,7 +21,7 @@ static const char *fragment_source =
     "#version 330 core\n"
     "in vec2 FragUV;in vec4 FragColor;uniform sampler2D Texture;out vec4 OutColor;"
     "void main(){OutColor=FragColor*texture(Texture,FragUV);}";
-static L2DCatUIBackend *context_backend;
+static BongoCatNeoUIBackend *context_backend;
 
 static void clipboard_copy(nk_handle user, const char *text, int length) {
     (void)user;
@@ -43,9 +43,9 @@ static void clipboard_paste(nk_handle user, struct nk_text_edit *edit) {
     }
 }
 
-static bool create_device(L2DCatUIBackend *ui, L2DCatError *error) {
-    if (!l2dcat_gl_load(&ui->gl, error)) return false;
-    ui->program = l2dcat_gl_program(&ui->gl, vertex_source, fragment_source, error);
+static bool create_device(BongoCatNeoUIBackend *ui, BongoCatNeoError *error) {
+    if (!bongo_cat_neo_gl_load(&ui->gl, error)) return false;
+    ui->program = bongo_cat_neo_gl_program(&ui->gl, vertex_source, fragment_source, error);
     if (!ui->program) return false;
     ui->texture_location = ui->gl.uniform_location(ui->program, "Texture");
     ui->projection_location = ui->gl.uniform_location(ui->program, "Projection");
@@ -67,9 +67,9 @@ static bool create_device(L2DCatUIBackend *ui, L2DCatError *error) {
     return true;
 }
 
-bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window,
+bool bongo_cat_neo_ui_init(BongoCatNeoUIBackend *ui, SDL_Window *window,
     const char *body_font_path, const char *heading_font_path,
-    const nk_rune *glyph_ranges, L2DCatError *error) {
+    const nk_rune *glyph_ranges, BongoCatNeoError *error) {
     memset(ui, 0, sizeof(*ui));
     ui->window = window;
     ui->vertex_capacity = 512 * 1024;
@@ -77,7 +77,7 @@ bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window,
     ui->vertices = malloc(ui->vertex_capacity);
     ui->elements = malloc(ui->element_capacity);
     if (!ui->vertices || !ui->elements || !nk_init_default(&ui->context, NULL) ||
-        !create_device(ui, error) || !l2dcat_ui_font_atlas_create(ui,
+        !create_device(ui, error) || !bongo_cat_neo_ui_font_atlas_create(ui,
             body_font_path, heading_font_path, glyph_ranges)) return false;
     nk_buffer_init_default(&ui->commands);
     context_backend = ui;
@@ -86,10 +86,10 @@ bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window,
     return true;
 }
 
-void l2dcat_ui_destroy(L2DCatUIBackend *ui) {
+void bongo_cat_neo_ui_destroy(BongoCatNeoUIBackend *ui) {
     if (!ui) return;
     if (context_backend == ui) context_backend = NULL;
-    l2dcat_ui_font_atlas_destroy(ui);
+    bongo_cat_neo_ui_font_atlas_destroy(ui);
     nk_buffer_free(&ui->commands);
     nk_free(&ui->context);
     if (ui->font_texture) glDeleteTextures(1, &ui->font_texture);
@@ -102,7 +102,7 @@ void l2dcat_ui_destroy(L2DCatUIBackend *ui) {
     memset(ui, 0, sizeof(*ui));
 }
 
-static void convert(L2DCatUIBackend *ui) {
+static void convert(BongoCatNeoUIBackend *ui) {
     static const struct nk_draw_vertex_layout_element layout[] = {
         {NK_VERTEX_POSITION, NK_FORMAT_FLOAT, offsetof(UIVertex, position)},
         {NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT, offsetof(UIVertex, uv)},
@@ -144,7 +144,7 @@ static void convert(L2DCatUIBackend *ui) {
         ui->elements, GL_STREAM_DRAW);
 }
 
-void l2dcat_ui_render(L2DCatUIBackend *ui) {
+void bongo_cat_neo_ui_render(BongoCatNeoUIBackend *ui) {
     int width, height, pixel_width, pixel_height;
     SDL_GetWindowSize(ui->window, &width, &height);
     SDL_GetWindowSizeInPixels(ui->window, &pixel_width, &pixel_height);
@@ -187,7 +187,7 @@ void l2dcat_ui_render(L2DCatUIBackend *ui) {
     ui->last_gl_error = glGetError();
 }
 
-bool l2dcat_ui_frame_valid(const L2DCatUIBackend *ui) {
+bool bongo_cat_neo_ui_frame_valid(const BongoCatNeoUIBackend *ui) {
     return ui && ui->last_convert_result == NK_CONVERT_SUCCESS &&
         ui->last_vertex_bytes && ui->last_element_bytes &&
         ui->last_draw_commands && ui->last_draw_elements &&
@@ -196,36 +196,36 @@ bool l2dcat_ui_frame_valid(const L2DCatUIBackend *ui) {
         ui->last_gl_error == GL_NO_ERROR;
 }
 
-L2DCatUIBackend *l2dcat_ui_backend_for_context(
+BongoCatNeoUIBackend *bongo_cat_neo_ui_backend_for_context(
     const struct nk_context *context) {
     return context_backend && context == &context_backend->context
         ? context_backend : NULL;
 }
 
-static const L2DCatUIBackend *backend(const struct nk_context *context) {
-    return l2dcat_ui_backend_for_context(context);
+static const BongoCatNeoUIBackend *backend(const struct nk_context *context) {
+    return bongo_cat_neo_ui_backend_for_context(context);
 }
 
-const struct nk_user_font *l2dcat_ui_caption_font(
+const struct nk_user_font *bongo_cat_neo_ui_caption_font(
     const struct nk_context *context) {
-    const L2DCatUIBackend *ui = backend(context);
+    const BongoCatNeoUIBackend *ui = backend(context);
     return ui && ui->caption_font ? ui->caption_font : context->style.font;
 }
 
-const struct nk_user_font *l2dcat_ui_body_font(
+const struct nk_user_font *bongo_cat_neo_ui_body_font(
     const struct nk_context *context) {
-    const L2DCatUIBackend *ui = backend(context);
+    const BongoCatNeoUIBackend *ui = backend(context);
     return ui && ui->body_font ? ui->body_font : context->style.font;
 }
 
-const struct nk_user_font *l2dcat_ui_label_font(
+const struct nk_user_font *bongo_cat_neo_ui_label_font(
     const struct nk_context *context) {
-    const L2DCatUIBackend *ui = backend(context);
+    const BongoCatNeoUIBackend *ui = backend(context);
     return ui && ui->label_font ? ui->label_font : context->style.font;
 }
 
-const struct nk_user_font *l2dcat_ui_heading_font(
+const struct nk_user_font *bongo_cat_neo_ui_heading_font(
     const struct nk_context *context) {
-    const L2DCatUIBackend *ui = backend(context);
+    const BongoCatNeoUIBackend *ui = backend(context);
     return ui && ui->heading_font ? ui->heading_font : context->style.font;
 }

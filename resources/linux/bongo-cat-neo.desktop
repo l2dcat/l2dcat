@@ -1,8 +1,8 @@
 [Desktop Entry]
 Type=Application
-Name=l2dcat
+Name=Bongo Cat Neo
 Comment=Native Live2D desktop pet
-Exec=l2dcat
-Icon=l2dcat
+Exec=BongoCatNeo
+Icon=bongo-cat-neo
 Categories=Game;Utility;
 Terminal=false

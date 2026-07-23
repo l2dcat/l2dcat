@@ -1,6 +1,6 @@
-# l2dcat Native
+# Bongo Cat Neo
 
-`l2dcat` is a small native desktop overlay for Live2D models. It keeps a
+`Bongo Cat Neo` is a small native desktop overlay for Live2D models. It keeps a
 borderless, transparent window on the desktop and maps keyboard, mouse, and
 gamepad input to the model.
 
@@ -20,7 +20,7 @@ particular operating system or device.
 Without Cubism, CMake selects a diagnostic backend. The application still
 starts, opens its preferences, processes input, and runs the native tests, but
 it cannot draw or animate a real Live2D model. Configure with
-`-DL2DCAT_REQUIRE_CUBISM=ON` when a missing SDK should be a configuration error
+`-DBONGO_CAT_NEO_REQUIRE_CUBISM=ON` when a missing SDK should be a configuration error
 instead of a diagnostic build.
 
 ## Features
@@ -75,16 +75,16 @@ possible.
 ## Source Tree
 
 ```text
-include/l2dcat/       public C interfaces and data structures
-src/core/             config, paths, input state, catalogs, hashes, manifests
-src/runtime/          application lifecycle, model import, updates, UI flow
+include/bongo_cat_neo/       public C interfaces and data structures
+src/core/             config, paths, input state, catalogs, hashes
+src/runtime/          application lifecycle, model import, and UI flow
 src/render/           OpenGL helpers and overlays
 src/live2d/           Cubism bridge and diagnostic backend
-src/platform/         Win32, Cocoa, X11, HTTP, tray, and update helpers
+src/platform/         Win32, Cocoa, X11, input, and tray adapters
 src/ui/               Nuklear backend, preferences, themes, localization
 resources/assets/     bundled models, textures, locales, and tray assets
 tests/                native tests and fixtures
-cmake/                dependency, release, audit, and source-policy modules
+cmake/                dependency, optimization, audit, and source-policy modules
 docs/                 audit evidence and parity notes
 ```
 
@@ -92,7 +92,7 @@ docs/                 audit evidence and parity notes
 
 The build uses SDL3 for the window and event loop, desktop OpenGL for drawing,
 yyjson for JSON, stb for image loading, miniaudio for motion audio, and
-Nuklear for the preferences UI. With `L2DCAT_FETCH_DEPS=ON` (the default), CMake
+Nuklear for the preferences UI. With `BONGO_CAT_NEO_FETCH_DEPS=ON` (the default), CMake
 fetches pinned revisions of those open-source dependencies and verifies their
 SHA-256 values. Set it to `OFF` to use installed packages and headers instead.
 
@@ -116,13 +116,13 @@ Use Visual Studio 2022 or the matching Build Tools (v143, Windows 10/11 SDK):
 
 ```powershell
 cmake -S . -B build-cubism -G "Visual Studio 17 2022" -A x64 `
-  -DL2DCAT_REQUIRE_CUBISM=ON `
-  -DL2DCAT_WARNINGS_AS_ERRORS=ON
+  -DBONGO_CAT_NEO_REQUIRE_CUBISM=ON `
+  -DBONGO_CAT_NEO_WARNINGS_AS_ERRORS=ON
 cmake --build build-cubism --config Release --parallel 2
 ctest --test-dir build-cubism -C Release --output-on-failure
 ```
 
-The executable is `build-cubism/Release/l2dcat.exe`.
+The executable is `build-cubism/Release/BongoCatNeo.exe`.
 
 ### Diagnostic or Unix build
 
@@ -132,21 +132,20 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
-The native Unix branches require the usual OpenGL, X11/XInput2/Xfixes,
-OpenSSL, and libcurl development packages. macOS uses its Cocoa and
-ApplicationServices frameworks.
+The native Linux branch requires the usual OpenGL and X11/XInput2/Xfixes
+development packages. macOS uses its Cocoa and ApplicationServices frameworks.
 
 To use system dependencies rather than CMake's pinned downloads:
 
 ```powershell
-cmake -S . -B build -G Ninja -DL2DCAT_FETCH_DEPS=OFF
+cmake -S . -B build -G Ninja -DBONGO_CAT_NEO_FETCH_DEPS=OFF
 ```
 
 When fetching is disabled, CMake needs SDL3-static and yyjson package
 configurations plus `stb_image.h`, `stb_image_write.h`, `miniaudio.h`, and
 `nuklear.h`. Their include roots can be set with
-`L2DCAT_STB_INCLUDE_DIR`, `L2DCAT_MINIAUDIO_INCLUDE_DIR`, and
-`L2DCAT_NUKLEAR_INCLUDE_DIR`.
+`BONGO_CAT_NEO_STB_INCLUDE_DIR`, `BONGO_CAT_NEO_MINIAUDIO_INCLUDE_DIR`, and
+`BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR`.
 
 ### Install tree
 
@@ -165,7 +164,7 @@ The default data directory comes from SDL's preference path and contains
 both paths:
 
 ```text
-l2dcat --data-root=C:\path\to\data --config=C:\path\to\settings.json
+BongoCatNeo --data-root=C:\path\to\data --config=C:\path\to\settings.json
 ```
 
 Arguments beginning with `--ci-` are test instrumentation. They select a model,
@@ -175,8 +174,8 @@ stable end-user command-line interface.
 ## Tests and Audits
 
 The CTest suite covers configuration migration, model discovery, input ordering
-and recovery, shortcuts, localization, UI helpers, application state, update
-manifests, SHA-256, and (on Linux) update signatures.
+and recovery, shortcuts, localization, UI helpers, application state, and
+SHA-256 resource validation.
 
 ```powershell
 ctest --test-dir build --output-on-failure
@@ -191,29 +190,15 @@ The Windows audit scripts exercise window styles, preferences, input hooks,
 model import, frame output, and hidden-window behavior. For example:
 
 ```powershell
-& .\cmake\VisualAudit.ps1 -Exe .\build-cubism\Release\l2dcat.exe `
+& .\cmake\VisualAudit.ps1 -Exe .\build-cubism\Release\BongoCatNeo.exe `
   -OutputDir .\build-cubism\visual-audit -SkipMain
-& .\cmake\SoakAudit.ps1 -Exe .\build-cubism\Release\l2dcat.exe `
+& .\cmake\SoakAudit.ps1 -Exe .\build-cubism\Release\BongoCatNeo.exe `
   -OutputDir .\build-cubism\soak-audit -Mode hidden -DurationSeconds 60
 ```
 
 The scripts keep their logs and images in the selected output directory. A
 diagnostic frame is useful for troubleshooting, but it is not evidence that a
 Live2D feature works.
-
-## Updates
-
-The update manifest URL is empty by default, so a normal build does not contact
-an update server. If an independent project endpoint is configured, the client
-requires an HTTPS URL, a version, a platform entry, a SHA-256 digest, and a
-bounded download size before it stages anything.
-
-The platform replacement step adds the trust check appropriate to the host:
-Windows requires the same Authenticode publisher key, macOS checks the bundle's
-designated signing requirement, and Linux verifies an Ed25519 signature over
-the version, platform, digest, and size. The `native-release` target refuses to
-produce a release artifact until the SDK, signing tools, keys, and endpoint are
-provided.
 
 ## Continuous Integration
 

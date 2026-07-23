@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\l2dcat.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\BongoCatNeo.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\window-style-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class L2DCatStyleNative {
+public static class BongoCatNeoStyleNative {
     public delegate bool EnumProc(IntPtr handle, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc proc, IntPtr data);
@@ -28,7 +28,7 @@ public static class L2DCatStyleNative {
 }
 '@
 
-Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 350
 $data = Join-Path $OutputDir ("data-" + [DateTime]::UtcNow.Ticks)
 $arguments = @("--ci-smoke", "--ci-exit-ms=5000", "--data-root=$data")
@@ -38,13 +38,13 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -WindowStyle Normal -PassThru
 Start-Sleep -Milliseconds 1600
 $windows = [Collections.Generic.List[object]]::new()
-[L2DCatStyleNative]::EnumWindows({
+[BongoCatNeoStyleNative]::EnumWindows({
     param($handle, $data)
     [uint32]$owner = 0
-    [void][L2DCatStyleNative]::GetWindowThreadProcessId($handle, [ref]$owner)
-    if ($owner -eq $process.Id -and [L2DCatStyleNative]::IsWindowVisible($handle)) {
-        $rect = [L2DCatStyleNative+Rect]::new()
-        if ([L2DCatStyleNative]::GetWindowRect($handle, [ref]$rect)) {
+    [void][BongoCatNeoStyleNative]::GetWindowThreadProcessId($handle, [ref]$owner)
+    if ($owner -eq $process.Id -and [BongoCatNeoStyleNative]::IsWindowVisible($handle)) {
+        $rect = [BongoCatNeoStyleNative+Rect]::new()
+        if ([BongoCatNeoStyleNative]::GetWindowRect($handle, [ref]$rect)) {
             $windows.Add([pscustomobject]@{
                 Handle=$handle; Area=($rect.R-$rect.L)*($rect.B-$rect.T)
             })
@@ -53,13 +53,13 @@ $windows = [Collections.Generic.List[object]]::new()
     return $true
 }, [IntPtr]::Zero) | Out-Null
 $window = $windows | Sort-Object Area -Descending | Select-Object -First 1
-$windowStyle = [L2DCatStyleNative]::GetWindowLongPtr($window.Handle, -16).ToInt64()
-$style = [L2DCatStyleNative]::GetWindowLongPtr($window.Handle, -20).ToInt64()
+$windowStyle = [BongoCatNeoStyleNative]::GetWindowLongPtr($window.Handle, -16).ToInt64()
+$style = [BongoCatNeoStyleNative]::GetWindowLongPtr($window.Handle, -20).ToInt64()
 if ($Mode -eq "menu") {
     for ($index = 0; $index -lt 40 -and -not $process.HasExited; $index++) {
         if (($style -band 0x20) -ne 0 -and ($style -band 0x8) -ne 0) { break }
         Start-Sleep -Milliseconds 100
-        $style = [L2DCatStyleNative]::GetWindowLongPtr($window.Handle, -20).ToInt64()
+        $style = [BongoCatNeoStyleNative]::GetWindowLongPtr($window.Handle, -20).ToInt64()
     }
 }
 $caption = ($windowStyle -band 0xC00000) -ne 0

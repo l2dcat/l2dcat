@@ -7,7 +7,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\l2dcat.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build-cubism\Release\BongoCatNeo.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build-cubism\focus-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -19,7 +19,7 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
-public static class L2DCatFocusNative {
+public static class BongoCatNeoFocusNative {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int L,T,R,B; }
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
     [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr handle, out Rect rect);
@@ -29,7 +29,7 @@ public static class L2DCatFocusNative {
 }
 '@
 
-Get-Process l2dcat -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process BongoCatNeo -ErrorAction SilentlyContinue | Stop-Process -Force
 $arguments = @("--ci-smoke", "--ci-input-audit", "--ci-exit-ms=$DurationMilliseconds",
     "--ci-model=$Model", "--data-root=$data")
 $process = Start-Process -FilePath $Exe -ArgumentList $arguments -WorkingDirectory `
@@ -38,7 +38,7 @@ try {
     for ($index = 0; $index -lt 120 -and -not (Test-Path $frame); ++$index) {
         Start-Sleep -Milliseconds 25
     }
-    if (-not (Test-Path $frame)) { throw "l2dcat frame audit was not created" }
+    if (-not (Test-Path $frame)) { throw "bongo_cat_neo frame audit was not created" }
     $samples = [Collections.Generic.List[object]]::new()
     $started = [Diagnostics.Stopwatch]::StartNew()
     $explorer = Start-Process explorer.exe -ArgumentList (Get-Location) -PassThru
@@ -47,14 +47,14 @@ try {
         Where-Object { $_.MainWindowHandle -ne [IntPtr]::Zero } |
         Select-Object -First 1
     if ($explorerWindow) {
-        [void][L2DCatFocusNative]::SetForegroundWindow($explorerWindow.MainWindowHandle)
-        $rect = [L2DCatFocusNative+Rect]::new()
-        if ([L2DCatFocusNative]::GetWindowRect($explorerWindow.MainWindowHandle,
+        [void][BongoCatNeoFocusNative]::SetForegroundWindow($explorerWindow.MainWindowHandle)
+        $rect = [BongoCatNeoFocusNative+Rect]::new()
+        if ([BongoCatNeoFocusNative]::GetWindowRect($explorerWindow.MainWindowHandle,
             [ref]$rect)) {
-            [void][L2DCatFocusNative]::SetCursorPos(
+            [void][BongoCatNeoFocusNative]::SetCursorPos(
                 [int](($rect.L + $rect.R) / 2), [int](($rect.T + $rect.B) / 2))
-            [L2DCatFocusNative]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
-            [L2DCatFocusNative]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
+            [BongoCatNeoFocusNative]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
+            [BongoCatNeoFocusNative]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)
         }
     }
     while ($started.ElapsedMilliseconds -lt $DurationMilliseconds - 1000) {

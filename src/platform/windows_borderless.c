@@ -1,8 +1,8 @@
 #include "windows_borderless.h"
 
 #ifdef _WIN32
-static const wchar_t original_proc_property[] = L"l2dcat.BorderlessWindowProc";
-static L2DCatMenuPreview menu_preview;
+static const wchar_t original_proc_property[] = L"BongoCatNeo.BorderlessWindowProc";
+static BongoCatNeoMenuPreview menu_preview;
 static void *menu_preview_userdata;
 
 static LONG_PTR borderless_style(LONG_PTR style) {
@@ -31,19 +31,19 @@ static LRESULT CALLBACK borderless_window_proc(HWND window, UINT message,
         if (flags == 0xffff && !lparam) return CallWindowProcW(
             original ? original : DefWindowProcW, window, message, wparam, lparam);
         if ((flags & (MF_POPUP | MF_SEPARATOR)) || !id)
-            menu_preview(menu_preview_userdata, L2DCAT_MENU_NONE);
+            menu_preview(menu_preview_userdata, BONGO_CAT_NEO_MENU_NONE);
         else
-            menu_preview(menu_preview_userdata, (L2DCatMenuAction)id);
+            menu_preview(menu_preview_userdata, (BongoCatNeoMenuAction)id);
     }
     return CallWindowProcW(original ? original : DefWindowProcW,
         window, message, wparam, lparam);
 }
 
-void l2dcat_windows_menu_preview(L2DCatMenuPreview preview, void *userdata) {
+void bongo_cat_neo_windows_menu_preview(BongoCatNeoMenuPreview preview, void *userdata) {
     menu_preview = preview; menu_preview_userdata = userdata;
 }
 
-void l2dcat_windows_borderless_install(HWND window) {
+void bongo_cat_neo_windows_borderless_install(HWND window) {
     if (!window || GetPropW(window, original_proc_property)) return;
     LONG_PTR style = borderless_style(GetWindowLongPtrW(window, GWL_STYLE));
     SetWindowLongPtrW(window, GWL_STYLE, style);
@@ -52,7 +52,7 @@ void l2dcat_windows_borderless_install(HWND window) {
     SetWindowLongPtrW(window, GWLP_WNDPROC, (LONG_PTR)borderless_window_proc);
 }
 
-void l2dcat_windows_borderless_uninstall(HWND window) {
+void bongo_cat_neo_windows_borderless_uninstall(HWND window) {
     if (!window) return;
     WNDPROC original = (WNDPROC)GetPropW(window, original_proc_property);
     if (!original) return;

@@ -1,12 +1,12 @@
-#ifndef L2DCAT_MACOS_INTERNAL_H
-#define L2DCAT_MACOS_INTERNAL_H
+#ifndef BONGO_CAT_NEO_MACOS_INTERNAL_H
+#define BONGO_CAT_NEO_MACOS_INTERNAL_H
 
-#include "l2dcat/platform.h"
+#include "bongo_cat_neo/platform.h"
 
-bool l2dcat_macos_input_start(L2DCatPlatform *platform, L2DCatError *error);
-void l2dcat_macos_input_stop(L2DCatPlatform *platform);
-bool l2dcat_macos_input_supported(void);
-L2DCatMenuAction l2dcat_macos_context_menu(L2DCatPlatform *platform,
-    const L2DCatMenuLabels *labels);
+bool bongo_cat_neo_macos_input_start(BongoCatNeoPlatform *platform, BongoCatNeoError *error);
+void bongo_cat_neo_macos_input_stop(BongoCatNeoPlatform *platform);
+bool bongo_cat_neo_macos_input_supported(void);
+BongoCatNeoMenuAction bongo_cat_neo_macos_context_menu(BongoCatNeoPlatform *platform,
+    const BongoCatNeoMenuLabels *labels);
 
 #endif

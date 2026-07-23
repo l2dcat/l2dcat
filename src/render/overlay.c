@@ -1,7 +1,7 @@
-#include "l2dcat/overlay.h"
-#include "l2dcat/gl_api.h"
-#include "l2dcat/image.h"
-#include "l2dcat/path.h"
+#include "bongo_cat_neo/overlay.h"
+#include "bongo_cat_neo/gl_api.h"
+#include "bongo_cat_neo/image.h"
+#include "bongo_cat_neo/path.h"
 
 #include <SDL3/SDL_opengl.h>
 #include <stdio.h>
@@ -9,20 +9,18 @@
 #include <string.h>
 
 typedef struct TextureSlot {
-    char path[L2DCAT_PATH_CAP];
+    char path[BONGO_CAT_NEO_PATH_CAP];
     GLuint texture;
     uint64_t used;
 } TextureSlot;
 
-struct L2DCatOverlay {
-    L2DCatGL gl;
+struct BongoCatNeoOverlay {
+    BongoCatNeoGL gl;
     GLuint program;
-    GLuint clip_program;
     GLint mirror_location;
     GLint image_location;
     GLint erase_left_location;
     GLint erase_right_location;
-    GLint radius_location;
     GLuint vao;
     GLuint vbo;
     GLuint background;
@@ -33,12 +31,12 @@ struct L2DCatOverlay {
     TextureSlot cache[4];
     GLuint left;
     GLuint right;
-    char left_name[L2DCAT_ID_CAP];
-    char right_name[L2DCAT_ID_CAP];
-    char background_path[L2DCAT_PATH_CAP];
-    char left_path[L2DCAT_PATH_CAP];
-    char right_path[L2DCAT_PATH_CAP];
-    char directory[L2DCAT_PATH_CAP];
+    char left_name[BONGO_CAT_NEO_ID_CAP];
+    char right_name[BONGO_CAT_NEO_ID_CAP];
+    char background_path[BONGO_CAT_NEO_PATH_CAP];
+    char left_path[BONGO_CAT_NEO_PATH_CAP];
+    char right_path[BONGO_CAT_NEO_PATH_CAP];
+    char directory[BONGO_CAT_NEO_PATH_CAP];
     uint64_t clock;
 };
 
@@ -56,18 +54,7 @@ static const char *fragment_source =
     "vec2 dr=(tex-vec2(.275,.397))/vec2(.070,.160);"
     "bool l=dot(dl,dl)<1.;bool r=dot(dr,dr)<1.;"
     "if((erase_left&&l)||(erase_right&&r))color.rgb=vec3(1);}";
-static const char *clip_vertex_source =
-    "#version 330 core\n"
-    "layout(location=0) in vec2 pos; layout(location=1) in vec2 uv;\n"
-    "out vec2 tex; void main(){gl_Position=vec4(pos,0,1);tex=uv;}";
-static const char *clip_fragment_source =
-    "#version 330 core\n"
-    "in vec2 tex; out vec4 color; uniform int radius_percent;\n"
-    "void main(){float r=float(radius_percent)/100.0;"
-    "vec2 q=abs(tex-vec2(.5))-(vec2(.5)-r);"
-    "if(length(max(q,vec2(0)))>r)discard;color=vec4(1);}";
-
-static void clear_textures(L2DCatOverlay *value) {
+static void clear_textures(BongoCatNeoOverlay *value) {
     if (value->background) glDeleteTextures(1, &value->background);
     if (value->composite) glDeleteTextures(1, &value->composite);
     value->background = 0;
@@ -83,26 +70,18 @@ static void clear_textures(L2DCatOverlay *value) {
     value->left_path[0] = value->right_path[0] = '\0';
 }
 
-L2DCatOverlay *l2dcat_overlay_create(L2DCatError *error) {
-    L2DCatOverlay *value = calloc(1, sizeof(*value));
-    if (!value || !l2dcat_gl_load(&value->gl, error)) {
+BongoCatNeoOverlay *bongo_cat_neo_overlay_create(BongoCatNeoError *error) {
+    BongoCatNeoOverlay *value = calloc(1, sizeof(*value));
+    if (!value || !bongo_cat_neo_gl_load(&value->gl, error)) {
         free(value);
         return NULL;
     }
-    value->program = l2dcat_gl_program(&value->gl, vertex_source, fragment_source, error);
+    value->program = bongo_cat_neo_gl_program(&value->gl, vertex_source, fragment_source, error);
     if (!value->program) { free(value); return NULL; }
-    value->clip_program = l2dcat_gl_program(&value->gl,
-        clip_vertex_source, clip_fragment_source, error);
-    if (!value->clip_program) {
-        value->gl.delete_program(value->program);
-        free(value);
-        return NULL;
-    }
     value->mirror_location = value->gl.uniform_location(value->program, "mirror");
     value->image_location = value->gl.uniform_location(value->program, "image");
     value->erase_left_location = value->gl.uniform_location(value->program, "erase_left");
     value->erase_right_location = value->gl.uniform_location(value->program, "erase_right");
-    value->radius_location = value->gl.uniform_location(value->clip_program, "radius_percent");
     const float vertices[] = {-1, -1, 0, 1, 1, -1, 1, 1, -1, 1, 0, 0, 1, 1, 1, 0};
     value->gl.gen_vertex_arrays(1, &value->vao);
     value->gl.bind_vertex_array(value->vao);
@@ -117,38 +96,37 @@ L2DCatOverlay *l2dcat_overlay_create(L2DCatError *error) {
     return value;
 }
 
-void l2dcat_overlay_destroy(L2DCatOverlay *value) {
+void bongo_cat_neo_overlay_destroy(BongoCatNeoOverlay *value) {
     if (!value) return;
     clear_textures(value);
     if (value->vbo) value->gl.delete_buffers(1, &value->vbo);
     if (value->vao) value->gl.delete_vertex_arrays(1, &value->vao);
-    if (value->clip_program) value->gl.delete_program(value->clip_program);
     if (value->program) value->gl.delete_program(value->program);
     free(value);
 }
 
-L2DCatResult l2dcat_overlay_load(L2DCatOverlay *value, const char *directory, L2DCatError *error) {
-    if (!value || !directory) return L2DCAT_ERROR_ARGUMENT;
+BongoCatNeoResult bongo_cat_neo_overlay_load(BongoCatNeoOverlay *value, const char *directory, BongoCatNeoError *error) {
+    if (!value || !directory) return BONGO_CAT_NEO_ERROR_ARGUMENT;
     clear_textures(value);
     snprintf(value->directory, sizeof(value->directory), "%s", directory);
-    char path[L2DCAT_PATH_CAP];
+    char path[BONGO_CAT_NEO_PATH_CAP];
     /* Without the licensed Cubism runtime there is no model renderer.  Use the
        model's composed preview so the desktop pet remains visually complete;
        Cubism builds keep the background-only layer behind the animated model. */
-#ifdef L2DCAT_HAS_CUBISM
-    l2dcat_path_join(path, sizeof(path), directory, "resources/background.png");
+#ifdef BONGO_CAT_NEO_HAS_CUBISM
+    bongo_cat_neo_path_join(path, sizeof(path), directory, "resources/background.png");
 #else
-    l2dcat_path_join(path, sizeof(path), directory, "resources/cover.png");
+    bongo_cat_neo_path_join(path, sizeof(path), directory, "resources/cover.png");
     value->composed_cover = true;
     value->clean_paws = true;
 #endif
     snprintf(value->background_path, sizeof(value->background_path), "%s", path);
-    if (l2dcat_path_is_file(path)) value->background = l2dcat_image_texture(path, NULL, NULL, error);
-    return L2DCAT_OK;
+    if (bongo_cat_neo_path_is_file(path)) value->background = bongo_cat_neo_image_texture(path, NULL, NULL, error);
+    return BONGO_CAT_NEO_OK;
 }
 
-#ifdef L2DCAT_HAS_CUBISM
-static GLuint cached_texture(L2DCatOverlay *value, const char *path) {
+#ifdef BONGO_CAT_NEO_HAS_CUBISM
+static GLuint cached_texture(BongoCatNeoOverlay *value, const char *path) {
     value->clock++;
     TextureSlot *oldest = NULL;
     for (size_t i = 0; i < 4; ++i) {
@@ -163,32 +141,32 @@ static GLuint cached_texture(L2DCatOverlay *value, const char *path) {
     }
     if (!oldest) return 0;
     if (oldest->texture) glDeleteTextures(1, &oldest->texture);
-    L2DCatError ignored = {0};
-    oldest->texture = l2dcat_image_texture(path, NULL, NULL, &ignored);
+    BongoCatNeoError ignored = {0};
+    oldest->texture = bongo_cat_neo_image_texture(path, NULL, NULL, &ignored);
     snprintf(oldest->path, sizeof(oldest->path), "%s", path);
     oldest->used = value->clock;
     return oldest->texture;
 }
 #endif
 
-static bool key_path(L2DCatOverlay *value, const char *group, const char *name,
-    char path[L2DCAT_PATH_CAP]) {
-    char relative[L2DCAT_PATH_CAP];
+static bool key_path(BongoCatNeoOverlay *value, const char *group, const char *name,
+    char path[BONGO_CAT_NEO_PATH_CAP]) {
+    char relative[BONGO_CAT_NEO_PATH_CAP];
     snprintf(relative, sizeof(relative), "resources/%s/%s.png", group, name);
-    l2dcat_path_join(path, L2DCAT_PATH_CAP, value->directory, relative);
-    if (l2dcat_path_is_file(path)) return true;
+    bongo_cat_neo_path_join(path, BONGO_CAT_NEO_PATH_CAP, value->directory, relative);
+    if (bongo_cat_neo_path_is_file(path)) return true;
     if (name[0] == 'F' && name[1] >= '0' && name[1] <= '9') {
         snprintf(relative, sizeof(relative), "resources/%s/Fn.png", group);
-        l2dcat_path_join(path, L2DCAT_PATH_CAP, value->directory, relative);
-        return l2dcat_path_is_file(path);
+        bongo_cat_neo_path_join(path, BONGO_CAT_NEO_PATH_CAP, value->directory, relative);
+        return bongo_cat_neo_path_is_file(path);
     }
     return false;
 }
 
-int l2dcat_overlay_key(L2DCatOverlay *value, const char *name, bool pressed) {
+int bongo_cat_neo_overlay_key(BongoCatNeoOverlay *value, const char *name, bool pressed) {
     if (!value || !name) return -1;
     bool right;
-    char path[L2DCAT_PATH_CAP];
+    char path[BONGO_CAT_NEO_PATH_CAP];
     if (key_path(value, "right-keys", name, path)) right = true;
     else if (key_path(value, "left-keys", name, path)) right = false;
     else return -1;
@@ -196,11 +174,11 @@ int l2dcat_overlay_key(L2DCatOverlay *value, const char *name, bool pressed) {
     GLuint *active = right ? &value->right : &value->left;
     char *active_path = right ? value->right_path : value->left_path;
     if (pressed) {
-        snprintf(active_name, L2DCAT_ID_CAP, "%s", name);
-#ifdef L2DCAT_HAS_CUBISM
+        snprintf(active_name, BONGO_CAT_NEO_ID_CAP, "%s", name);
+#ifdef BONGO_CAT_NEO_HAS_CUBISM
         *active = cached_texture(value, path);
 #else
-        snprintf(active_path, L2DCAT_PATH_CAP, "%s", path);
+        snprintf(active_path, BONGO_CAT_NEO_PATH_CAP, "%s", path);
         *active = 1;
 #endif
     } else if (strcmp(active_name, name) == 0) {
@@ -208,47 +186,17 @@ int l2dcat_overlay_key(L2DCatOverlay *value, const char *name, bool pressed) {
         *active = 0;
         active_path[0] = '\0';
     }
-#ifndef L2DCAT_HAS_CUBISM
+#ifndef BONGO_CAT_NEO_HAS_CUBISM
     value->composite_dirty = true;
 #endif
     return right ? 1 : 0;
 }
 
-bool l2dcat_overlay_hand_active(const L2DCatOverlay *value, bool right) {
+bool bongo_cat_neo_overlay_hand_active(const BongoCatNeoOverlay *value, bool right) {
     return value && (right ? value->right : value->left) != 0;
 }
 
-void l2dcat_overlay_begin_clip(L2DCatOverlay *value, float radius_percent) {
-    if (!value || radius_percent <= 0.0f) {
-        glDisable(GL_STENCIL_TEST);
-        return;
-    }
-    int radius = (int)(radius_percent + 0.5f);
-    if (radius > 50) radius = 50;
-    glEnable(GL_STENCIL_TEST);
-    glStencilMask(0xff);
-    glClear(GL_STENCIL_BUFFER_BIT);
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-    glStencilFunc(GL_ALWAYS, 1, 0xff);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-    value->gl.use_program(value->clip_program);
-    value->gl.uniform_1i(value->radius_location, radius);
-    value->gl.bind_vertex_array(value->vao);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    value->gl.bind_vertex_array(0);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glStencilMask(0x00);
-    glStencilFunc(GL_EQUAL, 1, 0xff);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-}
-
-void l2dcat_overlay_end_clip(L2DCatOverlay *value) {
-    (void)value;
-    glStencilMask(0xff);
-    glDisable(GL_STENCIL_TEST);
-}
-
-static void draw(L2DCatOverlay *value, GLuint texture, bool mirror, bool blend) {
+static void draw(BongoCatNeoOverlay *value, GLuint texture, bool mirror, bool blend) {
     if (!value || !texture) return;
     if (blend) {
         glEnable(GL_BLEND);
@@ -268,14 +216,14 @@ static void draw(L2DCatOverlay *value, GLuint texture, bool mirror, bool blend) 
     value->gl.bind_vertex_array(0);
 }
 
-void l2dcat_overlay_draw_background(L2DCatOverlay *value, bool mirror) {
+void bongo_cat_neo_overlay_draw_background(BongoCatNeoOverlay *value, bool mirror) {
     if (value) {
-#ifndef L2DCAT_HAS_CUBISM
+#ifndef BONGO_CAT_NEO_HAS_CUBISM
         if (value->composite_dirty) {
             value->composite_dirty = false;
             if (value->left || value->right) {
-                L2DCatError ignored = {0};
-                value->composite = l2dcat_image_composite_texture(value->background_path,
+                BongoCatNeoError ignored = {0};
+                value->composite = bongo_cat_neo_image_composite_texture(value->background_path,
                     value->left_path, value->right_path, value->composite,
                     value->clean_paws && value->left,
                     value->clean_paws && value->right, &ignored);
@@ -288,9 +236,9 @@ void l2dcat_overlay_draw_background(L2DCatOverlay *value, bool mirror) {
     }
 }
 
-void l2dcat_overlay_draw_keys(L2DCatOverlay *value, bool mirror) {
+void bongo_cat_neo_overlay_draw_keys(BongoCatNeoOverlay *value, bool mirror) {
     if (!value) return;
-#ifdef L2DCAT_HAS_CUBISM
+#ifdef BONGO_CAT_NEO_HAS_CUBISM
     draw(value, value->left, mirror, true);
     draw(value, value->right, mirror, true);
 #else

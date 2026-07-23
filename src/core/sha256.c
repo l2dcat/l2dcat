@@ -1,5 +1,5 @@
-#include "l2dcat/file.h"
-#include "l2dcat/sha256.h"
+#include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/sha256.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -82,17 +82,17 @@ static void initialize(Sha256 *value) {
     memset(value, 0, sizeof(*value)); memcpy(value->state, initial, sizeof(initial));
 }
 
-void l2dcat_sha256_bytes(const void *data, size_t size, char output[65]) {
+void bongo_cat_neo_sha256_bytes(const void *data, size_t size, char output[65]) {
     Sha256 value; initialize(&value); update(&value, data, size); finish(&value, output);
 }
 
-L2DCatResult l2dcat_sha256_file(const char *path, char output[65], L2DCatError *error) {
-    FILE *file = path ? l2dcat_file_open(path, "rb") : NULL;
-    if (!file) { l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot open update file"); return L2DCAT_ERROR_IO; }
+BongoCatNeoResult bongo_cat_neo_sha256_file(const char *path, char output[65], BongoCatNeoError *error) {
+    FILE *file = path ? bongo_cat_neo_file_open(path, "rb") : NULL;
+    if (!file) { bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot open file"); return BONGO_CAT_NEO_ERROR_IO; }
     Sha256 value; initialize(&value);
     unsigned char buffer[65536]; size_t count;
     while ((count = fread(buffer, 1, sizeof(buffer), file)) > 0) update(&value, buffer, count);
     bool ok = !ferror(file) && fclose(file) == 0;
-    if (!ok) { l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot read update file"); return L2DCAT_ERROR_IO; }
-    finish(&value, output); return L2DCAT_OK;
+    if (!ok) { bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot read file"); return BONGO_CAT_NEO_ERROR_IO; }
+    finish(&value, output); return BONGO_CAT_NEO_OK;
 }

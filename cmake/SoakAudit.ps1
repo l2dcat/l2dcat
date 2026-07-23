@@ -16,14 +16,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\l2dcat.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\BongoCatNeo.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\soak-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
 if ($DurationSeconds -lt 5 -or $IntervalSeconds -lt 1 -or $WarmupSeconds -lt 1 -or
     $IntervalSeconds -ge $DurationSeconds) { throw "Invalid soak duration or interval" }
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
-$existing = @(Get-Process l2dcat -ErrorAction SilentlyContinue)
+$existing = @(Get-Process BongoCatNeo -ErrorAction SilentlyContinue)
 if ($existing.Count) {
     $existing | Stop-Process -Force
     $existing | Wait-Process -Timeout 5 -ErrorAction SilentlyContinue
@@ -45,7 +45,7 @@ $samples = [Collections.Generic.List[object]]::new()
 try {
     Start-Sleep -Seconds $WarmupSeconds
     if ($process.HasExited) {
-        throw "l2dcat exited during warmup with code $($process.ExitCode)"
+        throw "bongo_cat_neo exited during warmup with code $($process.ExitCode)"
     }
     $process.Refresh()
     $started = [DateTime]::UtcNow
@@ -53,7 +53,7 @@ try {
     $previousAt = $started
     while (([DateTime]::UtcNow - $started).TotalSeconds -lt $DurationSeconds) {
         if ($process.HasExited) {
-            throw "l2dcat exited before the soak duration with code $($process.ExitCode)"
+            throw "bongo_cat_neo exited before the soak duration with code $($process.ExitCode)"
         }
         $process.Refresh()
         $now = [DateTime]::UtcNow

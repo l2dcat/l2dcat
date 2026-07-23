@@ -1,7 +1,7 @@
 #include "runtime.h"
-#include "l2dcat/file.h"
-#include "l2dcat/overlay.h"
-#include "l2dcat/path.h"
+#include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/overlay.h"
+#include "bongo_cat_neo/path.h"
 
 #include <SDL3/SDL.h>
 #include <stdio.h>
@@ -11,28 +11,28 @@
 typedef struct TreeContext {
     const char *source;
     const char *target;
-    L2DCatError *error;
+    BongoCatNeoError *error;
 } TreeContext;
 
-static void select_model_state(L2DCatApp *app, const L2DCatModelEntry *entry) {
+static void select_model_state(BongoCatNeoApp *app, const BongoCatNeoModelEntry *entry) {
     snprintf(app->config.current_model, sizeof(app->config.current_model), "%s",
         entry->id);
     app->config.current_mode = entry->mode;
-    l2dcat_gamepads_set_enabled(app, entry->mode == L2DCAT_MODE_GAMEPAD);
+    bongo_cat_neo_gamepads_set_enabled(app, entry->mode == BONGO_CAT_NEO_MODE_GAMEPAD);
 }
 
-bool l2dcat_app_select_model(L2DCatApp *app, const char *id) {
+bool bongo_cat_neo_app_select_model(BongoCatNeoApp *app, const char *id) {
     if (!app || !app->live2d || !id) return false;
-    const L2DCatModelEntry *entry = l2dcat_models_find(&app->models, id);
+    const BongoCatNeoModelEntry *entry = bongo_cat_neo_models_find(&app->models, id);
     if (!entry) return false;
     if (app->loaded_model[0] && strcmp(app->loaded_model, entry->id) == 0) {
         select_model_state(app, entry);
         return true;
     }
-    L2DCatError error = {0};
-    L2DCatBehaviorCatalog *behaviors = calloc(1, sizeof(*behaviors));
+    BongoCatNeoError error = {0};
+    BongoCatNeoBehaviorCatalog *behaviors = calloc(1, sizeof(*behaviors));
     if (!behaviors) return false;
-    if (l2dcat_behaviors_load(behaviors, entry, &error) != L2DCAT_OK)
+    if (bongo_cat_neo_behaviors_load(behaviors, entry, &error) != BONGO_CAT_NEO_OK)
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
     SDL_Window *previous_window = SDL_GL_GetCurrentWindow();
     SDL_GLContext previous_context = SDL_GL_GetCurrentContext();
@@ -44,8 +44,8 @@ bool l2dcat_app_select_model(L2DCatApp *app, const char *id) {
         free(behaviors);
         return false;
     }
-    if (l2dcat_live2d_load(app->live2d, entry->directory,
-        entry->setting_file, &error) != L2DCAT_OK) {
+    if (bongo_cat_neo_live2d_load(app->live2d, entry->directory,
+        entry->setting_file, &error) != BONGO_CAT_NEO_OK) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
         if (restore_context) SDL_GL_MakeCurrent(previous_window, previous_context);
         free(behaviors);
@@ -53,118 +53,118 @@ bool l2dcat_app_select_model(L2DCatApp *app, const char *id) {
     }
     app->behaviors = *behaviors;
     free(behaviors);
-    l2dcat_overlay_load(app->overlay, entry->directory, &error);
+    bongo_cat_neo_overlay_load(app->overlay, entry->directory, &error);
     snprintf(app->loaded_model, sizeof(app->loaded_model), "%s", entry->id);
     select_model_state(app, entry);
     int pixel_width = app->config.window.width, pixel_height = app->config.window.height;
     if (app->window) SDL_GetWindowSizeInPixels(app->window, &pixel_width, &pixel_height);
-    l2dcat_live2d_resize(app->live2d, pixel_width, pixel_height);
+    bongo_cat_neo_live2d_resize(app->live2d, pixel_width, pixel_height);
     if (restore_context) SDL_GL_MakeCurrent(previous_window, previous_context);
-    l2dcat_window_mark_hit_dirty(app);
+    bongo_cat_neo_window_mark_hit_dirty(app);
     app->dirty = true;
     return true;
 }
 
-static bool copy_tree(const char *source, const char *target, L2DCatError *error);
-static bool remove_tree(const char *path, L2DCatError *error);
+static bool copy_tree(const char *source, const char *target, BongoCatNeoError *error);
+static bool remove_tree(const char *path, BongoCatNeoError *error);
 
 static SDL_EnumerationResult SDLCALL copy_item(void *userdata,
     const char *dirname, const char *name) {
     (void)dirname;
     TreeContext *context = userdata;
-    char source[L2DCAT_PATH_CAP], target[L2DCAT_PATH_CAP];
-    if (!l2dcat_path_join(source, sizeof(source), context->source, name) ||
-        !l2dcat_path_join(target, sizeof(target), context->target, name)) {
-        l2dcat_error_set(context->error, L2DCAT_ERROR_IO, "Model path is too long");
+    char source[BONGO_CAT_NEO_PATH_CAP], target[BONGO_CAT_NEO_PATH_CAP];
+    if (!bongo_cat_neo_path_join(source, sizeof(source), context->source, name) ||
+        !bongo_cat_neo_path_join(target, sizeof(target), context->target, name)) {
+        bongo_cat_neo_error_set(context->error, BONGO_CAT_NEO_ERROR_IO, "Model path is too long");
         return SDL_ENUM_FAILURE;
     }
     SDL_PathInfo info;
     if (!SDL_GetPathInfo(source, &info)) {
-        l2dcat_error_set(context->error, L2DCAT_ERROR_IO, "%s", SDL_GetError());
+        bongo_cat_neo_error_set(context->error, BONGO_CAT_NEO_ERROR_IO, "%s", SDL_GetError());
         return SDL_ENUM_FAILURE;
     }
     bool ok = info.type == SDL_PATHTYPE_DIRECTORY
         ? copy_tree(source, target, context->error)
         : info.type == SDL_PATHTYPE_FILE && SDL_CopyFile(source, target);
     if (!ok && context->error && !context->error->message[0])
-        l2dcat_error_set(context->error, L2DCAT_ERROR_IO, "Cannot copy %s: %s",
+        bongo_cat_neo_error_set(context->error, BONGO_CAT_NEO_ERROR_IO, "Cannot copy %s: %s",
             source, SDL_GetError());
     return ok ? SDL_ENUM_CONTINUE : SDL_ENUM_FAILURE;
 }
 
-static bool copy_tree(const char *source, const char *target, L2DCatError *error) {
+static bool copy_tree(const char *source, const char *target, BongoCatNeoError *error) {
     if (!SDL_CreateDirectory(target)) {
-        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot create %s: %s", target, SDL_GetError());
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot create %s: %s", target, SDL_GetError());
         return false;
     }
     TreeContext context = {source, target, error};
     return SDL_EnumerateDirectory(source, copy_item, &context);
 }
 
-L2DCatResult l2dcat_copy_directory(const char *source, const char *target,
-    L2DCatError *error) {
-    if (!source || !target || !l2dcat_path_is_dir(source)) return L2DCAT_ERROR_ARGUMENT;
-    return copy_tree(source, target, error) ? L2DCAT_OK : L2DCAT_ERROR_IO;
+BongoCatNeoResult bongo_cat_neo_copy_directory(const char *source, const char *target,
+    BongoCatNeoError *error) {
+    if (!source || !target || !bongo_cat_neo_path_is_dir(source)) return BONGO_CAT_NEO_ERROR_ARGUMENT;
+    return copy_tree(source, target, error) ? BONGO_CAT_NEO_OK : BONGO_CAT_NEO_ERROR_IO;
 }
 
 static SDL_EnumerationResult SDLCALL remove_item(void *userdata,
     const char *dirname, const char *name) {
-    L2DCatError *error = userdata;
-    char path[L2DCAT_PATH_CAP];
-    if (!l2dcat_path_join(path, sizeof(path), dirname, name) || !remove_tree(path, error))
+    BongoCatNeoError *error = userdata;
+    char path[BONGO_CAT_NEO_PATH_CAP];
+    if (!bongo_cat_neo_path_join(path, sizeof(path), dirname, name) || !remove_tree(path, error))
         return SDL_ENUM_FAILURE;
     return SDL_ENUM_CONTINUE;
 }
 
-static bool remove_tree(const char *path, L2DCatError *error) {
+static bool remove_tree(const char *path, BongoCatNeoError *error) {
     SDL_PathInfo info;
     if (!SDL_GetPathInfo(path, &info)) return true;
     if (info.type == SDL_PATHTYPE_DIRECTORY &&
         !SDL_EnumerateDirectory(path, remove_item, error)) return false;
     if (!SDL_RemovePath(path)) {
-        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot remove %s: %s", path, SDL_GetError());
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot remove %s: %s", path, SDL_GetError());
         return false;
     }
     return true;
 }
 
-static bool custom_root(L2DCatApp *app, char *path, size_t capacity) {
+static bool custom_root(BongoCatNeoApp *app, char *path, size_t capacity) {
     return app->data_root[0] &&
-        l2dcat_path_join(path, capacity, app->data_root, "custom-models") &&
+        bongo_cat_neo_path_join(path, capacity, app->data_root, "custom-models") &&
         SDL_CreateDirectory(path);
 }
 
-void l2dcat_app_rescan_models(L2DCatApp *app) {
+void bongo_cat_neo_app_rescan_models(BongoCatNeoApp *app) {
     if (!app) return;
-    L2DCatError error = {0};
-    char root[L2DCAT_PATH_CAP];
-    l2dcat_models_init(&app->models);
-    l2dcat_path_join(root, sizeof(root), app->asset_root, "models");
-    l2dcat_models_scan(&app->models, root, true, &error);
+    BongoCatNeoError error = {0};
+    char root[BONGO_CAT_NEO_PATH_CAP];
+    bongo_cat_neo_models_init(&app->models);
+    bongo_cat_neo_path_join(root, sizeof(root), app->asset_root, "models");
+    bongo_cat_neo_models_scan(&app->models, root, true, &error);
     if (custom_root(app, root, sizeof(root)))
-        l2dcat_models_scan(&app->models, root, false, &error);
+        bongo_cat_neo_models_scan(&app->models, root, false, &error);
 }
 
-L2DCatResult l2dcat_app_remove_model(L2DCatApp *app, const char *id,
-    L2DCatError *error) {
+BongoCatNeoResult bongo_cat_neo_app_remove_model(BongoCatNeoApp *app, const char *id,
+    BongoCatNeoError *error) {
     if (!app || !id) {
-        l2dcat_error_set(error, L2DCAT_ERROR_ARGUMENT, "Missing model id");
-        return L2DCAT_ERROR_ARGUMENT;
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_ARGUMENT, "Missing model id");
+        return BONGO_CAT_NEO_ERROR_ARGUMENT;
     }
-    const L2DCatModelEntry *entry = l2dcat_models_find(&app->models, id);
+    const BongoCatNeoModelEntry *entry = bongo_cat_neo_models_find(&app->models, id);
     if (!entry) {
-        l2dcat_error_set(error, L2DCAT_ERROR_ARGUMENT, "Model is not installed: %s", id);
-        return L2DCAT_ERROR_ARGUMENT;
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_ARGUMENT, "Model is not installed: %s", id);
+        return BONGO_CAT_NEO_ERROR_ARGUMENT;
     }
     if (entry->preset) {
-        l2dcat_error_set(error, L2DCAT_ERROR_ARGUMENT, "Built-in models cannot be removed: %s", id);
-        return L2DCAT_ERROR_ARGUMENT;
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_ARGUMENT, "Built-in models cannot be removed: %s", id);
+        return BONGO_CAT_NEO_ERROR_ARGUMENT;
     }
     bool selected = strcmp(id, app->config.current_model) == 0;
-    char directory[L2DCAT_PATH_CAP];
+    char directory[BONGO_CAT_NEO_PATH_CAP];
     snprintf(directory, sizeof(directory), "%s", entry->directory);
-    if (!remove_tree(directory, error)) return L2DCAT_ERROR_IO;
-    l2dcat_app_rescan_models(app);
-    if (selected && app->models.count) l2dcat_app_select_model(app, app->models.entries[0].id);
-    return L2DCAT_OK;
+    if (!remove_tree(directory, error)) return BONGO_CAT_NEO_ERROR_IO;
+    bongo_cat_neo_app_rescan_models(app);
+    if (selected && app->models.count) bongo_cat_neo_app_select_model(app, app->models.entries[0].id);
+    return BONGO_CAT_NEO_OK;
 }

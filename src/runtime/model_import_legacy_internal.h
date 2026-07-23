@@ -1,15 +1,15 @@
-#ifndef L2DCAT_MODEL_IMPORT_LEGACY_INTERNAL_H
-#define L2DCAT_MODEL_IMPORT_LEGACY_INTERNAL_H
+#ifndef BONGO_CAT_NEO_MODEL_IMPORT_LEGACY_INTERNAL_H
+#define BONGO_CAT_NEO_MODEL_IMPORT_LEGACY_INTERNAL_H
 
 #include "model_import.h"
 
-typedef struct L2DCatLegacyKeyNames {
+typedef struct BongoCatNeoLegacyKeyNames {
     const char *items[2];
     char generated[16];
     size_t count;
-} L2DCatLegacyKeyNames;
+} BongoCatNeoLegacyKeyNames;
 
-bool l2dcat_legacy_emit_pair(const char *hand, const char *keyboard,
-    const char *directory, L2DCatLegacyKeyNames names, L2DCatError *error);
+bool bongo_cat_neo_legacy_emit_pair(const char *hand, const char *keyboard,
+    const char *directory, BongoCatNeoLegacyKeyNames names, BongoCatNeoError *error);
 
 #endif

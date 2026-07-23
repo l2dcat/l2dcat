@@ -3,11 +3,11 @@ param([string]$Exe="", [string]$OutputDir="", [double]$MaximumWorkingMiB=140,
     [int]$MaximumHandleGrowth=12)
 $ErrorActionPreference="Stop"
 $root=Split-Path $PSScriptRoot -Parent
-if(-not $Exe){$Exe=Join-Path $root "build-cubism\Release\l2dcat.exe"}
+if(-not $Exe){$Exe=Join-Path $root "build-cubism\Release\BongoCatNeo.exe"}
 if(-not $OutputDir){$OutputDir=Join-Path $root "build-cubism\runtime-flow-audit"}
 $Exe=[IO.Path]::GetFullPath($Exe); $OutputDir=[IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Force $OutputDir|Out-Null
-Get-Process l2dcat -ErrorAction SilentlyContinue|Stop-Process -Force
+Get-Process BongoCatNeo -ErrorAction SilentlyContinue|Stop-Process -Force
 $data=Join-Path $OutputDir ("data-"+[DateTime]::UtcNow.Ticks)
 $stageFile=Join-Path $data "runtime-flow-stage.txt"
 $process=Start-Process $Exe -ArgumentList @("--ci-smoke","--ci-runtime-flow",

@@ -1,6 +1,6 @@
-#include "l2dcat/file.h"
-#include "l2dcat/memory.h"
-#include "l2dcat/model.h"
+#include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/memory.h"
+#include "bongo_cat_neo/model.h"
 #if defined(CSM_TARGET_WIN_GL) || defined(CSM_TARGET_LINUX_GL)
 #include <GL/glew.h>
 #endif
@@ -53,13 +53,13 @@ void log_message(const char *message) {
 
 Csm::csmByte *load_file(const std::string path, Csm::csmSizeInt *size) {
     if (size) *size = 0;
-    FILE *file = l2dcat_file_open(path.c_str(), "rb");
+    FILE *file = bongo_cat_neo_file_open(path.c_str(), "rb");
     if (!file) {
         const char *base = SDL_GetBasePath();
-        if (base) file = l2dcat_file_open((std::string(base) + path).c_str(), "rb");
+        if (base) file = bongo_cat_neo_file_open((std::string(base) + path).c_str(), "rb");
     }
     if (!file && !resource_root.empty())
-        file = l2dcat_file_open((resource_root + "/" + path).c_str(), "rb");
+        file = bongo_cat_neo_file_open((resource_root + "/" + path).c_str(), "rb");
     if (!file) return nullptr;
     std::fseek(file, 0, SEEK_END);
     long length = std::ftell(file);
@@ -76,7 +76,7 @@ Csm::csmByte *load_file(const std::string path, Csm::csmSizeInt *size) {
 
 void release_file(Csm::csmByte *bytes) { std::free(bytes); }
 
-bool start_framework(L2DCatError *error) {
+bool start_framework(BongoCatNeoError *error) {
     if (runtime_count++) return true;
 #if defined(CSM_TARGET_WIN_GL) || defined(CSM_TARGET_LINUX_GL)
     glewExperimental = GL_TRUE;
@@ -84,14 +84,14 @@ bool start_framework(L2DCatError *error) {
     glGetError();
     if (glew_result != GLEW_OK) {
         runtime_count = 0;
-        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "GLEW initialization failed: %s",
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM, "GLEW initialization failed: %s",
             reinterpret_cast<const char *>(glewGetErrorString(glew_result)));
         return false;
     }
     if (!glCreateShader || !glShaderSource || !glCompileShader ||
         !glGetShaderiv || !glCreateProgram || !glGenFramebuffers) {
         runtime_count = 0;
-        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM,
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_PLATFORM,
             "Required OpenGL 3.3 functions are unavailable");
         return false;
     }
@@ -103,7 +103,7 @@ bool start_framework(L2DCatError *error) {
     framework_option.ReleaseBytesFunction = release_file;
     if (!CubismFramework::StartUp(&allocator, &framework_option)) {
         runtime_count = 0;
-        l2dcat_error_set(error, L2DCAT_ERROR_CUBISM, "Cubism Framework startup failed");
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_CUBISM, "Cubism Framework startup failed");
         return false;
     }
     CubismFramework::Initialize();
@@ -119,35 +119,35 @@ void stop_framework() {
 
 } // namespace
 
-struct L2DCatLive2D {
-    l2dcat::NativeModel *model;
+struct BongoCatNeoLive2D {
+    bongo_cat_neo::NativeModel *model;
     int width = 612;
     int height = 354;
 };
 
-static bool restore_previous(L2DCatLive2D *runtime,
-    l2dcat::NativeModel *previous, L2DCatError *primary) noexcept {
+static bool restore_previous(BongoCatNeoLive2D *runtime,
+    bongo_cat_neo::NativeModel *previous, BongoCatNeoError *primary) noexcept {
     if (!previous) { runtime->model = nullptr; return true; }
-    L2DCatError restore_error = {};
+    BongoCatNeoError restore_error = {};
     try {
         if (previous->load_textures(&restore_error)) {
             runtime->model = previous;
             return true;
         }
     } catch (const std::bad_alloc &) {
-        l2dcat_error_set(&restore_error, L2DCAT_ERROR_MEMORY,
+        bongo_cat_neo_error_set(&restore_error, BONGO_CAT_NEO_ERROR_MEMORY,
             "Out of memory while restoring the previous model");
     } catch (const std::exception &exception) {
-        l2dcat_error_set(&restore_error, L2DCAT_ERROR_CUBISM,
+        bongo_cat_neo_error_set(&restore_error, BONGO_CAT_NEO_ERROR_CUBISM,
             "Previous model restore failed: %s", exception.what());
     } catch (...) {
-        l2dcat_error_set(&restore_error, L2DCAT_ERROR_CUBISM,
+        bongo_cat_neo_error_set(&restore_error, BONGO_CAT_NEO_ERROR_CUBISM,
             "Previous model restore failed with an unknown exception");
     }
     if (primary) {
         char original[sizeof(primary->message)];
         std::snprintf(original, sizeof(original), "%s", primary->message);
-        l2dcat_error_set(primary, primary->code,
+        bongo_cat_neo_error_set(primary, primary->code,
             "%s; restore failed: %s", original, restore_error.message);
     }
     delete previous;
@@ -155,41 +155,41 @@ static bool restore_previous(L2DCatLive2D *runtime,
     return false;
 }
 
-extern "C" L2DCatLive2D *l2dcat_live2d_create(const char *asset_root,
-    L2DCatError *error) {
+extern "C" BongoCatNeoLive2D *bongo_cat_neo_live2d_create(const char *asset_root,
+    BongoCatNeoError *error) {
     resource_root = asset_root ? asset_root : "";
     if (!start_framework(error)) return nullptr;
-    L2DCatLive2D *runtime = new(std::nothrow) L2DCatLive2D{};
+    BongoCatNeoLive2D *runtime = new(std::nothrow) BongoCatNeoLive2D{};
     if (!runtime) {
         stop_framework();
-        l2dcat_error_set(error, L2DCAT_ERROR_MEMORY, "Cannot allocate Cubism runtime");
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_MEMORY, "Cannot allocate Cubism runtime");
     }
     return runtime;
 }
 
-extern "C" void l2dcat_live2d_destroy(L2DCatLive2D *runtime) {
+extern "C" void bongo_cat_neo_live2d_destroy(BongoCatNeoLive2D *runtime) {
     if (!runtime) return;
     delete runtime->model;
     delete runtime;
     stop_framework();
 }
 
-extern "C" L2DCatResult l2dcat_live2d_load(L2DCatLive2D *runtime, const char *directory,
-    const char *setting, L2DCatError *error) {
-    if (!runtime) return L2DCAT_ERROR_ARGUMENT;
-    l2dcat::NativeModel *previous = runtime->model;
-    l2dcat::NativeModel *model = nullptr;
+extern "C" BongoCatNeoResult bongo_cat_neo_live2d_load(BongoCatNeoLive2D *runtime, const char *directory,
+    const char *setting, BongoCatNeoError *error) {
+    if (!runtime) return BONGO_CAT_NEO_ERROR_ARGUMENT;
+    bongo_cat_neo::NativeModel *previous = runtime->model;
+    bongo_cat_neo::NativeModel *model = nullptr;
     bool previous_released = false;
     try {
-        model = new(std::nothrow) l2dcat::NativeModel();
+        model = new(std::nothrow) bongo_cat_neo::NativeModel();
         if (!model) {
-            l2dcat_error_set(error, L2DCAT_ERROR_MEMORY,
+            bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_MEMORY,
                 "Cannot allocate Live2D model");
-            return L2DCAT_ERROR_MEMORY;
+            return BONGO_CAT_NEO_ERROR_MEMORY;
         }
         if (!model->load(directory, setting, error)) {
             delete model;
-            return error ? error->code : L2DCAT_ERROR_CUBISM;
+            return error ? error->code : BONGO_CAT_NEO_ERROR_CUBISM;
         }
         if (previous) {
             previous_released = true;
@@ -198,27 +198,27 @@ extern "C" L2DCatResult l2dcat_live2d_load(L2DCatLive2D *runtime, const char *di
         }
         model->reshape(runtime->width, runtime->height);
         if (!model->load_textures(error)) {
-            L2DCatResult result = error ? error->code : L2DCAT_ERROR_CUBISM;
+            BongoCatNeoResult result = error ? error->code : BONGO_CAT_NEO_ERROR_CUBISM;
             delete model;
             glFinish();
             restore_previous(runtime, previous, error);
             glFinish();
-            l2dcat_platform_trim_memory();
+            bongo_cat_neo_platform_trim_memory();
             return result;
         }
         delete previous;
         runtime->model = model;
         glFinish();
-        l2dcat_platform_trim_memory();
-        return L2DCAT_OK;
+        bongo_cat_neo_platform_trim_memory();
+        return BONGO_CAT_NEO_OK;
     } catch (const std::bad_alloc &) {
-        l2dcat_error_set(error, L2DCAT_ERROR_MEMORY,
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_MEMORY,
             "Out of memory while loading the Live2D model");
     } catch (const std::exception &exception) {
-        l2dcat_error_set(error, L2DCAT_ERROR_CUBISM,
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_CUBISM,
             "Live2D model load failed: %s", exception.what());
     } catch (...) {
-        l2dcat_error_set(error, L2DCAT_ERROR_CUBISM,
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_CUBISM,
             "Live2D model load failed with an unknown exception");
     }
     delete model;
@@ -226,12 +226,12 @@ extern "C" L2DCatResult l2dcat_live2d_load(L2DCatLive2D *runtime, const char *di
         glFinish();
         restore_previous(runtime, previous, error);
         glFinish();
-        l2dcat_platform_trim_memory();
+        bongo_cat_neo_platform_trim_memory();
     }
-    return error ? error->code : L2DCAT_ERROR_CUBISM;
+    return error ? error->code : BONGO_CAT_NEO_ERROR_CUBISM;
 }
 
-extern "C" void l2dcat_live2d_resize(L2DCatLive2D *runtime, int width, int height) {
+extern "C" void bongo_cat_neo_live2d_resize(BongoCatNeoLive2D *runtime, int width, int height) {
     if (!runtime) return;
     if (width > 0 && height > 0) {
         runtime->width = width;
@@ -239,7 +239,7 @@ extern "C" void l2dcat_live2d_resize(L2DCatLive2D *runtime, int width, int heigh
     }
     if (runtime->model) runtime->model->resize(width, height);
 }
-extern "C" void l2dcat_live2d_reshape(L2DCatLive2D *runtime, int width, int height) {
+extern "C" void bongo_cat_neo_live2d_reshape(BongoCatNeoLive2D *runtime, int width, int height) {
     if (!runtime) return;
     if (width > 0 && height > 0) {
         runtime->width = width;
@@ -247,26 +247,26 @@ extern "C" void l2dcat_live2d_reshape(L2DCatLive2D *runtime, int width, int heig
     }
     if (runtime->model) runtime->model->reshape(width, height);
 }
-extern "C" bool l2dcat_live2d_update(L2DCatLive2D *runtime, float elapsed) {
+extern "C" bool bongo_cat_neo_live2d_update(BongoCatNeoLive2D *runtime, float elapsed) {
     return runtime && runtime->model && runtime->model->update(elapsed);
 }
-extern "C" void l2dcat_live2d_draw(L2DCatLive2D *runtime) {
+extern "C" void bongo_cat_neo_live2d_draw(BongoCatNeoLive2D *runtime) {
     if (runtime && runtime->model) runtime->model->draw();
 }
-extern "C" void l2dcat_live2d_set_mirror(L2DCatLive2D *runtime, bool mirror) {
+extern "C" void bongo_cat_neo_live2d_set_mirror(BongoCatNeoLive2D *runtime, bool mirror) {
     if (runtime && runtime->model) runtime->model->set_mirror(mirror);
 }
-extern "C" bool l2dcat_live2d_set_parameter(L2DCatLive2D *runtime, const char *id, float value) {
+extern "C" bool bongo_cat_neo_live2d_set_parameter(BongoCatNeoLive2D *runtime, const char *id, float value) {
     return runtime && runtime->model && runtime->model->set_parameter(id, value);
 }
-extern "C" bool l2dcat_live2d_parameter(L2DCatLive2D *runtime, const char *id,
-    L2DCatParameterRange *range) {
+extern "C" bool bongo_cat_neo_live2d_parameter(BongoCatNeoLive2D *runtime, const char *id,
+    BongoCatNeoParameterRange *range) {
     return runtime && runtime->model && range && runtime->model->parameter(id,
         &range->minimum, &range->maximum, &range->value);
 }
-extern "C" bool l2dcat_live2d_start_motion(L2DCatLive2D *runtime, const char *group, int index) {
+extern "C" bool bongo_cat_neo_live2d_start_motion(BongoCatNeoLive2D *runtime, const char *group, int index) {
     return runtime && runtime->model && runtime->model->start_motion(group, index);
 }
-extern "C" bool l2dcat_live2d_set_expression(L2DCatLive2D *runtime, int index) {
+extern "C" bool bongo_cat_neo_live2d_set_expression(BongoCatNeoLive2D *runtime, int index) {
     return runtime && runtime->model && runtime->model->set_expression(index);
 }

@@ -10,7 +10,7 @@ static struct nk_color rgb(int value) {
 }
 
 #ifdef _WIN32
-static bool high_contrast(L2DCatUIPalette *value) {
+static bool high_contrast(BongoCatNeoUIPalette *value) {
     HIGHCONTRASTW contrast = {0}; contrast.cbSize = sizeof(contrast);
     if (!SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(contrast),
         &contrast, 0) || !(contrast.dwFlags & HCF_HIGHCONTRASTON)) return false;
@@ -29,8 +29,8 @@ static bool high_contrast(L2DCatUIPalette *value) {
 }
 #endif
 
-L2DCatUIPalette l2dcat_ui_palette(bool dark) {
-    L2DCatUIPalette value;
+BongoCatNeoUIPalette bongo_cat_neo_ui_palette(bool dark) {
+    BongoCatNeoUIPalette value;
 #ifdef _WIN32
     if (high_contrast(&value)) return value;
 #endif
@@ -50,8 +50,8 @@ L2DCatUIPalette l2dcat_ui_palette(bool dark) {
     return value;
 }
 
-bool l2dcat_ui_dark(const struct nk_context *context) {
-    const L2DCatUIBackend *ui = l2dcat_ui_backend_for_context(context);
+bool bongo_cat_neo_ui_dark(const struct nk_context *context) {
+    const BongoCatNeoUIBackend *ui = bongo_cat_neo_ui_backend_for_context(context);
     return ui ? ui->dark_theme :
         (context && context->style.window.background.r < 128);
 }
@@ -80,9 +80,9 @@ static void geometry(struct nk_style *style) {
     style->scrollh = style->scrollv;
 }
 
-void l2dcat_ui_apply_theme(struct nk_context *context, bool dark) {
+void bongo_cat_neo_ui_apply_theme(struct nk_context *context, bool dark) {
     struct nk_color table[NK_COLOR_COUNT];
-    L2DCatUIPalette p = l2dcat_ui_palette(dark);
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
     table[NK_COLOR_TEXT] = p.text;
     table[NK_COLOR_WINDOW] = p.background;
     table[NK_COLOR_HEADER] = p.surface;
@@ -123,6 +123,6 @@ void l2dcat_ui_apply_theme(struct nk_context *context, bool dark) {
     context->style.window.fixed_background = nk_style_item_color(p.background);
     context->style.window.group_border_color = p.border;
     context->style.text.color = p.text;
-    L2DCatUIBackend *ui = l2dcat_ui_backend_for_context(context);
+    BongoCatNeoUIBackend *ui = bongo_cat_neo_ui_backend_for_context(context);
     if (ui) ui->dark_theme = dark;
 }

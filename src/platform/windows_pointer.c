@@ -1,16 +1,16 @@
-#include "l2dcat/platform.h"
+#include "bongo_cat_neo/platform.h"
 
 #ifdef _WIN32
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_properties.h>
 #include <windows.h>
 
-static HWND native_window(L2DCatPlatform *platform) {
+static HWND native_window(BongoCatNeoPlatform *platform) {
     return (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(platform->window),
         SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 }
 
-bool l2dcat_platform_pointer_local(L2DCatPlatform *platform, double screen_x,
+bool bongo_cat_neo_platform_pointer_local(BongoCatNeoPlatform *platform, double screen_x,
     double screen_y, float *local_x, float *local_y) {
     if (!platform || !local_x || !local_y) return false;
     HWND window = native_window(platform);
@@ -23,7 +23,7 @@ bool l2dcat_platform_pointer_local(L2DCatPlatform *platform, double screen_x,
         point.y >= client.top && point.y < client.bottom;
 }
 
-static void update_style(L2DCatPlatform *platform, LONG_PTR add,
+static void update_style(BongoCatNeoPlatform *platform, LONG_PTR add,
     LONG_PTR remove, bool refresh_frame) {
     HWND window = native_window(platform);
     if (!window) return;
@@ -36,18 +36,18 @@ static void update_style(L2DCatPlatform *platform, LONG_PTR add,
     SetWindowPos(window, NULL, 0, 0, 0, 0, flags);
 }
 
-void l2dcat_platform_set_click_through(L2DCatPlatform *platform, bool enabled) {
+void bongo_cat_neo_platform_set_click_through(BongoCatNeoPlatform *platform, bool enabled) {
     update_style(platform, enabled ? WS_EX_TRANSPARENT : 0,
         enabled ? 0 : WS_EX_TRANSPARENT, false);
 }
 
-void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
+void bongo_cat_neo_platform_set_taskbar(BongoCatNeoPlatform *platform, bool visible) {
     update_style(platform, visible ? WS_EX_APPWINDOW : WS_EX_TOOLWINDOW,
         visible ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW, true);
 }
 
-static const wchar_t tray_proc_property[] = L"l2dcat.TrayWindowProc";
-static L2DCatTrayClick tray_click;
+static const wchar_t tray_proc_property[] = L"BongoCatNeo.TrayWindowProc";
+static BongoCatNeoTrayClick tray_click;
 static void *tray_click_userdata;
 
 static LRESULT CALLBACK tray_window_proc(HWND window, UINT message,
@@ -85,7 +85,7 @@ static void bind_tray_window(HWND window, void *tray, bool binding) {
     }
 }
 
-void l2dcat_platform_set_tray_left_click(void *tray, L2DCatTrayClick callback,
+void bongo_cat_neo_platform_set_tray_left_click(void *tray, BongoCatNeoTrayClick callback,
     void *userdata) {
     tray_click = callback;
     tray_click_userdata = userdata;
@@ -95,7 +95,7 @@ void l2dcat_platform_set_tray_left_click(void *tray, L2DCatTrayClick callback,
         bind_tray_window(window, tray, callback != NULL);
 }
 
-void l2dcat_platform_raise_window(SDL_Window *window) {
+void bongo_cat_neo_platform_raise_window(SDL_Window *window) {
     if (!window) return;
     SDL_ShowWindow(window);
     HWND handle = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(window),
@@ -111,7 +111,7 @@ void l2dcat_platform_raise_window(SDL_Window *window) {
     if (attached) AttachThreadInput(current_thread, foreground_thread, FALSE);
 }
 
-bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
+bool bongo_cat_neo_platform_set_geometry(BongoCatNeoPlatform *platform,
     int x, int y, int width, int height) {
     if (!platform || !platform->window) return false;
     int current_width, current_height;

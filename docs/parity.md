@@ -30,8 +30,7 @@ desktop runtime.
 - Shift plus secondary drag resizing from 10 through 500 percent.
 - Tray and context menus, taskbar visibility, and single instance handling.
 - Restore window position and size across monitor and DPI changes.
-- Autostart, independently configured portable updates, project information,
-  and application exit.
+- Autostart, project information, and application exit.
 
 ## Preferences and data
 

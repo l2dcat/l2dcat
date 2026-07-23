@@ -1,6 +1,0 @@
-if(NOT EXISTS "${INPUT}")
-  message(FATAL_ERROR "Native release artifact is missing: ${INPUT}")
-endif()
-file(SHA256 "${INPUT}" SHA256)
-file(SIZE "${INPUT}" SIZE)
-file(WRITE "${OUTPUT}" "${VERSION}\n${PLATFORM}\n${SHA256}\n${SIZE}\n")

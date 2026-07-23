@@ -4,16 +4,16 @@
 #import <Cocoa/Cocoa.h>
 #include <stdio.h>
 
-@interface L2DCatMenuTarget : NSObject <NSMenuDelegate> {
-    NSInteger selected_; const L2DCatMenuLabels *labels_;
+@interface BongoCatNeoMenuTarget : NSObject <NSMenuDelegate> {
+    NSInteger selected_; const BongoCatNeoMenuLabels *labels_;
 }
-- (id)initWithLabels:(const L2DCatMenuLabels *)labels;
+- (id)initWithLabels:(const BongoCatNeoMenuLabels *)labels;
 - (void)choose:(id)sender;
 - (NSInteger)selected;
 @end
 
-@implementation L2DCatMenuTarget
-- (id)initWithLabels:(const L2DCatMenuLabels *)labels {
+@implementation BongoCatNeoMenuTarget
+- (id)initWithLabels:(const BongoCatNeoMenuLabels *)labels {
     self = [super init]; if (self) labels_ = labels; return self;
 }
 - (void)choose:(id)sender { selected_ = [sender tag]; }
@@ -21,7 +21,7 @@
 - (void)menu:(NSMenu *)menu willHighlightItem:(NSMenuItem *)item {
     (void)menu;
     if (labels_->preview) labels_->preview(labels_->preview_userdata,
-        item ? (L2DCatMenuAction)[item tag] : L2DCAT_MENU_NONE);
+        item ? (BongoCatNeoMenuAction)[item tag] : BONGO_CAT_NEO_MENU_NONE);
 }
 @end
 
@@ -29,7 +29,7 @@ static NSString *text(const char *value) {
     return value ? [NSString stringWithUTF8String:value] : @"";
 }
 
-static NSMenuItem *add_item(NSMenu *menu, L2DCatMenuTarget *target,
+static NSMenuItem *add_item(NSMenu *menu, BongoCatNeoMenuTarget *target,
     const char *label, NSInteger tag, bool checked) {
     NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:text(label)
         action:@selector(choose:) keyEquivalent:@""];
@@ -38,7 +38,7 @@ static NSMenuItem *add_item(NSMenu *menu, L2DCatMenuTarget *target,
     [menu addItem:item]; [item release]; return item;
 }
 
-static void add_scale_menu(NSMenu *menu, L2DCatMenuTarget *target,
+static void add_scale_menu(NSMenu *menu, BongoCatNeoMenuTarget *target,
     const char *label, bool opacity) {
     NSMenuItem *root = [[NSMenuItem alloc] initWithTitle:text(label)
         action:nil keyEquivalent:@""];
@@ -49,26 +49,26 @@ static void add_scale_menu(NSMenu *menu, L2DCatMenuTarget *target,
     for (int i = 0; i < count; ++i) {
         int value = opacity ? values[i] : 50 + i * 10;
         char title[16]; snprintf(title, sizeof(title), "%d%%", value);
-        NSInteger tag = opacity ? L2DCAT_MENU_OPACITY_10 + i : L2DCAT_MENU_SCALE_50 + i;
+        NSInteger tag = opacity ? BONGO_CAT_NEO_MENU_OPACITY_10 + i : BONGO_CAT_NEO_MENU_SCALE_50 + i;
         add_item(submenu, target, title, tag, false);
     }
     [root setSubmenu:submenu]; [menu addItem:root];
     [submenu release]; [root release];
 }
 
-L2DCatMenuAction l2dcat_macos_context_menu(L2DCatPlatform *platform,
-    const L2DCatMenuLabels *labels) {
+BongoCatNeoMenuAction bongo_cat_neo_macos_context_menu(BongoCatNeoPlatform *platform,
+    const BongoCatNeoMenuLabels *labels) {
     (void)platform;
-    if (!labels) return L2DCAT_MENU_NONE;
-    L2DCatMenuTarget *target = [[L2DCatMenuTarget alloc] initWithLabels:labels];
+    if (!labels) return BONGO_CAT_NEO_MENU_NONE;
+    BongoCatNeoMenuTarget *target = [[BongoCatNeoMenuTarget alloc] initWithLabels:labels];
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@""];
     [menu setDelegate:target];
-    add_item(menu, target, labels->preferences, L2DCAT_MENU_PREFERENCES, false);
-    add_item(menu, target, labels->hide, L2DCAT_MENU_HIDE, false);
+    add_item(menu, target, labels->preferences, BONGO_CAT_NEO_MENU_PREFERENCES, false);
+    add_item(menu, target, labels->hide, BONGO_CAT_NEO_MENU_HIDE, false);
     [menu addItem:[NSMenuItem separatorItem]];
-    add_item(menu, target, labels->pass_through, L2DCAT_MENU_PASS_THROUGH,
+    add_item(menu, target, labels->pass_through, BONGO_CAT_NEO_MENU_PASS_THROUGH,
         labels->pass_through_checked);
-    add_item(menu, target, labels->always_on_top, L2DCAT_MENU_ALWAYS_ON_TOP,
+    add_item(menu, target, labels->always_on_top, BONGO_CAT_NEO_MENU_ALWAYS_ON_TOP,
         labels->always_on_top_checked);
     add_scale_menu(menu, target, labels->window_size, false);
     add_scale_menu(menu, target, labels->opacity, true);
@@ -77,14 +77,14 @@ L2DCatMenuAction l2dcat_macos_context_menu(L2DCatPlatform *platform,
     NSMenu *models = [[NSMenu alloc] initWithTitle:text(labels->model)];
     [models setDelegate:target];
     for (size_t i = 0; i < labels->model_count; ++i)
-        add_item(models, target, labels->model_names[i], L2DCAT_MENU_MODEL_FIRST + i,
+        add_item(models, target, labels->model_names[i], BONGO_CAT_NEO_MENU_MODEL_FIRST + i,
             i == labels->current_model);
     [modelRoot setSubmenu:models]; [menu addItem:modelRoot];
     [models release]; [modelRoot release];
     [menu addItem:[NSMenuItem separatorItem]];
-    add_item(menu, target, labels->exit, L2DCAT_MENU_EXIT, false);
+    add_item(menu, target, labels->exit, BONGO_CAT_NEO_MENU_EXIT, false);
     [menu popUpMenuPositioningItem:nil atLocation:[NSEvent mouseLocation] inView:nil];
-    L2DCatMenuAction result = (L2DCatMenuAction)[target selected];
+    BongoCatNeoMenuAction result = (BongoCatNeoMenuAction)[target selected];
     if (labels->restore) labels->restore(labels->preview_userdata, result);
     [menu release]; [target release]; return result;
 }

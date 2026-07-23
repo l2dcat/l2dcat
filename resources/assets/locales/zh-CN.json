@@ -20,7 +20,6 @@
           "alwaysOnTop": "窗口置顶",
           "keepInScreen": "保持在屏幕内",
           "windowSize": "窗口尺寸",
-          "windowRadius": "窗口圆角",
           "opacity": "不透明度",
           "motionSound": "动作音效",
           "behavior": "动作与表情",
@@ -66,7 +65,7 @@
           "showTaskbarIcon": "启用后，即可通过 OBS Studio 捕获窗口。",
           "showTrayIcon": "启用后，在系统托盘中显示应用图标。",
           "inputMonitoringPermission": "开启输入监控权限，以便接收系统的键盘和鼠标事件来响应你的操作。",
-          "inputMonitoringPermissionGuide": "开启输入监控权限后，应用才能接收系统的键盘和鼠标事件，从而响应你的操作。\n\n操作方式：\n1. 打开「系统设置」→「隐私与安全性」→「输入监控」。\n2. 若列表中已存在 l2dcat，请先选中它，点击「-」按钮将其删除。\n3. 点击「+」按钮，找到并添加 l2dcat 应用。\n4. 重启应用，以确保权限正式生效。",
+          "inputMonitoringPermissionGuide": "开启输入监控权限后，应用才能接收系统的键盘和鼠标事件，从而响应你的操作。\n\n操作方式：\n1. 打开「系统设置」→「隐私与安全性」→「输入监控」。\n2. 若列表中已存在 Bongo Cat Neo，请先选中它，点击「-」按钮将其删除。\n3. 点击「+」按钮，找到并添加 Bongo Cat Neo 应用。\n4. 重启应用，以确保权限正式生效。",
           "administratorPermission": "以管理员身份运行应用，可以更稳定地捕获部分系统级按键与输入事件。",
           "administratorPermissionGuide": "为了能更稳定地捕获部分系统级按键与输入事件，建议以管理员身份运行应用。\n\n操作方式：\n1. 先退出应用。\n2. 在资源管理器中找到应用的 exe 或快捷方式。\n3. 根据需要选择启动方式：\n   • 仅本次：右键并选择「以管理员身份运行」。\n   • 永久默认：右键 → 属性 → 兼容性选项卡 → 勾选「以管理员身份运行此程序」→ 确定。"
         },
@@ -131,11 +130,9 @@
         "title": "关于",
         "labels": {
           "aboutApp": "关于软件",
-          "appLog": "软件日志",
-          "appInfo": "软件信息"
+          "appLog": "软件日志"
         },
         "hints": {
-          "appInfo": "复制应用程序信息。",
           "copySuccess": "复制成功"
         },
         "buttons": {
@@ -151,22 +148,6 @@
         "pressRecordShortcut": "按下录制快捷键",
         "clickRecordShortcut": "点击录制快捷键"
       }
-    },
-    "updateApp": {
-      "title": "发现新版本🥳",
-      "labels": {
-        "updateVersion": "更新版本：",
-        "updateTime": "更新时间：",
-        "changelog": "更新日志："
-      },
-      "hints": {
-        "checkingUpdates": "正在检查更新...",
-        "alreadyLatest": "当前已是最新版本🎉"
-      },
-      "buttons": {
-        "updateNow": "立即更新",
-        "updateLater": "稍后更新"
-      }
     }
   },
   "composables": {
@@ -179,7 +160,6 @@
         "alwaysOnTop": "置顶",
         "windowSize": "大小",
         "opacity": "透明度",
-        "restartApp": "重启",
         "quitApp": "退出",
         "model": "模型"
       }
@@ -206,10 +186,6 @@
     "aboutDescription": "独立的原生 C11 应用，通过轻量 C++ 桥接 Live2D Cubism。",
     "rendererCubism": "Live2D 渲染器：Cubism Native",
     "rendererDiagnostic": "Live2D 渲染器：诊断模式（未安装 Cubism SDK）",
-    "updateChannel": "原生便携版更新通道",
-    "downloading": "正在下载：%.1f%%",
-    "updateReady": "l2dcat %s 已可安装",
-    "installRestart": "安装并重启",
     "cancel": "取消",
     "delete": "删除",
     "select": "选择",

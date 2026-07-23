@@ -2,8 +2,8 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 
-#include "l2dcat/platform.h"
-#include "l2dcat/path.h"
+#include "bongo_cat_neo/platform.h"
+#include "bongo_cat_neo/path.h"
 #include "linux_internal.h"
 
 #if !defined(_WIN32) && !defined(__APPLE__)
@@ -17,19 +17,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/file.h>
-#include <sys/stat.h>
 #include <sys/types.h>
-#include <signal.h>
-#include <time.h>
 #include <unistd.h>
 
 static int instance_lock = -1;
-static L2DCatPlatform *active_platform;
-
-static void sleep_100ms(void) {
-    struct timespec delay = {0, 100000000L};
-    while (nanosleep(&delay, &delay) != 0 && errno == EINTR) {}
-}
+static BongoCatNeoPlatform *active_platform;
 
 static void publish_instance_window(SDL_Window *window) {
     if (instance_lock < 0 || !window) return;
@@ -60,38 +52,38 @@ static void restore_instance_window(void) {
     XFlush(display); XCloseDisplay(display);
 }
 
-static bool executable_path(char output[L2DCAT_PATH_CAP]) {
+static bool executable_path(char output[BONGO_CAT_NEO_PATH_CAP]) {
     const char *appimage = getenv("APPIMAGE");
     if (appimage && appimage[0]) {
-        int length = snprintf(output, L2DCAT_PATH_CAP, "%s", appimage);
-        return length >= 0 && length < L2DCAT_PATH_CAP;
+        int length = snprintf(output, BONGO_CAT_NEO_PATH_CAP, "%s", appimage);
+        return length >= 0 && length < BONGO_CAT_NEO_PATH_CAP;
     }
-    ssize_t length = readlink("/proc/self/exe", output, L2DCAT_PATH_CAP - 1);
-    if (length <= 0 || length >= L2DCAT_PATH_CAP) return false;
+    ssize_t length = readlink("/proc/self/exe", output, BONGO_CAT_NEO_PATH_CAP - 1);
+    if (length <= 0 || length >= BONGO_CAT_NEO_PATH_CAP) return false;
     output[length] = '\0'; return true;
 }
 
-L2DCatResult l2dcat_platform_init(L2DCatPlatform *platform, SDL_Window *window,
-    L2DCatInputState *input, L2DCatError *error) {
+BongoCatNeoResult bongo_cat_neo_platform_init(BongoCatNeoPlatform *platform, SDL_Window *window,
+    BongoCatNeoInputState *input, BongoCatNeoError *error) {
     (void)error;
     memset(platform, 0, sizeof(*platform));
     platform->window = window;
     platform->input = input;
     active_platform = platform;
     publish_instance_window(window);
-    L2DCatError input_error = {0};
-    if (!l2dcat_linux_x11_start(platform, &input_error) && input_error.message[0])
+    BongoCatNeoError input_error = {0};
+    if (!bongo_cat_neo_linux_x11_start(platform, &input_error) && input_error.message[0])
         SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "%s", input_error.message);
-    return L2DCAT_OK;
+    return BONGO_CAT_NEO_OK;
 }
-void l2dcat_platform_shutdown(L2DCatPlatform *platform) {
-    l2dcat_linux_x11_stop(platform);
+void bongo_cat_neo_platform_shutdown(BongoCatNeoPlatform *platform) {
+    bongo_cat_neo_linux_x11_stop(platform);
     if (active_platform == platform) active_platform = NULL;
 }
-void l2dcat_platform_set_click_through(L2DCatPlatform *platform, bool enabled) {
-    l2dcat_linux_x11_click_through(platform, enabled);
+void bongo_cat_neo_platform_set_click_through(BongoCatNeoPlatform *platform, bool enabled) {
+    bongo_cat_neo_linux_x11_click_through(platform, enabled);
 }
-bool l2dcat_platform_pointer_local(L2DCatPlatform *platform, double screen_x,
+bool bongo_cat_neo_platform_pointer_local(BongoCatNeoPlatform *platform, double screen_x,
     double screen_y, float *local_x, float *local_y) {
     int x, y, width, height;
     if (!platform || !local_x || !local_y ||
@@ -100,19 +92,19 @@ bool l2dcat_platform_pointer_local(L2DCatPlatform *platform, double screen_x,
     *local_x = (float)(screen_x - x); *local_y = (float)(screen_y - y);
     return *local_x >= 0 && *local_x < width && *local_y >= 0 && *local_y < height;
 }
-void l2dcat_platform_set_always_on_top(L2DCatPlatform *platform, bool enabled) {
+void bongo_cat_neo_platform_set_always_on_top(BongoCatNeoPlatform *platform, bool enabled) {
     SDL_SetWindowAlwaysOnTop(platform->window, enabled);
 }
-void l2dcat_platform_set_taskbar(L2DCatPlatform *platform, bool visible) {
-    l2dcat_linux_x11_taskbar(platform, visible);
+void bongo_cat_neo_platform_set_taskbar(BongoCatNeoPlatform *platform, bool visible) {
+    bongo_cat_neo_linux_x11_taskbar(platform, visible);
 }
-void l2dcat_platform_raise_window(SDL_Window *window) {
+void bongo_cat_neo_platform_raise_window(SDL_Window *window) {
     if (!window) return;
     SDL_ShowWindow(window);
     SDL_RaiseWindow(window);
 }
 
-bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
+bool bongo_cat_neo_platform_set_geometry(BongoCatNeoPlatform *platform,
     int x, int y, int width, int height) {
     if (!platform || !platform->window) return false;
     int current_width, current_height;
@@ -125,133 +117,63 @@ bool l2dcat_platform_set_geometry(L2DCatPlatform *platform,
         SDL_SetWindowPosition(platform->window, x, y);
     return true;
 }
-void l2dcat_platform_begin_drag(L2DCatPlatform *platform) {
-    l2dcat_linux_x11_begin_drag(platform);
+void bongo_cat_neo_platform_begin_drag(BongoCatNeoPlatform *platform) {
+    bongo_cat_neo_linux_x11_begin_drag(platform);
 }
-bool l2dcat_platform_global_input_supported(void) {
-    return l2dcat_linux_x11_supported(active_platform);
+bool bongo_cat_neo_platform_global_input_supported(void) {
+    return bongo_cat_neo_linux_x11_supported(active_platform);
 }
 
-void l2dcat_platform_set_tray_left_click(void *tray, L2DCatTrayClick callback,
+void bongo_cat_neo_platform_set_tray_left_click(void *tray, BongoCatNeoTrayClick callback,
     void *userdata) {
     (void)tray; (void)callback; (void)userdata;
 }
-bool l2dcat_platform_single_instance_begin(void) {
-    char path[96]; snprintf(path, sizeof(path), "/tmp/l2dcat-native-%lu.lock",
+bool bongo_cat_neo_platform_single_instance_begin(void) {
+    char path[96]; snprintf(path, sizeof(path), "/tmp/bongo-cat-neo-%lu.lock",
         (unsigned long)getuid());
     instance_lock = open(path, O_CREAT | O_RDWR, 0600);
     if (instance_lock < 0 || flock(instance_lock, LOCK_EX | LOCK_NB) == 0) return true;
     restore_instance_window(); close(instance_lock); instance_lock = -1; return false;
 }
-void l2dcat_platform_single_instance_end(void) {
+void bongo_cat_neo_platform_single_instance_end(void) {
     if (instance_lock >= 0) close(instance_lock);
     instance_lock = -1;
 }
-L2DCatResult l2dcat_platform_set_autostart(bool enabled, L2DCatError *error) {
+BongoCatNeoResult bongo_cat_neo_platform_set_autostart(bool enabled, BongoCatNeoError *error) {
     const char *base = getenv("XDG_CONFIG_HOME"), *home = getenv("HOME");
-    char config[L2DCAT_PATH_CAP], directory[L2DCAT_PATH_CAP], path[L2DCAT_PATH_CAP];
+    char config[BONGO_CAT_NEO_PATH_CAP], directory[BONGO_CAT_NEO_PATH_CAP], path[BONGO_CAT_NEO_PATH_CAP];
     if (base && base[0]) snprintf(config, sizeof(config), "%s", base);
-    else if (home && l2dcat_path_join(config, sizeof(config), home, ".config")) {}
-    else return L2DCAT_ERROR_PLATFORM;
-    if (!l2dcat_path_join(directory, sizeof(directory), config, "autostart") ||
-        !l2dcat_path_join(path, sizeof(path), directory, "l2dcat.desktop"))
-        return L2DCAT_ERROR_IO;
+    else if (home && bongo_cat_neo_path_join(config, sizeof(config), home, ".config")) {}
+    else return BONGO_CAT_NEO_ERROR_PLATFORM;
+    if (!bongo_cat_neo_path_join(directory, sizeof(directory), config, "autostart") ||
+        !bongo_cat_neo_path_join(path, sizeof(path), directory, "bongo-cat-neo.desktop"))
+        return BONGO_CAT_NEO_ERROR_IO;
     if (!enabled) {
-        if (remove(path) == 0 || errno == ENOENT) return L2DCAT_OK;
-        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot remove Linux autostart entry");
-        return L2DCAT_ERROR_IO;
+        if (remove(path) == 0 || errno == ENOENT) return BONGO_CAT_NEO_OK;
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot remove Linux autostart entry");
+        return BONGO_CAT_NEO_ERROR_IO;
     }
-    char executable[L2DCAT_PATH_CAP];
+    char executable[BONGO_CAT_NEO_PATH_CAP];
     if (!executable_path(executable) || strchr(executable, '"') ||
         !SDL_CreateDirectory(directory)) {
-        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot prepare Linux autostart entry");
-        return L2DCAT_ERROR_IO;
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot prepare Linux autostart entry");
+        return BONGO_CAT_NEO_ERROR_IO;
     }
     FILE *file = fopen(path, "wb");
-    if (!file) return L2DCAT_ERROR_IO;
-    bool written = fprintf(file, "[Desktop Entry]\nType=Application\nName=l2dcat\n"
+    if (!file) return BONGO_CAT_NEO_ERROR_IO;
+    bool written = fprintf(file, "[Desktop Entry]\nType=Application\nName=Bongo Cat Neo\n"
         "Exec=\"%s\"\nTerminal=false\nX-GNOME-Autostart-enabled=true\n", executable) > 0;
     if (fclose(file) != 0) written = false;
-    if (written) return L2DCAT_OK;
-    remove(path); l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot write Linux autostart entry");
-    return L2DCAT_ERROR_IO;
+    if (written) return BONGO_CAT_NEO_OK;
+    remove(path); bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot write Linux autostart entry");
+    return BONGO_CAT_NEO_ERROR_IO;
 }
-bool l2dcat_platform_is_elevated(void) { return geteuid() == 0; }
-L2DCatMenuAction l2dcat_platform_context_menu(L2DCatPlatform *platform,
-    const L2DCatMenuLabels *labels) {
-    return l2dcat_linux_context_menu(platform, labels);
+bool bongo_cat_neo_platform_is_elevated(void) { return geteuid() == 0; }
+BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *platform,
+    const BongoCatNeoMenuLabels *labels) {
+    return bongo_cat_neo_linux_context_menu(platform, labels);
 }
-bool l2dcat_platform_restart(void) {
-    char executable[L2DCAT_PATH_CAP];
-    if (!executable_path(executable)) return false;
-    pid_t child = fork();
-    if (child == 0) { execl(executable, executable, NULL); _exit(127); }
-    return child > 0;
-}
-L2DCatResult l2dcat_platform_embedded_assets(const char *target, L2DCatError *error) {
-    (void)target; (void)error; return L2DCAT_ERROR_PLATFORM;
-}
-bool l2dcat_platform_schedule_update(const char *staged, L2DCatError *error) {
-    if (!staged) return false;
-    char executable[L2DCAT_PATH_CAP], helper[L2DCAT_PATH_CAP], parent[32];
-    const char *appimage = getenv("APPIMAGE");
-    ssize_t length = appimage && appimage[0] ? (ssize_t)snprintf(executable,
-        sizeof(executable), "%s", appimage) : readlink("/proc/self/exe",
-        executable, sizeof(executable) - 1);
-    if (length <= 0 || (size_t)length >= sizeof(executable)) {
-        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Cannot locate current executable");
-        return false;
-    }
-    executable[length] = '\0';
-    if (snprintf(helper, sizeof(helper), "%s.helper", staged) >= (int)sizeof(helper) ||
-        !SDL_CopyFile("/proc/self/exe", helper) || chmod(helper, 0755) != 0) {
-        l2dcat_error_set(error, L2DCAT_ERROR_IO, "Cannot create update helper: %s",
-            SDL_GetError());
-        return false;
-    }
-    snprintf(parent, sizeof(parent), "%ld", (long)getpid());
-    pid_t child = fork();
-    if (child == 0) {
-        execl(helper, helper, "--l2dcat-apply-update", staged, executable, parent, NULL);
-        _exit(127);
-    }
-    if (child < 0) {
-        remove(helper);
-        l2dcat_error_set(error, L2DCAT_ERROR_PLATFORM, "Cannot launch update helper");
-        return false;
-    }
-    return true;
-}
-
-static int apply_update(char **argv) {
-    const char *staged = argv[2], *target = argv[3], *helper = argv[0];
-    pid_t parent = (pid_t)strtol(argv[4], NULL, 10);
-    for (int i = 0; i < 600 && kill(parent, 0) == 0; ++i) sleep_100ms();
-    char replacement[L2DCAT_PATH_CAP], backup[L2DCAT_PATH_CAP];
-    if (snprintf(replacement, sizeof(replacement), "%s.new", target) >=
-        (int)sizeof(replacement) || snprintf(backup, sizeof(backup), "%s.old", target) >=
-        (int)sizeof(backup) || !SDL_CopyFile(staged, replacement) ||
-        chmod(replacement, 0755) != 0) {
-        remove(replacement);
-        return 1;
-    }
-    remove(backup);
-    if (rename(target, backup) != 0 || rename(replacement, target) != 0) {
-        rename(backup, target); remove(replacement); return 1;
-    }
-    remove(staged);
-    execl(target, target, "--l2dcat-cleanup-helper", helper, backup, NULL);
-    remove(target); rename(backup, target);
-    return 1;
-}
-
-int l2dcat_platform_update_helper(int argc, char **argv) {
-    if (argc == 5 && strcmp(argv[1], "--l2dcat-apply-update") == 0)
-        return apply_update(argv);
-    if (argc == 4 && strcmp(argv[1], "--l2dcat-cleanup-helper") == 0) {
-        remove(argv[2]); remove(argv[3]);
-        return -1;
-    }
-    return -1;
+BongoCatNeoResult bongo_cat_neo_platform_embedded_assets(const char *target, BongoCatNeoError *error) {
+    (void)target; (void)error; return BONGO_CAT_NEO_ERROR_PLATFORM;
 }
 #endif

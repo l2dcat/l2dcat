@@ -1,6 +1,6 @@
 #include "model_import.h"
-#include "l2dcat/file.h"
-#include "l2dcat/path.h"
+#include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/path.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,16 +22,16 @@ static bool safe_reference(const char *value) {
 }
 
 static bool referenced_file(const char *root, const char *relative) {
-    char path[L2DCAT_PATH_CAP];
+    char path[BONGO_CAT_NEO_PATH_CAP];
     return safe_reference(relative) &&
-        l2dcat_path_join(path, sizeof(path), root, relative) && l2dcat_path_is_file(path);
+        bongo_cat_neo_path_join(path, sizeof(path), root, relative) && bongo_cat_neo_path_is_file(path);
 }
 
-bool l2dcat_import_manifest_valid(const char *root, const char *setting,
-    L2DCatError *error) {
-    char path[L2DCAT_PATH_CAP];
-    if (!l2dcat_path_join(path, sizeof(path), root, setting)) return false;
-    FILE *file = l2dcat_file_open(path, "rb");
+bool bongo_cat_neo_import_manifest_valid(const char *root, const char *setting,
+    BongoCatNeoError *error) {
+    char path[BONGO_CAT_NEO_PATH_CAP];
+    if (!bongo_cat_neo_path_join(path, sizeof(path), root, setting)) return false;
+    FILE *file = bongo_cat_neo_file_open(path, "rb");
     yyjson_doc *document = file ? yyjson_read_fp(file, 0, NULL, NULL) : NULL;
     if (file) fclose(file);
     yyjson_val *manifest = document ? yyjson_doc_get_root(document) : NULL;
@@ -46,7 +46,7 @@ bool l2dcat_import_manifest_valid(const char *root, const char *setting,
     yyjson_arr_foreach(textures, index, maximum, texture)
         valid = valid && referenced_file(root, yyjson_get_str(texture));
     yyjson_doc_free(document);
-    if (!valid && error) l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
+    if (!valid && error) bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
         "Model manifest or referenced assets are invalid: %s", path);
     return valid;
 }
@@ -62,19 +62,19 @@ static bool path_parent(const char *path, char *parent, size_t capacity) {
     return true;
 }
 
-static L2DCatModelMode import_mode(const char *path) {
+static BongoCatNeoModelMode import_mode(const char *path) {
     const char *cursor = path;
-    L2DCatModelMode mode = L2DCAT_MODE_STANDARD;
+    BongoCatNeoModelMode mode = BONGO_CAT_NEO_MODE_STANDARD;
     while (cursor && *cursor) {
         while (*cursor == '/' || *cursor == '\\') cursor++;
         const char *end = strpbrk(cursor, "/\\");
         size_t length = end ? (size_t)(end - cursor) : strlen(cursor);
         if (length == 8 && SDL_strncasecmp(cursor, "keyboard", length) == 0)
-            mode = L2DCAT_MODE_KEYBOARD;
+            mode = BONGO_CAT_NEO_MODE_KEYBOARD;
         else if (length == 7 && SDL_strncasecmp(cursor, "gamepad", length) == 0)
-            mode = L2DCAT_MODE_GAMEPAD;
+            mode = BONGO_CAT_NEO_MODE_GAMEPAD;
         else if (length == 8 && SDL_strncasecmp(cursor, "standard", length) == 0)
-            mode = L2DCAT_MODE_STANDARD;
+            mode = BONGO_CAT_NEO_MODE_STANDARD;
         if (!end) break;
         cursor = end + 1;
     }
@@ -85,9 +85,9 @@ static bool has_preview_assets(const char *directory) {
     const char *names[] = {"resources", "cover.png", "cat.png", "bg.png",
         "mousebg.png", "tabletbg.png"};
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
-        char path[L2DCAT_PATH_CAP];
-        if (!l2dcat_path_join(path, sizeof(path), directory, names[i])) continue;
-        if (l2dcat_path_is_file(path) || l2dcat_path_is_dir(path)) return true;
+        char path[BONGO_CAT_NEO_PATH_CAP];
+        if (!bongo_cat_neo_path_join(path, sizeof(path), directory, names[i])) continue;
+        if (bongo_cat_neo_path_is_file(path) || bongo_cat_neo_path_is_dir(path)) return true;
     }
     return false;
 }
@@ -95,9 +95,9 @@ static bool has_preview_assets(const char *directory) {
 static bool has_cover_asset(const char *directory) {
     const char *names[] = {"resources/cover.png", "cover.png", "cat.png", "bg.png"};
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
-        char path[L2DCAT_PATH_CAP];
-        if (l2dcat_path_join(path, sizeof(path), directory, names[i]) &&
-            l2dcat_path_is_file(path)) return true;
+        char path[BONGO_CAT_NEO_PATH_CAP];
+        if (bongo_cat_neo_path_join(path, sizeof(path), directory, names[i]) &&
+            bongo_cat_neo_path_is_file(path)) return true;
     }
     return false;
 }
@@ -106,24 +106,24 @@ static bool has_background_asset(const char *directory) {
     const char *names[] = {"resources/background.png", "background.png",
         "bg.png", "mousebg.png", "tabletbg.png"};
     for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); ++i) {
-        char path[L2DCAT_PATH_CAP];
-        if (l2dcat_path_join(path, sizeof(path), directory, names[i]) &&
-            l2dcat_path_is_file(path)) return true;
+        char path[BONGO_CAT_NEO_PATH_CAP];
+        if (bongo_cat_neo_path_join(path, sizeof(path), directory, names[i]) &&
+            bongo_cat_neo_path_is_file(path)) return true;
     }
     return false;
 }
 
-static bool add_candidate(L2DCatImportDiscovery *discovery, const char *directory,
+static bool add_candidate(BongoCatNeoImportDiscovery *discovery, const char *directory,
     const char *setting) {
-    if (discovery->count >= L2DCAT_IMPORT_CANDIDATE_CAP) return false;
+    if (discovery->count >= BONGO_CAT_NEO_IMPORT_CANDIDATE_CAP) return false;
     for (size_t i = 0; i < discovery->count; ++i)
         if (strcmp(discovery->candidates[i].directory, directory) == 0 &&
             strcmp(discovery->candidates[i].setting, setting) == 0) return true;
-    L2DCatImportCandidate *candidate = &discovery->candidates[discovery->count++];
+    BongoCatNeoImportCandidate *candidate = &discovery->candidates[discovery->count++];
     snprintf(candidate->directory, sizeof(candidate->directory), "%s", directory);
     snprintf(candidate->setting, sizeof(candidate->setting), "%s", setting);
     snprintf(candidate->assets, sizeof(candidate->assets), "%s", directory);
-    char parent[L2DCAT_PATH_CAP];
+    char parent[BONGO_CAT_NEO_PATH_CAP];
     if ((!has_cover_asset(directory) || !has_background_asset(directory)) &&
         path_parent(directory, parent, sizeof(parent)) && has_preview_assets(parent))
         snprintf(candidate->assets, sizeof(candidate->assets), "%s", parent);
@@ -138,13 +138,13 @@ static bool suffix(const char *name, const char *ending) {
 
 static SDL_EnumerationResult SDLCALL discover_item(void *userdata,
     const char *dirname, const char *name) {
-    L2DCatImportDiscovery *discovery = userdata;
-    char path[L2DCAT_PATH_CAP];
-    if (!l2dcat_path_join(path, sizeof(path), dirname, name)) return SDL_ENUM_FAILURE;
+    BongoCatNeoImportDiscovery *discovery = userdata;
+    char path[BONGO_CAT_NEO_PATH_CAP];
+    if (!bongo_cat_neo_path_join(path, sizeof(path), dirname, name)) return SDL_ENUM_FAILURE;
     SDL_PathInfo info;
     if (!SDL_GetPathInfo(path, &info)) return SDL_ENUM_CONTINUE;
     if (info.type == SDL_PATHTYPE_FILE && suffix(name, ".model3.json")) {
-        if (l2dcat_import_manifest_valid(dirname, name, NULL) &&
+        if (bongo_cat_neo_import_manifest_valid(dirname, name, NULL) &&
             !add_candidate(discovery, dirname, name)) return SDL_ENUM_FAILURE;
         return SDL_ENUM_CONTINUE;
     }
@@ -156,31 +156,31 @@ static SDL_EnumerationResult SDLCALL discover_item(void *userdata,
     return ok ? SDL_ENUM_CONTINUE : SDL_ENUM_FAILURE;
 }
 
-static int rank(const L2DCatImportCandidate *candidate) {
-    return candidate->mode == L2DCAT_MODE_STANDARD ? 0 :
-        candidate->mode == L2DCAT_MODE_KEYBOARD ? 1 : 2;
+static int rank(const BongoCatNeoImportCandidate *candidate) {
+    return candidate->mode == BONGO_CAT_NEO_MODE_STANDARD ? 0 :
+        candidate->mode == BONGO_CAT_NEO_MODE_KEYBOARD ? 1 : 2;
 }
 
 static int compare_candidates(const void *left, const void *right) {
-    const L2DCatImportCandidate *a = left, *b = right;
+    const BongoCatNeoImportCandidate *a = left, *b = right;
     int difference = rank(a) - rank(b);
     return difference ? difference : strcmp(a->directory, b->directory);
 }
 
-bool l2dcat_import_discover(const char *source, L2DCatImportDiscovery *discovery,
-    L2DCatError *error) {
+bool bongo_cat_neo_import_discover(const char *source, BongoCatNeoImportDiscovery *discovery,
+    BongoCatNeoError *error) {
     memset(discovery, 0, sizeof(*discovery));
-    char direct[L2DCAT_PATH_CAP];
-    if (l2dcat_path_find_suffix(source, ".model3.json", direct, sizeof(direct)) &&
-        l2dcat_import_manifest_valid(source, direct, NULL))
+    char direct[BONGO_CAT_NEO_PATH_CAP];
+    if (bongo_cat_neo_path_find_suffix(source, ".model3.json", direct, sizeof(direct)) &&
+        bongo_cat_neo_import_manifest_valid(source, direct, NULL))
         return add_candidate(discovery, source, direct);
     if (!SDL_EnumerateDirectory(source, discover_item, discovery)) {
-        l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
             "Cannot scan model directory or it contains too many models");
         return false;
     }
     if (!discovery->count) {
-        l2dcat_error_set(error, L2DCAT_ERROR_FORMAT,
+        bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_FORMAT,
             "Selected directory contains no valid Live2D model3 JSON");
         return false;
     }

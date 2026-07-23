@@ -1,22 +1,11 @@
 cmake_minimum_required(VERSION 3.24)
-project(l2dcat VERSION 1.1.0 LANGUAGES C CXX)
+project(BongoCatNeo VERSION 1.1.0 LANGUAGES C CXX)
 include(FetchContent)
 include(CTest)
-option(L2DCAT_FETCH_DEPS "Download pinned open-source dependencies" ON)
-option(L2DCAT_REQUIRE_CUBISM "Fail configuration when Cubism SDK is absent" OFF)
-option(L2DCAT_WARNINGS_AS_ERRORS "Treat native source warnings as errors" OFF)
-set(L2DCAT_MACOS_SIGN_IDENTITY "" CACHE STRING "codesign identity for macOS releases")
-set(L2DCAT_MACOS_NOTARY_PROFILE "" CACHE STRING "notarytool keychain profile")
-set(L2DCAT_WINDOWS_SIGN_IDENTITY "" CACHE STRING "Windows signing certificate SHA-1")
-set(L2DCAT_SIGNTOOL "" CACHE FILEPATH "Path to signtool.exe")
-set(L2DCAT_LINUX_SIGN_KEY "" CACHE STRING "GPG key ID for AppImage signing")
-set(L2DCAT_LINUX_UPDATE_PUBLIC_KEY "" CACHE FILEPATH "Ed25519 public key in DER format")
-set(L2DCAT_LINUX_UPDATE_PRIVATE_KEY "" CACHE FILEPATH "Ed25519 private key for releases")
-set(L2DCAT_RELEASE_BASE_URL "" CACHE STRING "Independent release download base URL")
-set(L2DCAT_UPDATE_MANIFEST_BASE_URL "" CACHE STRING "Independent update manifest base URL")
-set(L2DCAT_LINUXDEPLOY "" CACHE FILEPATH "Path to linuxdeploy AppImage")
-set(L2DCAT_APPIMAGETOOL "" CACHE FILEPATH "Path to appimagetool AppImage")
-set(L2DCAT_CUBISM_SDK "${CMAKE_CURRENT_SOURCE_DIR}/vendor/CubismSdkForNative"
+option(BONGO_CAT_NEO_FETCH_DEPS "Download pinned open-source dependencies" ON)
+option(BONGO_CAT_NEO_REQUIRE_CUBISM "Fail configuration when Cubism SDK is absent" OFF)
+option(BONGO_CAT_NEO_WARNINGS_AS_ERRORS "Treat native source warnings as errors" OFF)
+set(BONGO_CAT_NEO_CUBISM_SDK "${CMAKE_CURRENT_SOURCE_DIR}/vendor/CubismSdkForNative"
   CACHE PATH "Path to Cubism SDK for Native")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -27,55 +16,49 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(cmake/ReleaseOptimize.cmake)
 
-add_library(l2dcat_warnings INTERFACE)
+add_library(bongo_cat_neo_warnings INTERFACE)
 if(MSVC)
-  target_compile_options(l2dcat_warnings INTERFACE /W4 /permissive- /utf-8)
-  target_compile_options(l2dcat_warnings INTERFACE
+  target_compile_options(bongo_cat_neo_warnings INTERFACE /W4 /permissive- /utf-8)
+  target_compile_options(bongo_cat_neo_warnings INTERFACE
     $<$<COMPILE_LANGUAGE:C>:/experimental:c11atomics>)
-  if(L2DCAT_WARNINGS_AS_ERRORS)
-    target_compile_options(l2dcat_warnings INTERFACE /WX)
+  if(BONGO_CAT_NEO_WARNINGS_AS_ERRORS)
+    target_compile_options(bongo_cat_neo_warnings INTERFACE /WX)
   endif()
 else()
-  target_compile_options(l2dcat_warnings INTERFACE -Wall -Wextra)
-  if(L2DCAT_WARNINGS_AS_ERRORS)
-    target_compile_options(l2dcat_warnings INTERFACE -Werror)
+  target_compile_options(bongo_cat_neo_warnings INTERFACE -Wall -Wextra)
+  if(BONGO_CAT_NEO_WARNINGS_AS_ERRORS)
+    target_compile_options(bongo_cat_neo_warnings INTERFACE -Werror)
   endif()
 endif()
 
 include(cmake/Dependencies.cmake)
 
 find_package(OpenGL REQUIRED)
-if(NOT WIN32)
-  find_package(CURL REQUIRED)
-endif()
-if(UNIX AND NOT APPLE)
-  find_package(OpenSSL REQUIRED)
-endif()
 
-set(L2DCAT_LIVE2D_SOURCES src/live2d/live2d_stub.c)
-set(L2DCAT_CUBISM_ENABLED OFF)
-set(CUBISM_CORE_HEADER "${L2DCAT_CUBISM_SDK}/Core/include/Live2DCubismCore.h")
+set(BONGO_CAT_NEO_LIVE2D_SOURCES src/live2d/live2d_stub.c)
+set(BONGO_CAT_NEO_CUBISM_ENABLED OFF)
+set(CUBISM_CORE_HEADER "${BONGO_CAT_NEO_CUBISM_SDK}/Core/include/Live2DCubismCore.h")
 if(EXISTS "${CUBISM_CORE_HEADER}")
   if(WIN32 AND NOT MSVC)
-    if(L2DCAT_REQUIRE_CUBISM)
+    if(BONGO_CAT_NEO_REQUIRE_CUBISM)
       message(FATAL_ERROR "Cubism Core for Windows requires Visual Studio 2022")
     endif()
     message(WARNING "Cubism SDK found but MinGW is unsupported; using diagnostic backend")
   else()
     include(cmake/Cubism.cmake)
-    set(L2DCAT_LIVE2D_SOURCES
+    set(BONGO_CAT_NEO_LIVE2D_SOURCES
       src/live2d/cubism_bridge.cpp
       src/live2d/cubism_model_load.cpp
       src/live2d/cubism_model_update.cpp)
-    set(L2DCAT_CUBISM_ENABLED ON)
+    set(BONGO_CAT_NEO_CUBISM_ENABLED ON)
   endif()
-elseif(L2DCAT_REQUIRE_CUBISM)
-  message(FATAL_ERROR "Cubism SDK missing at ${L2DCAT_CUBISM_SDK}")
+elseif(BONGO_CAT_NEO_REQUIRE_CUBISM)
+  message(FATAL_ERROR "Cubism SDK missing at ${BONGO_CAT_NEO_CUBISM_SDK}")
 else()
   message(WARNING "Cubism SDK missing; building the diagnostic backend")
 endif()
 
-add_library(l2dcat_core STATIC
+add_library(bongo_cat_neo_core STATIC
   src/core/config_defaults.c
   src/core/config_io.c
   src/core/error.c
@@ -86,17 +69,16 @@ add_library(l2dcat_core STATIC
   src/core/sha256.c
   src/core/model_catalog.c
   src/core/model_behavior.c
-  src/core/path.c
-  src/core/update_manifest.c)
-target_sources(l2dcat_core PRIVATE src/core/shortcut.c)
-target_include_directories(l2dcat_core PUBLIC include)
-target_link_libraries(l2dcat_core PUBLIC yyjson PRIVATE l2dcat_warnings)
+  src/core/path.c)
+target_sources(bongo_cat_neo_core PRIVATE src/core/shortcut.c)
+target_include_directories(bongo_cat_neo_core PUBLIC include)
+target_link_libraries(bongo_cat_neo_core PUBLIC yyjson PRIVATE bongo_cat_neo_warnings)
 include(cmake/CubismAssets.cmake)
 if(WIN32)
-  target_sources(l2dcat_core PRIVATE src/core/windows_utf8.c)
+  target_sources(bongo_cat_neo_core PRIVATE src/core/windows_utf8.c)
 endif()
 
-add_library(l2dcat_runtime STATIC
+add_library(bongo_cat_neo_runtime STATIC
   src/core/app_state.c
   src/media/audio.c
   src/media/image.c
@@ -116,7 +98,6 @@ add_library(l2dcat_runtime STATIC
   src/runtime/runtime_flow.c
   src/runtime/shortcuts.c
   src/runtime/tray.c
-  src/runtime/update.c
   src/runtime/window.c src/runtime/window_geometry.c
   src/runtime/window_hit.c src/runtime/window_wheel.c
   src/ui/nuklear_impl.c
@@ -131,12 +112,12 @@ add_library(l2dcat_runtime STATIC
   src/ui/preferences_model.c
   src/ui/preferences_pages.c
   src/ui/preferences_widgets.c src/ui/preferences_controls.c
-  ${L2DCAT_LIVE2D_SOURCES})
-target_include_directories(l2dcat_runtime PUBLIC include)
-target_include_directories(l2dcat_runtime SYSTEM PRIVATE
-  ${L2DCAT_STB_INCLUDE_DIR} ${L2DCAT_NUKLEAR_INCLUDE_DIR})
-target_link_libraries(l2dcat_runtime PRIVATE l2dcat_warnings)
-target_link_libraries(l2dcat_runtime PUBLIC l2dcat_core SDL3::SDL3-static OpenGL::GL ${L2DCAT_MINIAUDIO_TARGET})
+  ${BONGO_CAT_NEO_LIVE2D_SOURCES})
+target_include_directories(bongo_cat_neo_runtime PUBLIC include)
+target_include_directories(bongo_cat_neo_runtime SYSTEM PRIVATE
+  ${BONGO_CAT_NEO_STB_INCLUDE_DIR} ${BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR})
+target_link_libraries(bongo_cat_neo_runtime PRIVATE bongo_cat_neo_warnings)
+target_link_libraries(bongo_cat_neo_runtime PUBLIC bongo_cat_neo_core SDL3::SDL3-static OpenGL::GL ${BONGO_CAT_NEO_MINIAUDIO_TARGET})
 if(MSVC)
   set_source_files_properties(src/media/stb_image_impl.c src/ui/nuklear_impl.c
     PROPERTIES COMPILE_OPTIONS "/W0")
@@ -144,117 +125,110 @@ else()
   set_source_files_properties(src/media/stb_image_impl.c src/ui/nuklear_impl.c
     PROPERTIES COMPILE_OPTIONS "-w")
 endif()
-if(L2DCAT_CUBISM_ENABLED)
-  target_link_libraries(l2dcat_runtime PUBLIC Framework Live2DCubismCore glew_s)
-  target_compile_definitions(l2dcat_runtime PUBLIC L2DCAT_HAS_CUBISM=1)
+if(BONGO_CAT_NEO_CUBISM_ENABLED)
+  target_link_libraries(bongo_cat_neo_runtime PUBLIC Framework Live2DCubismCore glew_s)
+  target_compile_definitions(bongo_cat_neo_runtime PUBLIC BONGO_CAT_NEO_HAS_CUBISM=1)
 endif()
-target_compile_definitions(l2dcat_runtime PRIVATE
-  L2DCAT_DEV_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/assets"
-  L2DCAT_DEV_LOCALE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/assets/locales"
-  L2DCAT_UPDATE_MANIFEST_BASE_URL="${L2DCAT_UPDATE_MANIFEST_BASE_URL}")
+target_compile_definitions(bongo_cat_neo_runtime PRIVATE
+  BONGO_CAT_NEO_DEV_ASSET_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/assets"
+  BONGO_CAT_NEO_DEV_LOCALE_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/resources/assets/locales")
 
 if(WIN32)
   enable_language(RC)
-  target_sources(l2dcat_runtime PRIVATE src/platform/windows.c src/platform/windows_borderless.c src/platform/windows_pointer.c)
-  target_sources(l2dcat_runtime PRIVATE src/platform/windows_assets.c)
-  target_sources(l2dcat_runtime PRIVATE src/platform/windows_http.c)
-  target_sources(l2dcat_runtime PRIVATE src/platform/windows_update.c)
-  target_link_libraries(l2dcat_runtime PRIVATE crypt32 dwmapi ole32 shell32 user32 windowscodecs winhttp wintrust)
+  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/windows.c src/platform/windows_borderless.c src/platform/windows_pointer.c)
+  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/windows_assets.c)
+  target_link_libraries(bongo_cat_neo_runtime PRIVATE dwmapi ole32 shell32 user32 windowscodecs)
 elseif(APPLE)
   enable_language(OBJC)
-  target_sources(l2dcat_runtime PRIVATE src/platform/macos.m src/platform/macos_input.m
-    src/platform/macos_keys.m src/platform/macos_menu.m src/platform/macos_update.m
-    src/platform/posix_http.c)
-  target_link_libraries(l2dcat_runtime PRIVATE "-framework Cocoa"
-    "-framework ApplicationServices" "-framework Security" CURL::libcurl)
+  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/macos.m src/platform/macos_input.m
+    src/platform/macos_keys.m src/platform/macos_menu.m)
+  target_link_libraries(bongo_cat_neo_runtime PRIVATE "-framework Cocoa"
+    "-framework ApplicationServices")
 else()
   find_package(X11 REQUIRED)
   if(NOT TARGET X11::Xi OR NOT TARGET X11::Xfixes)
     message(FATAL_ERROR "Linux native build requires XInput2 and Xfixes development packages")
   endif()
-  include(cmake/LinuxUpdateKey.cmake)
-  target_include_directories(l2dcat_runtime PRIVATE "${L2DCAT_GENERATED_DIR}")
-  target_sources(l2dcat_runtime PRIVATE src/platform/linux.c src/platform/linux_menu.c
-    src/platform/linux_x11.c src/platform/linux_update_verify.c src/platform/posix_http.c)
-  target_link_libraries(l2dcat_runtime PRIVATE CURL::libcurl OpenSSL::Crypto
-    X11::X11 X11::Xi X11::Xfixes m)
-  target_link_libraries(l2dcat_core PRIVATE m)
+  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/linux.c src/platform/linux_menu.c
+    src/platform/linux_x11.c)
+  target_link_libraries(bongo_cat_neo_runtime PRIVATE X11::X11 X11::Xi X11::Xfixes m)
+  target_link_libraries(bongo_cat_neo_core PRIVATE m)
 endif()
 
-add_executable(l2dcat src/main.c)
-target_link_libraries(l2dcat PRIVATE l2dcat_runtime l2dcat_warnings)
-l2dcat_enable_release_ipo(Framework l2dcat_core l2dcat_runtime l2dcat)
+add_executable(bongo_cat_neo src/main.c)
+target_link_libraries(bongo_cat_neo PRIVATE bongo_cat_neo_runtime bongo_cat_neo_warnings)
+set_target_properties(bongo_cat_neo PROPERTIES OUTPUT_NAME "BongoCatNeo")
+bongo_cat_neo_enable_release_ipo(Framework bongo_cat_neo_core bongo_cat_neo_runtime bongo_cat_neo)
 if(APPLE)
   set_source_files_properties(resources/icons/icon.icns PROPERTIES
     MACOSX_PACKAGE_LOCATION Resources)
-  target_sources(l2dcat PRIVATE resources/icons/icon.icns)
-  set_target_properties(l2dcat PROPERTIES
+  target_sources(bongo_cat_neo PRIVATE resources/icons/icon.icns)
+  set_target_properties(bongo_cat_neo PROPERTIES
     MACOSX_BUNDLE TRUE
-    MACOSX_BUNDLE_BUNDLE_NAME l2dcat
-    MACOSX_BUNDLE_GUI_IDENTIFIER app.l2dcat.native
+    MACOSX_BUNDLE_BUNDLE_NAME "Bongo Cat Neo"
+    MACOSX_BUNDLE_GUI_IDENTIFIER com.bongocatneo.desktop
     MACOSX_BUNDLE_ICON_FILE icon.icns
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Info.plist.in")
-  add_custom_command(TARGET l2dcat POST_BUILD
+  add_custom_command(TARGET bongo_cat_neo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
-      "$<TARGET_BUNDLE_CONTENT_DIR:l2dcat>/MacOS/assets"
+      "$<TARGET_BUNDLE_CONTENT_DIR:bongo_cat_neo>/MacOS/assets"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets"
-      "$<TARGET_BUNDLE_CONTENT_DIR:l2dcat>/MacOS/assets"
+      "$<TARGET_BUNDLE_CONTENT_DIR:bongo_cat_neo>/MacOS/assets"
     VERBATIM)
 endif()
 
 if(WIN32)
-  target_sources(l2dcat_runtime PRIVATE src/platform/windows_keys.c)
-  add_executable(l2dcat_asset_packer src/tools/asset_packer.cpp)
-  target_link_libraries(l2dcat_asset_packer PRIVATE l2dcat_warnings)
-  set(L2DCAT_ASSET_STAGE "${CMAKE_CURRENT_BINARY_DIR}/embedded-assets")
-  set(L2DCAT_ASSET_PACK "${CMAKE_CURRENT_BINARY_DIR}/l2dcat-assets.pak")
-  file(GLOB_RECURSE L2DCAT_ASSET_INPUTS CONFIGURE_DEPENDS
+  target_sources(bongo_cat_neo_runtime PRIVATE src/platform/windows_keys.c)
+  add_executable(bongo_cat_neo_asset_packer src/tools/asset_packer.cpp)
+  target_link_libraries(bongo_cat_neo_asset_packer PRIVATE bongo_cat_neo_warnings)
+  set(BONGO_CAT_NEO_ASSET_STAGE "${CMAKE_CURRENT_BINARY_DIR}/embedded-assets")
+  set(BONGO_CAT_NEO_ASSET_PACK "${CMAKE_CURRENT_BINARY_DIR}/bongo-cat-neo-assets.pak")
+  file(GLOB_RECURSE BONGO_CAT_NEO_ASSET_INPUTS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets/*")
-  l2dcat_configure_embedded_cubism_assets()
-  add_custom_command(OUTPUT "${L2DCAT_ASSET_PACK}"
-    COMMAND ${CMAKE_COMMAND} -E rm -rf "${L2DCAT_ASSET_STAGE}"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${L2DCAT_ASSET_STAGE}/assets"
+  bongo_cat_neo_configure_embedded_cubism_assets()
+  add_custom_command(OUTPUT "${BONGO_CAT_NEO_ASSET_PACK}"
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${BONGO_CAT_NEO_ASSET_STAGE}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${BONGO_CAT_NEO_ASSET_STAGE}/assets"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets" "${L2DCAT_ASSET_STAGE}/assets"
-    ${L2DCAT_ASSET_EXTRA_COMMANDS}
-    COMMAND "$<TARGET_FILE:l2dcat_asset_packer>"
-      "${L2DCAT_ASSET_STAGE}/assets" "${L2DCAT_ASSET_PACK}"
-    DEPENDS ${L2DCAT_ASSET_INPUTS} l2dcat_asset_packer
+      "${CMAKE_CURRENT_SOURCE_DIR}/resources/assets" "${BONGO_CAT_NEO_ASSET_STAGE}/assets"
+    ${BONGO_CAT_NEO_ASSET_EXTRA_COMMANDS}
+    COMMAND "$<TARGET_FILE:bongo_cat_neo_asset_packer>"
+      "${BONGO_CAT_NEO_ASSET_STAGE}/assets" "${BONGO_CAT_NEO_ASSET_PACK}"
+    DEPENDS ${BONGO_CAT_NEO_ASSET_INPUTS} bongo_cat_neo_asset_packer
     VERBATIM)
-  add_custom_target(l2dcat_asset_pack DEPENDS "${L2DCAT_ASSET_PACK}")
-  file(TO_CMAKE_PATH "${L2DCAT_ASSET_PACK}" L2DCAT_ASSET_PACK_RC)
-  file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico" L2DCAT_ICON_RC)
-  set(L2DCAT_WINDOWS_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/windows.manifest")
+  add_custom_target(bongo_cat_neo_asset_pack DEPENDS "${BONGO_CAT_NEO_ASSET_PACK}")
+  file(TO_CMAKE_PATH "${BONGO_CAT_NEO_ASSET_PACK}" BONGO_CAT_NEO_ASSET_PACK_RC)
+  file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/resources/icons/icon.ico" BONGO_CAT_NEO_ICON_RC)
+  set(BONGO_CAT_NEO_WINDOWS_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/windows.manifest")
   if(MSVC)
-    set(L2DCAT_MANIFEST_RESOURCE "")
-    target_link_options(l2dcat PRIVATE "/MANIFEST:EMBED"
-      "/MANIFESTINPUT:${L2DCAT_WINDOWS_MANIFEST}")
+    set(BONGO_CAT_NEO_MANIFEST_RESOURCE "")
+    target_link_options(bongo_cat_neo PRIVATE "/MANIFEST:EMBED"
+      "/MANIFESTINPUT:${BONGO_CAT_NEO_WINDOWS_MANIFEST}")
   else()
-    file(TO_CMAKE_PATH "${L2DCAT_WINDOWS_MANIFEST}" L2DCAT_MANIFEST_RC)
-    set(L2DCAT_MANIFEST_RESOURCE "1 RT_MANIFEST \"${L2DCAT_MANIFEST_RC}\"")
+    file(TO_CMAKE_PATH "${BONGO_CAT_NEO_WINDOWS_MANIFEST}" BONGO_CAT_NEO_MANIFEST_RC)
+    set(BONGO_CAT_NEO_MANIFEST_RESOURCE "1 RT_MANIFEST \"${BONGO_CAT_NEO_MANIFEST_RC}\"")
   endif()
   configure_file(cmake/windows_resources.rc.in
     "${CMAKE_CURRENT_BINARY_DIR}/windows_resources.rc" @ONLY)
   set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/windows_resources.rc"
-    APPEND PROPERTY OBJECT_DEPENDS "${L2DCAT_ASSET_PACK}")
-  target_sources(l2dcat PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/windows_resources.rc")
-  add_dependencies(l2dcat l2dcat_asset_pack)
-  set_target_properties(l2dcat PROPERTIES WIN32_EXECUTABLE TRUE)
+    APPEND PROPERTY OBJECT_DEPENDS "${BONGO_CAT_NEO_ASSET_PACK}")
+  target_sources(bongo_cat_neo PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/windows_resources.rc")
+  add_dependencies(bongo_cat_neo bongo_cat_neo_asset_pack)
+  set_target_properties(bongo_cat_neo PROPERTIES WIN32_EXECUTABLE TRUE)
 endif()
 if(MSVC)
   set_property(SOURCE src/main.c APPEND PROPERTY COMPILE_OPTIONS "/experimental:c11atomics")
-  get_target_property(L2DCAT_RUNTIME_SOURCES l2dcat_runtime SOURCES)
-  foreach(L2DCAT_SOURCE IN LISTS L2DCAT_RUNTIME_SOURCES)
-    if(L2DCAT_SOURCE MATCHES "\\.c$")
-      set_property(SOURCE "${L2DCAT_SOURCE}" APPEND PROPERTY
+  get_target_property(BONGO_CAT_NEO_RUNTIME_SOURCES bongo_cat_neo_runtime SOURCES)
+  foreach(BONGO_CAT_NEO_SOURCE IN LISTS BONGO_CAT_NEO_RUNTIME_SOURCES)
+    if(BONGO_CAT_NEO_SOURCE MATCHES "\\.c$")
+      set_property(SOURCE "${BONGO_CAT_NEO_SOURCE}" APPEND PROPERTY
         COMPILE_OPTIONS "/experimental:c11atomics")
     endif()
   endforeach()
 endif()
 
-include(cmake/NativeRelease.cmake)
-l2dcat_stage_cubism_assets(l2dcat)
+bongo_cat_neo_stage_cubism_assets(bongo_cat_neo)
 
 add_custom_target(check-lines ALL
   COMMAND ${CMAKE_COMMAND} -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
@@ -262,39 +236,32 @@ add_custom_target(check-lines ALL
   VERBATIM)
 
 if(BUILD_TESTING)
-  add_executable(l2dcat_core_tests
+  add_executable(bongo_cat_neo_core_tests
     tests/test_main.c tests/test_config.c tests/test_input.c tests/test_models.c
-    tests/test_shortcut.c tests/test_update.c src/platform/windows_keys.c)
-  target_link_libraries(l2dcat_core_tests PRIVATE l2dcat_core l2dcat_warnings)
-  target_compile_definitions(l2dcat_core_tests PRIVATE
-    L2DCAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-  add_test(NAME core COMMAND l2dcat_core_tests)
-  add_executable(l2dcat_i18n_tests tests/test_i18n.c)
-  target_link_libraries(l2dcat_i18n_tests PRIVATE l2dcat_core l2dcat_warnings)
-  target_compile_definitions(l2dcat_i18n_tests PRIVATE
-    L2DCAT_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-  add_test(NAME i18n COMMAND l2dcat_i18n_tests)
-  add_executable(l2dcat_ui_tests tests/test_nuklear.c src/ui/nuklear_impl.c)
-  target_include_directories(l2dcat_ui_tests SYSTEM PRIVATE ${L2DCAT_NUKLEAR_INCLUDE_DIR})
-  target_link_libraries(l2dcat_ui_tests PRIVATE l2dcat_warnings)
-  add_test(NAME ui COMMAND l2dcat_ui_tests)
-  add_executable(l2dcat_app_state_tests tests/test_app_state.c src/core/app_state.c)
-  target_link_libraries(l2dcat_app_state_tests PRIVATE l2dcat_warnings)
-  target_include_directories(l2dcat_app_state_tests PRIVATE include)
-  add_test(NAME app-state COMMAND l2dcat_app_state_tests)
+    tests/test_shortcut.c src/platform/windows_keys.c)
+  target_link_libraries(bongo_cat_neo_core_tests PRIVATE bongo_cat_neo_core bongo_cat_neo_warnings)
+  target_compile_definitions(bongo_cat_neo_core_tests PRIVATE
+    BONGO_CAT_NEO_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  add_test(NAME core COMMAND bongo_cat_neo_core_tests)
+  add_executable(bongo_cat_neo_i18n_tests tests/test_i18n.c)
+  target_link_libraries(bongo_cat_neo_i18n_tests PRIVATE bongo_cat_neo_core bongo_cat_neo_warnings)
+  target_compile_definitions(bongo_cat_neo_i18n_tests PRIVATE
+    BONGO_CAT_NEO_NATIVE_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  add_test(NAME i18n COMMAND bongo_cat_neo_i18n_tests)
+  add_executable(bongo_cat_neo_ui_tests tests/test_nuklear.c src/ui/nuklear_impl.c)
+  target_include_directories(bongo_cat_neo_ui_tests SYSTEM PRIVATE ${BONGO_CAT_NEO_NUKLEAR_INCLUDE_DIR})
+  target_link_libraries(bongo_cat_neo_ui_tests PRIVATE bongo_cat_neo_warnings)
+  add_test(NAME ui COMMAND bongo_cat_neo_ui_tests)
+  add_executable(bongo_cat_neo_app_state_tests tests/test_app_state.c src/core/app_state.c)
+  target_link_libraries(bongo_cat_neo_app_state_tests PRIVATE bongo_cat_neo_warnings)
+  target_include_directories(bongo_cat_neo_app_state_tests PRIVATE include)
+  add_test(NAME app-state COMMAND bongo_cat_neo_app_state_tests)
   if(UNIX AND NOT APPLE)
-    target_link_libraries(l2dcat_ui_tests PRIVATE m)
-    target_link_libraries(l2dcat_app_state_tests PRIVATE m)
-    add_executable(l2dcat_linux_update_tests tests/test_linux_update.c
-      src/platform/linux_update_verify.c)
-    target_include_directories(l2dcat_linux_update_tests PRIVATE include src/platform
-      "${L2DCAT_GENERATED_DIR}")
-    target_link_libraries(l2dcat_linux_update_tests PRIVATE l2dcat_core
-      l2dcat_warnings OpenSSL::Crypto)
-    add_test(NAME linux-update-signature COMMAND l2dcat_linux_update_tests)
+    target_link_libraries(bongo_cat_neo_ui_tests PRIVATE m)
+    target_link_libraries(bongo_cat_neo_app_state_tests PRIVATE m)
   endif()
 endif()
-install(TARGETS l2dcat RUNTIME DESTINATION . BUNDLE DESTINATION .)
+install(TARGETS bongo_cat_neo RUNTIME DESTINATION . BUNDLE DESTINATION .)
 if(UNIX AND NOT APPLE)
   install(DIRECTORY resources/assets DESTINATION .)
 endif()

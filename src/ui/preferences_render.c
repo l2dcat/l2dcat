@@ -2,9 +2,9 @@
 #include "preferences_controls.h"
 #include "preferences_notice.h"
 #include "ui_catime.h"
-#include "l2dcat/file.h"
-#include "l2dcat/path.h"
-#include "l2dcat/tray.h"
+#include "bongo_cat_neo/file.h"
+#include "bongo_cat_neo/path.h"
+#include "bongo_cat_neo/tray.h"
 
 #include <SDL3/SDL_opengl.h>
 #include <math.h>
@@ -19,18 +19,18 @@ typedef struct RootStyle {
     float group_border;
 } RootStyle;
 
-static const char *tr(const L2DCatPreferences *value, const char *key,
+static const char *tr(const BongoCatNeoPreferences *value, const char *key,
     const char *fallback) {
-    return l2dcat_i18n_get(value->app->i18n, key, fallback);
+    return bongo_cat_neo_i18n_get(value->app->i18n, key, fallback);
 }
 
-static void draw_page(L2DCatPreferences *value, struct nk_context *context) {
+static void draw_page(BongoCatNeoPreferences *value, struct nk_context *context) {
     switch (value->page) {
-    case 0: l2dcat_preferences_page_cat(value->app, context); break;
-    case 1: l2dcat_preferences_page_general(value->app, context); break;
-    case 2: l2dcat_preferences_page_model(value->app, context); break;
-    case 3: l2dcat_preferences_page_shortcuts(value->app, context); break;
-    default: l2dcat_preferences_page_about(value->app, context); break;
+    case 0: bongo_cat_neo_preferences_page_cat(value->app, context); break;
+    case 1: bongo_cat_neo_preferences_page_general(value->app, context); break;
+    case 2: bongo_cat_neo_preferences_page_model(value->app, context); break;
+    case 3: bongo_cat_neo_preferences_page_shortcuts(value->app, context); break;
+    default: bongo_cat_neo_preferences_page_about(value->app, context); break;
     }
 }
 
@@ -46,9 +46,9 @@ static RootStyle root_style_save(struct nk_context *context) {
 }
 
 static void root_style_apply(struct nk_context *context,
-    L2DCatUIPalette palette) {
-    context->style.window.padding = nk_vec2(L2DCAT_UI_MARGIN,
-        L2DCAT_UI_MARGIN);
+    BongoCatNeoUIPalette palette) {
+    context->style.window.padding = nk_vec2(BONGO_CAT_NEO_UI_MARGIN,
+        BONGO_CAT_NEO_UI_MARGIN);
     context->style.window.group_padding = nk_vec2(24, 8);
     context->style.window.spacing = nk_vec2(0, 0);
     context->style.window.fixed_background = nk_style_item_color(
@@ -67,7 +67,7 @@ static void root_style_restore(struct nk_context *context,
     context->style.window.group_border = saved->group_border;
 }
 
-static bool draw_shell(L2DCatPreferences *value, struct nk_context *context,
+static bool draw_shell(BongoCatNeoPreferences *value, struct nk_context *context,
     int width, int height, bool dark) {
     static const char *page_ids[] = {
         "page-cat", "page-general", "page-model", "page-shortcuts", "page-about"};
@@ -77,15 +77,15 @@ static bool draw_shell(L2DCatPreferences *value, struct nk_context *context,
         tr(value, "pages.preference.model.title", "Model"),
         tr(value, "pages.preference.shortcut.title", "Shortcuts"),
         tr(value, "pages.preference.about.title", "About")};
-    bool modal = l2dcat_preferences_remove_dialog_active(value->app);
-    l2dcat_ui_shell_draw(context, (float)width, (float)height, dark);
-    bool close_requested = l2dcat_ui_header(context, "Bongo Cat Neo",
+    bool modal = bongo_cat_neo_preferences_remove_dialog_active(value->app);
+    bongo_cat_neo_ui_shell_draw(context, (float)width, (float)height, dark);
+    bool close_requested = bongo_cat_neo_ui_header(context, "Bongo Cat Neo",
         value->ui.heading_font, !modal, dark);
-    l2dcat_ui_tabs(context, menus, 5, &value->page, !modal, dark);
-    float body_height = (float)height - L2DCAT_UI_MARGIN * 2.0f -
-        L2DCAT_UI_HEADER_HEIGHT - L2DCAT_UI_TABS_HEIGHT;
+    bongo_cat_neo_ui_tabs(context, menus, 5, &value->page, !modal, dark);
+    float body_height = (float)height - BONGO_CAT_NEO_UI_MARGIN * 2.0f -
+        BONGO_CAT_NEO_UI_HEADER_HEIGHT - BONGO_CAT_NEO_UI_TABS_HEIGHT;
     nk_layout_row_dynamic(context, NK_MAX(120.0f, body_height), 1);
-    L2DCatUIPalette p = l2dcat_ui_palette(dark);
+    BongoCatNeoUIPalette p = bongo_cat_neo_ui_palette(dark);
     struct nk_rect body = nk_widget_bounds(context);
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     nk_fill_rect(canvas, body, 16, p.background);
@@ -126,19 +126,19 @@ static bool draw_shell(L2DCatPreferences *value, struct nk_context *context,
     }
     context->style.window.fixed_background = nk_style_item_color(p.surface);
     context->style.window.background = p.surface;
-    l2dcat_preferences_notice_draw(value, context, (float)width, (float)height);
-    l2dcat_preferences_remove_dialog_draw(value->app, context);
+    bongo_cat_neo_preferences_notice_draw(value, context, (float)width, (float)height);
+    bongo_cat_neo_preferences_remove_dialog_draw(value->app, context);
     return close_requested;
 }
 
-static bool draw_frame(L2DCatPreferences *value, int width, int height,
+static bool draw_frame(BongoCatNeoPreferences *value, int width, int height,
     bool dark) {
     struct nk_context *context = &value->ui.context;
     RootStyle saved = root_style_save(context);
-    L2DCatUIPalette palette = l2dcat_ui_palette(dark);
+    BongoCatNeoUIPalette palette = bongo_cat_neo_ui_palette(dark);
     root_style_apply(context, palette);
     bool close_requested = false;
-    if (nk_begin(context, L2DCAT_NAME,
+    if (nk_begin(context, BONGO_CAT_NEO_NAME,
         nk_rect(0, 0, (float)width, (float)height), NK_WINDOW_NO_SCROLLBAR))
         close_requested = draw_shell(value, context, width, height, dark);
     nk_end(context);
@@ -146,17 +146,17 @@ static bool draw_frame(L2DCatPreferences *value, int width, int height,
     return close_requested;
 }
 
-static void write_smoke_frame(L2DCatPreferences *value) {
+static void write_smoke_frame(BongoCatNeoPreferences *value) {
     if (!value->app->smoke || value->frame_checked) return;
     value->frame_checked = true;
-    char path[L2DCAT_PATH_CAP];
-    l2dcat_path_join(path, sizeof(path), value->app->data_root, "ui-frame.txt");
-    FILE *file = l2dcat_file_open(path, "wb");
+    char path[BONGO_CAT_NEO_PATH_CAP];
+    bongo_cat_neo_path_join(path, sizeof(path), value->app->data_root, "ui-frame.txt");
+    FILE *file = bongo_cat_neo_file_open(path, "wb");
     if (file) {
         fprintf(file, "valid=%d convert=%d vertices=%zu elements=%zu commands=%u "
             "draw_elements=%u gl_error=%u alpha_vertices=%u max_alpha=%u "
             "font_path=%d font_file=%d custom_font=%d font_probe=%d\n",
-            l2dcat_ui_frame_valid(&value->ui), value->ui.last_convert_result,
+            bongo_cat_neo_ui_frame_valid(&value->ui), value->ui.last_convert_result,
             value->ui.last_vertex_bytes, value->ui.last_element_bytes,
             value->ui.last_draw_commands, value->ui.last_draw_elements,
             (unsigned)value->ui.last_gl_error, value->ui.nonzero_alpha_vertices,
@@ -165,58 +165,58 @@ static void write_smoke_frame(L2DCatPreferences *value) {
             value->ui.font_probe_loaded);
         fclose(file);
     }
-    if (!l2dcat_ui_frame_valid(&value->ui)) value->app->exit_code = 1;
+    if (!bongo_cat_neo_ui_frame_valid(&value->ui)) value->app->exit_code = 1;
 }
 
-static bool reload_language(L2DCatPreferences *value) {
+static bool reload_language(BongoCatNeoPreferences *value) {
     if (value->font_language == value->app->config.app.language) return false;
-    L2DCatError error = {0};
-    if (!value->app->i18n || l2dcat_i18n_reload(value->app->i18n,
-        value->app->config.app.language, &error) != L2DCAT_OK) {
+    BongoCatNeoError error = {0};
+    if (!value->app->i18n || bongo_cat_neo_i18n_reload(value->app->i18n,
+        value->app->config.app.language, &error) != BONGO_CAT_NEO_OK) {
         value->app->config.app.language = value->font_language;
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
         return false;
     }
     value->font_language = value->app->config.app.language;
-    if (value->app->tray) l2dcat_tray_sync(value->app->tray);
+    if (value->app->tray) bongo_cat_neo_tray_sync(value->app->tray);
     value->render_dirty = true;
     return true;
 }
 
-void l2dcat_preferences_render(L2DCatPreferences *value) {
+void bongo_cat_neo_preferences_render(BongoCatNeoPreferences *value) {
     if (!value || !value->window) return;
     uint64_t now = SDL_GetTicksNS();
     if (!value->render_dirty && value->last_render_ns) return;
     value->render_dirty = false;
     value->last_render_ns = now;
-    l2dcat_preferences_input_end(value);
+    bongo_cat_neo_preferences_input_end(value);
     SDL_GL_MakeCurrent(value->window, value->gl_context);
-    l2dcat_preferences_apply_theme(value);
+    bongo_cat_neo_preferences_apply_theme(value);
     int width, height;
     SDL_GetWindowSize(value->window, &width, &height);
-    l2dcat_ui_cursor_begin(&value->ui);
-    bool dark = l2dcat_preferences_resolved_theme(value) != 0;
+    bongo_cat_neo_ui_cursor_begin(&value->ui);
+    bool dark = bongo_cat_neo_preferences_resolved_theme(value) != 0;
     bool close_requested = draw_frame(value, width, height, dark);
-    L2DCatUIPalette palette = l2dcat_ui_palette(dark);
+    BongoCatNeoUIPalette palette = bongo_cat_neo_ui_palette(dark);
     glClearColor(palette.background.r / 255.0f, palette.background.g / 255.0f,
         palette.background.b / 255.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    l2dcat_ui_render(&value->ui);
+    bongo_cat_neo_ui_render(&value->ui);
     SDL_GL_SwapWindow(value->window);
     write_smoke_frame(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
-    l2dcat_ui_cursor_apply(&value->ui);
+    bongo_cat_neo_ui_cursor_apply(&value->ui);
     if (close_requested) {
-        l2dcat_preferences_close(value);
+        bongo_cat_neo_preferences_close(value);
         return;
     }
-    if (value->import_requested && !l2dcat_preferences_import_is_open(
+    if (value->import_requested && !bongo_cat_neo_preferences_import_is_open(
         value->import_dialog)) {
         value->import_requested = false;
-        if (!l2dcat_preferences_import_open(value->import_dialog, value->window))
+        if (!bongo_cat_neo_preferences_import_open(value->import_dialog, value->window))
             value->render_dirty = true;
     }
     reload_language(value);
-    if (l2dcat_pref_controls_animating(&value->ui.context))
+    if (bongo_cat_neo_pref_controls_animating(&value->ui.context))
         value->render_dirty = true;
 }

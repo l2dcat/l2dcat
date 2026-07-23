@@ -1,28 +1,28 @@
-#ifndef L2DCAT_MODEL_IMPORT_H
-#define L2DCAT_MODEL_IMPORT_H
+#ifndef BONGO_CAT_NEO_MODEL_IMPORT_H
+#define BONGO_CAT_NEO_MODEL_IMPORT_H
 
 #include "runtime.h"
 
-#define L2DCAT_IMPORT_CANDIDATE_CAP 16
+#define BONGO_CAT_NEO_IMPORT_CANDIDATE_CAP 16
 
-typedef struct L2DCatImportCandidate {
-    char directory[L2DCAT_PATH_CAP];
-    char setting[L2DCAT_PATH_CAP];
-    char assets[L2DCAT_PATH_CAP];
-    L2DCatModelMode mode;
-} L2DCatImportCandidate;
+typedef struct BongoCatNeoImportCandidate {
+    char directory[BONGO_CAT_NEO_PATH_CAP];
+    char setting[BONGO_CAT_NEO_PATH_CAP];
+    char assets[BONGO_CAT_NEO_PATH_CAP];
+    BongoCatNeoModelMode mode;
+} BongoCatNeoImportCandidate;
 
-typedef struct L2DCatImportDiscovery {
-    L2DCatImportCandidate candidates[L2DCAT_IMPORT_CANDIDATE_CAP];
+typedef struct BongoCatNeoImportDiscovery {
+    BongoCatNeoImportCandidate candidates[BONGO_CAT_NEO_IMPORT_CANDIDATE_CAP];
     size_t count;
     int depth;
-} L2DCatImportDiscovery;
+} BongoCatNeoImportDiscovery;
 
-bool l2dcat_import_discover(const char *source, L2DCatImportDiscovery *discovery,
-    L2DCatError *error);
-bool l2dcat_import_manifest_valid(const char *root, const char *setting,
-    L2DCatError *error);
-bool l2dcat_import_legacy_assets(const L2DCatImportCandidate *candidate,
-    const char *source_root, const char *target, L2DCatError *error);
+bool bongo_cat_neo_import_discover(const char *source, BongoCatNeoImportDiscovery *discovery,
+    BongoCatNeoError *error);
+bool bongo_cat_neo_import_manifest_valid(const char *root, const char *setting,
+    BongoCatNeoError *error);
+bool bongo_cat_neo_import_legacy_assets(const BongoCatNeoImportCandidate *candidate,
+    const char *source_root, const char *target, BongoCatNeoError *error);
 
 #endif

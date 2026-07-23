@@ -1,7 +1,7 @@
 param([string]$Exe = "", [string]$OutputDir = "")
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
-if (-not $Exe) { $Exe = Join-Path $root "build\l2dcat.exe" }
+if (-not $Exe) { $Exe = Join-Path $root "build\BongoCatNeo.exe" }
 if (-not $OutputDir) { $OutputDir = Join-Path $root "build\theme-import-audit" }
 $Exe = [IO.Path]::GetFullPath($Exe)
 $OutputDir = [IO.Path]::GetFullPath($OutputDir)
@@ -262,7 +262,7 @@ $results = foreach ($fixture in $fixtures) {
             gamepad = "resources\left-keys\DPadLeft.png"
         }
         foreach ($model in $models) {
-            $modePath = Join-Path $model.FullName ".l2dcat-mode"
+            $modePath = Join-Path $model.FullName ".bongo-cat-neo-mode"
             $mode = if (Test-Path $modePath) { (Get-Content $modePath -Raw).Trim() } else { "" }
             $backgroundPath = Join-Path $model.FullName "resources\background.png"
             $coverPath = Join-Path $model.FullName "resources\cover.png"

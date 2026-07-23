@@ -1,8 +1,8 @@
-#include "l2dcat/mouse.h"
+#include "bongo_cat_neo/mouse.h"
 
 #include <math.h>
 
-void l2dcat_mouse_target(L2DCatMouseTracking *tracking, double x, double y) {
+void bongo_cat_neo_mouse_target(BongoCatNeoMouseTracking *tracking, double x, double y) {
     if (!tracking) return;
     tracking->target_x = x;
     tracking->target_y = y;
@@ -14,7 +14,7 @@ void l2dcat_mouse_target(L2DCatMouseTracking *tracking, double x, double y) {
     tracking->settled = false;
 }
 
-bool l2dcat_mouse_step(L2DCatMouseTracking *tracking, float delta_seconds,
+bool bongo_cat_neo_mouse_step(BongoCatNeoMouseTracking *tracking, float delta_seconds,
     double *x, double *y) {
     if (!tracking || !tracking->initialized || tracking->settled || !x || !y)
         return false;
@@ -36,7 +36,7 @@ bool l2dcat_mouse_step(L2DCatMouseTracking *tracking, float delta_seconds,
     return true;
 }
 
-float l2dcat_mouse_parameter_value(float minimum, float maximum,
+float bongo_cat_neo_mouse_parameter_value(float minimum, float maximum,
     float x_ratio, float y_ratio, char axis, bool mirror) {
     float value;
     if (axis == 'Z') {
