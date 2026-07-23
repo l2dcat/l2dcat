@@ -1,7 +1,7 @@
 #include "l2dcat/platform.h"
 #include "windows_borderless.h"
 #include "windows_keys.h"
-
+#include "../ui/ui_native_theme.h"
 #ifdef _WIN32
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_properties.h>
@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
-
 typedef struct WindowsState {
     L2DCatPlatform *platform;
     HANDLE thread;
@@ -276,6 +275,7 @@ L2DCatMenuAction l2dcat_platform_context_menu(L2DCatPlatform *platform,
     POINT point; GetCursorPos(&point);
     HWND window = native_window(platform);
     SetForegroundWindow(window);
+    l2dcat_ui_native_menu_prepare(platform->window, labels->dark_theme);
     l2dcat_windows_menu_preview(labels->preview, labels->preview_userdata);
     UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
         point.x, point.y, 0, window, NULL);

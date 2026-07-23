@@ -1,13 +1,9 @@
 #include "ui_backend.h"
-#include "l2dcat/file.h"
+#include "ui_font_atlas.h"
 
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef _WIN32
-#include <io.h>
-#include <windows.h>
-#endif
 
 typedef struct UIVertex {
     float position[2];
@@ -25,6 +21,7 @@ static const char *fragment_source =
     "#version 330 core\n"
     "in vec2 FragUV;in vec4 FragColor;uniform sampler2D Texture;out vec4 OutColor;"
     "void main(){OutColor=FragColor*texture(Texture,FragUV);}";
+static L2DCatUIBackend *context_backend;
 
 static void clipboard_copy(nk_handle user, const char *text, int length) {
     (void)user;
@@ -44,65 +41,6 @@ static void clipboard_paste(nk_handle user, struct nk_text_edit *edit) {
         nk_textedit_paste(edit, text, nk_strlen(text));
         SDL_free(text);
     }
-}
-
-static bool load_font_file(L2DCatUIBackend *ui, const char *path) {
-    FILE *file = l2dcat_file_open(path, "rb");
-    if (!file || fseek(file, 0, SEEK_END) != 0) {
-        if (file) fclose(file);
-        return false;
-    }
-    long size = ftell(file);
-    if (size <= 0 || fseek(file, 0, SEEK_SET) != 0) { fclose(file); return false; }
-#ifdef _WIN32
-    HANDLE source = (HANDLE)_get_osfhandle(_fileno(file));
-    HANDLE mapping = CreateFileMappingW(source, NULL, PAGE_READONLY, 0, 0, NULL);
-    void *view = mapping ? MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0) : NULL;
-    if (!view) {
-        if (mapping) CloseHandle(mapping);
-        fclose(file);
-        return false;
-    }
-    ui->font_blob = view;
-    ui->font_blob_size = (size_t)size;
-    ui->font_file_handle = file;
-    ui->font_mapping_handle = mapping;
-    return true;
-#else
-    ui->font_blob = malloc((size_t)size);
-    if (!ui->font_blob) { fclose(file); return false; }
-    ui->font_blob_size = fread(ui->font_blob, 1, (size_t)size, file);
-    fclose(file);
-    if (ui->font_blob_size == (size_t)size) return true;
-    free(ui->font_blob); ui->font_blob = NULL; ui->font_blob_size = 0;
-    return false;
-#endif
-}
-
-static void release_font_file(L2DCatUIBackend *ui) {
-#ifdef _WIN32
-    if (ui->font_blob) UnmapViewOfFile(ui->font_blob);
-    if (ui->font_mapping_handle) CloseHandle(ui->font_mapping_handle);
-    if (ui->font_file_handle) fclose(ui->font_file_handle);
-#else
-    free(ui->font_blob);
-#endif
-    ui->font_blob = NULL; ui->font_blob_size = 0;
-    ui->font_file_handle = NULL; ui->font_mapping_handle = NULL;
-}
-
-static bool font_has_ranges(const struct nk_font *font, const nk_rune *ranges) {
-    if (!font) return false;
-    if (!ranges) {
-        const struct nk_font_glyph *glyph = nk_font_find_glyph(font, 'A');
-        return glyph && glyph->codepoint == 'A';
-    }
-    for (size_t pair = 2; ranges[pair] && ranges[pair + 1]; pair += 2)
-        for (nk_rune point = ranges[pair]; point <= ranges[pair + 1]; ++point) {
-            const struct nk_font_glyph *glyph = nk_font_find_glyph(font, point);
-            if (!glyph || glyph->codepoint != point) return false;
-        }
-    return true;
 }
 
 static bool create_device(L2DCatUIBackend *ui, L2DCatError *error) {
@@ -129,51 +67,8 @@ static bool create_device(L2DCatUIBackend *ui, L2DCatError *error) {
     return true;
 }
 
-static bool create_font(L2DCatUIBackend *ui, const char *font_path,
-    const nk_rune *glyph_ranges) {
-    nk_font_atlas_init_default(&ui->atlas);
-    nk_font_atlas_begin(&ui->atlas);
-    struct nk_font_config config = nk_font_config(17.0f);
-    config.range = glyph_ranges;
-    config.oversample_h = 1;
-    config.oversample_v = 1;
-    bool loaded = font_path && load_font_file(ui, font_path);
-    ui->font_path_found = font_path != NULL;
-    ui->font_file_loaded = loaded;
-    struct nk_font *font = loaded
-        ? nk_font_atlas_add_from_memory(&ui->atlas, ui->font_blob,
-            ui->font_blob_size, 17.0f, &config)
-        : nk_font_atlas_add_default(&ui->atlas, 17.0f, NULL);
-    ui->custom_font_loaded = loaded && font;
-    if (!font && loaded) {
-        release_font_file(ui);
-        font = nk_font_atlas_add_default(&ui->atlas, 17.0f, NULL);
-    }
-    int width, height;
-    const void *pixels = nk_font_atlas_bake(&ui->atlas, &width, &height, NK_FONT_ATLAS_ALPHA8);
-    glGenTextures(1, &ui->font_texture);
-    glBindTexture(GL_TEXTURE_2D, ui->font_texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_R, GL_ONE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_G, GL_ONE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_B, GL_ONE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_A, GL_RED);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED,
-        GL_UNSIGNED_BYTE, pixels);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    nk_font_atlas_end(&ui->atlas, nk_handle_id((int)ui->font_texture), &ui->null_texture);
-    if (font) {
-        ui->font_probe_loaded = font_has_ranges(font, glyph_ranges);
-        nk_style_set_font(&ui->context, &font->handle);
-    }
-    nk_font_atlas_cleanup(&ui->atlas);
-    release_font_file(ui);
-    return font && ui->font_texture != 0;
-}
-
-bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window, const char *font_path,
+bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window,
+    const char *body_font_path, const char *heading_font_path,
     const nk_rune *glyph_ranges, L2DCatError *error) {
     memset(ui, 0, sizeof(*ui));
     ui->window = window;
@@ -182,8 +77,10 @@ bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window, const char *font_pa
     ui->vertices = malloc(ui->vertex_capacity);
     ui->elements = malloc(ui->element_capacity);
     if (!ui->vertices || !ui->elements || !nk_init_default(&ui->context, NULL) ||
-        !create_device(ui, error) || !create_font(ui, font_path, glyph_ranges)) return false;
+        !create_device(ui, error) || !l2dcat_ui_font_atlas_create(ui,
+            body_font_path, heading_font_path, glyph_ranges)) return false;
     nk_buffer_init_default(&ui->commands);
+    context_backend = ui;
     ui->context.clip.copy = clipboard_copy;
     ui->context.clip.paste = clipboard_paste;
     return true;
@@ -191,8 +88,8 @@ bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window, const char *font_pa
 
 void l2dcat_ui_destroy(L2DCatUIBackend *ui) {
     if (!ui) return;
-    nk_font_atlas_clear(&ui->atlas);
-    release_font_file(ui);
+    if (context_backend == ui) context_backend = NULL;
+    l2dcat_ui_font_atlas_destroy(ui);
     nk_buffer_free(&ui->commands);
     nk_free(&ui->context);
     if (ui->font_texture) glDeleteTextures(1, &ui->font_texture);
@@ -218,9 +115,9 @@ static void convert(L2DCatUIBackend *ui) {
     config.vertex_alignment = NK_ALIGNOF(UIVertex);
     config.tex_null = ui->null_texture;
     config.global_alpha = 1.0f;
-    config.circle_segment_count = 18;
-    config.curve_segment_count = 18;
-    config.arc_segment_count = 18;
+    config.circle_segment_count = 36;
+    config.curve_segment_count = 36;
+    config.arc_segment_count = 36;
     config.shape_AA = NK_ANTI_ALIASING_ON;
     config.line_AA = NK_ANTI_ALIASING_ON;
     struct nk_buffer vertices, elements;
@@ -297,4 +194,38 @@ bool l2dcat_ui_frame_valid(const L2DCatUIBackend *ui) {
         ui->nonzero_alpha_vertices && ui->max_alpha &&
         ui->font_probe_loaded &&
         ui->last_gl_error == GL_NO_ERROR;
+}
+
+L2DCatUIBackend *l2dcat_ui_backend_for_context(
+    const struct nk_context *context) {
+    return context_backend && context == &context_backend->context
+        ? context_backend : NULL;
+}
+
+static const L2DCatUIBackend *backend(const struct nk_context *context) {
+    return l2dcat_ui_backend_for_context(context);
+}
+
+const struct nk_user_font *l2dcat_ui_caption_font(
+    const struct nk_context *context) {
+    const L2DCatUIBackend *ui = backend(context);
+    return ui && ui->caption_font ? ui->caption_font : context->style.font;
+}
+
+const struct nk_user_font *l2dcat_ui_body_font(
+    const struct nk_context *context) {
+    const L2DCatUIBackend *ui = backend(context);
+    return ui && ui->body_font ? ui->body_font : context->style.font;
+}
+
+const struct nk_user_font *l2dcat_ui_label_font(
+    const struct nk_context *context) {
+    const L2DCatUIBackend *ui = backend(context);
+    return ui && ui->label_font ? ui->label_font : context->style.font;
+}
+
+const struct nk_user_font *l2dcat_ui_heading_font(
+    const struct nk_context *context) {
+    const L2DCatUIBackend *ui = backend(context);
+    return ui && ui->heading_font ? ui->heading_font : context->style.font;
 }

@@ -2,7 +2,20 @@
 
 #if !defined(_WIN32) && !defined(__APPLE__)
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_properties.h>
+#include <X11/Xlib.h>
+#include <X11/keysym.h>
 #include <stdio.h>
+#include <string.h>
+
+typedef struct LinuxMenuRow {
+    const char *label;
+    L2DCatMenuAction action;
+} LinuxMenuRow;
+
+typedef struct LinuxMenuPalette {
+    unsigned long surface, field, border, text, accent;
+} LinuxMenuPalette;
 
 static L2DCatMenuAction finish(const L2DCatMenuLabels *labels,
     L2DCatMenuAction action) {
@@ -12,60 +25,136 @@ static L2DCatMenuAction finish(const L2DCatMenuLabels *labels,
     return action;
 }
 
-static L2DCatMenuAction submenu(SDL_Window *window, const char *title,
-    const int *values, int count, L2DCatMenuAction first) {
-    SDL_MessageBoxButtonData buttons[16]; char labels[16][16];
-    for (int i = 0; i < count; ++i) {
-        snprintf(labels[i], sizeof(labels[i]), "%d%%", values[i]);
-        buttons[i] = (SDL_MessageBoxButtonData){0, i, labels[i]};
+static unsigned long color(Display *display, int screen, const char *value) {
+    XColor resolved;
+    Colormap map = DefaultColormap(display, screen);
+    return XParseColor(display, map, value, &resolved) &&
+        XAllocColor(display, map, &resolved) ? resolved.pixel :
+        WhitePixel(display, screen);
+}
+
+static LinuxMenuPalette palette(Display *display, bool dark) {
+    int screen = DefaultScreen(display);
+    LinuxMenuPalette value;
+    value.surface = color(display, screen, dark ? "#21242b" : "#ffffff");
+    value.field = color(display, screen, dark ? "#2a2e37" : "#f3f5f8");
+    value.border = color(display, screen, dark ? "#3b424f" : "#d8dee8");
+    value.text = color(display, screen, dark ? "#f4f7fb" : "#182230");
+    value.accent = color(display, screen, "#54aeff");
+    return value;
+}
+
+static void draw_menu(Display *display, Window window, GC gc,
+    const LinuxMenuRow *rows, int count, int hover,
+    const LinuxMenuPalette *colors) {
+    XSetForeground(display, gc, colors->surface); XFillRectangle(display, window, gc,
+        0, 0, 340, (unsigned)(count * 34 + 16));
+    XSetForeground(display, gc, colors->border); XDrawRectangle(display, window, gc,
+        0, 0, 339, (unsigned)(count * 34 + 15));
+    for (int index = 0; index < count; ++index) {
+        int y = 8 + index * 34;
+        if (index == hover) {
+            XSetForeground(display, gc, colors->field);
+            XFillRectangle(display, window, gc, 8, y, 324, 32);
+        }
+        XSetForeground(display, gc,
+            index == hover ? colors->accent : colors->text);
+        XDrawString(display, window, gc, 20, y + 21, rows[index].label,
+            (int)strlen(rows[index].label));
     }
-    SDL_MessageBoxData data = {SDL_MESSAGEBOX_INFORMATION, window, title, title,
-        count, buttons, NULL};
-    int selected = -1;
-    return SDL_ShowMessageBox(&data, &selected) && selected >= 0
-        ? (L2DCatMenuAction)(first + selected) : L2DCAT_MENU_NONE;
+    XFlush(display);
+}
+
+static int popup_rows(Display *display, Window owner, const LinuxMenuRow *rows,
+    int count, bool dark) {
+    if (!display || !rows || count < 1) return -1;
+    Window root; int root_x, root_y, win_x, win_y; unsigned mask;
+    XQueryPointer(display, DefaultRootWindow(display), &root, &owner,
+        &root_x, &root_y, &win_x, &win_y, &mask);
+    int height = count * 34 + 16;
+    int screen_width = DisplayWidth(display, DefaultScreen(display));
+    int screen_height = DisplayHeight(display, DefaultScreen(display));
+    if (root_x > screen_width - 342) root_x = screen_width - 342;
+    if (root_y > screen_height - height - 2) root_y = screen_height - height - 2;
+    LinuxMenuPalette colors = palette(display, dark);
+    XSetWindowAttributes attributes = {0};
+    attributes.override_redirect = True;
+    attributes.background_pixel = colors.surface;
+    attributes.border_pixel = colors.border;
+    Window menu = XCreateWindow(display, DefaultRootWindow(display), root_x,
+        root_y, 340, (unsigned)height, 1, CopyFromParent, InputOutput,
+        CopyFromParent, CWOverrideRedirect | CWBackPixel | CWBorderPixel,
+        &attributes);
+    if (!menu) return -1;
+    XSelectInput(display, menu, ExposureMask | ButtonPressMask |
+        PointerMotionMask | KeyPressMask);
+    XMapRaised(display, menu); XGrabPointer(display, menu, True,
+        ButtonPressMask | PointerMotionMask, GrabModeAsync, GrabModeAsync,
+        None, None, CurrentTime);
+    XGrabKeyboard(display, menu, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+    GC gc = XCreateGC(display, menu, 0, NULL);
+    int selected = -1, hover = -1;
+    while (selected < 0) {
+        XEvent event; XNextEvent(display, &event);
+        if (event.type == Expose) draw_menu(display, menu, gc, rows, count,
+            hover, &colors);
+        else if (event.type == MotionNotify) {
+            int next = event.xmotion.y >= 8 ? (event.xmotion.y - 8) / 34 : -1;
+            hover = next >= 0 && next < count ? next : -1;
+            draw_menu(display, menu, gc, rows, count, hover, &colors);
+        } else if (event.type == ButtonPress) {
+            int next = event.xbutton.y >= 8 ? (event.xbutton.y - 8) / 34 : -1;
+            selected = next >= 0 && next < count ? next : -2;
+        } else if (event.type == KeyPress &&
+            XLookupKeysym(&event.xkey, 0) == XK_Escape) selected = -2;
+    }
+    XUngrabPointer(display, CurrentTime); XUngrabKeyboard(display, CurrentTime);
+    XFreeGC(display, gc);
+    XDestroyWindow(display, menu); XFlush(display);
+    return selected >= 0 ? rows[selected].action : L2DCAT_MENU_NONE;
 }
 
 L2DCatMenuAction l2dcat_linux_context_menu(L2DCatPlatform *platform,
     const L2DCatMenuLabels *labels) {
     if (!platform || !labels) return L2DCAT_MENU_NONE;
+    SDL_PropertiesID properties = SDL_GetWindowProperties(platform->window);
+    Display *display = SDL_GetPointerProperty(properties,
+        SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
+    Window owner = (Window)SDL_GetNumberProperty(properties,
+        SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+    if (!display || !owner) return finish(labels, L2DCAT_MENU_NONE);
     char pass[L2DCAT_ID_CAP], top[L2DCAT_ID_CAP];
     snprintf(pass, sizeof(pass), "%s%s", labels->pass_through_checked ? "[x] " : "",
         labels->pass_through);
     snprintf(top, sizeof(top), "%s%s", labels->always_on_top_checked ? "[x] " : "",
         labels->always_on_top);
-    SDL_MessageBoxButtonData buttons[] = {
-        {0, L2DCAT_MENU_PREFERENCES, labels->preferences}, {0, L2DCAT_MENU_HIDE, labels->hide},
-        {0, L2DCAT_MENU_PASS_THROUGH, pass}, {0, L2DCAT_MENU_ALWAYS_ON_TOP, top},
-        {0, -1, labels->window_size}, {0, -2, labels->opacity}, {0, -3, labels->model},
-        {0, L2DCAT_MENU_EXIT, labels->exit}};
-    SDL_MessageBoxData data = {SDL_MESSAGEBOX_INFORMATION, platform->window,
-        L2DCAT_NAME, L2DCAT_NAME, 8, buttons, NULL};
-    int selected = 0;
-    if (!SDL_ShowMessageBox(&data, &selected)) return finish(labels, L2DCAT_MENU_NONE);
-    if (selected == -1) {
-        const int values[] = {50,60,70,80,90,100,110,120,
-            130,140,150,160,170,180,190,200};
-        return finish(labels, submenu(platform->window, labels->window_size,
-            values, 16, L2DCAT_MENU_SCALE_50));
-    }
-    if (selected == -2) {
+    LinuxMenuRow main_rows[] = {
+        {labels->preferences, L2DCAT_MENU_PREFERENCES}, {labels->hide, L2DCAT_MENU_HIDE},
+        {pass, L2DCAT_MENU_PASS_THROUGH}, {top, L2DCAT_MENU_ALWAYS_ON_TOP},
+        {labels->window_size, -1}, {labels->opacity, -2}, {labels->model, -3},
+        {labels->exit, L2DCAT_MENU_EXIT}};
+    L2DCatMenuAction action = popup_rows(display, owner, main_rows,
+        (int)(sizeof(main_rows) / sizeof(main_rows[0])), labels->dark_theme);
+    if (action == (L2DCatMenuAction)-1) {
+        const int values[] = {50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200};
+        LinuxMenuRow rows[16]; char text[16][16];
+        for (int i = 0; i < 16; ++i) { snprintf(text[i], sizeof(text[i]), "%d%%", values[i]);
+            rows[i] = (LinuxMenuRow){text[i], L2DCAT_MENU_SCALE_50 + i}; }
+        action = popup_rows(display, owner, rows, 16, labels->dark_theme);
+    } else if (action == (L2DCatMenuAction)-2) {
         const int values[] = {10,20,30,40,50,60,70,80,90,100};
-        return finish(labels, submenu(platform->window, labels->opacity,
-            values, 10, L2DCAT_MENU_OPACITY_10));
-    }
-    if (selected == -3 && labels->model_count) {
-        SDL_MessageBoxButtonData model_buttons[L2DCAT_MODEL_CAP];
+        LinuxMenuRow rows[10]; char text[10][16];
+        for (int i = 0; i < 10; ++i) { snprintf(text[i], sizeof(text[i]), "%d%%", values[i]);
+            rows[i] = (LinuxMenuRow){text[i], L2DCAT_MENU_OPACITY_10 + i}; }
+        action = popup_rows(display, owner, rows, 10, labels->dark_theme);
+    } else if (action == (L2DCatMenuAction)-3 && labels->model_count) {
+        LinuxMenuRow rows[L2DCAT_MODEL_CAP];
         for (size_t i = 0; i < labels->model_count; ++i)
-            model_buttons[i] = (SDL_MessageBoxButtonData){0,
-                L2DCAT_MENU_MODEL_FIRST + (int)i, labels->model_names[i]};
-        SDL_MessageBoxData models = {SDL_MESSAGEBOX_INFORMATION, platform->window,
-            labels->model, labels->model, (int)labels->model_count, model_buttons, NULL};
-        int model = -1;
-        L2DCatMenuAction action = SDL_ShowMessageBox(&models, &model) && model >= 0
-            ? (L2DCatMenuAction)model : L2DCAT_MENU_NONE;
-        return finish(labels, action);
+            rows[i] = (LinuxMenuRow){labels->model_names[i],
+                L2DCAT_MENU_MODEL_FIRST + (int)i};
+        action = popup_rows(display, owner, rows, (int)labels->model_count,
+            labels->dark_theme);
     }
-    return finish(labels, (L2DCatMenuAction)selected);
+    return finish(labels, action);
 }
 #endif

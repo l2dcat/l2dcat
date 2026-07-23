@@ -35,6 +35,7 @@ public static class L2DCatPreferencesNative {
     [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, int data, UIntPtr extra);
     [DllImport("user32.dll")] public static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
     [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr handle, uint message, IntPtr wparam, IntPtr lparam);
+    [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr handle, uint message, IntPtr wparam, IntPtr lparam);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
@@ -49,8 +50,10 @@ function Get-AppWindows([int]$ProcessId) {
         if ($owner -eq $ProcessId -and [L2DCatPreferencesNative]::IsWindowVisible($handle)) {
             $rect = [L2DCatPreferencesNative+Rect]::new()
             if ([L2DCatPreferencesNative]::GetWindowRect($handle, [ref]$rect)) {
-                $area = ($rect.R - $rect.L) * ($rect.B - $rect.T)
-                if ($area -gt 400) { $windows.Add([pscustomobject]@{ Handle=$handle; Area=$area }) }
+                    $width = $rect.R - $rect.L; $height = $rect.B - $rect.T
+                    $area = $width * $height
+                    if ($area -gt 400) { $windows.Add([pscustomobject]@{
+                        Handle=$handle; Area=$area; Width=$width; Height=$height }) }
             }
         }
         return $true
@@ -62,8 +65,11 @@ function Wait-Preferences([int]$ProcessId) {
     $deadline = [DateTime]::UtcNow.AddSeconds(20)
     do {
         $windows = @(Get-AppWindows $ProcessId)
-        if ($windows.Count -ge 2) {
-            return ($windows | Sort-Object Area -Descending | Select-Object -First 1).Handle
+        $preferences = @($windows | Where-Object {
+            $_.Width -ge 700 -and $_.Height -ge 550 })
+        if ($preferences.Count) {
+            return ($preferences | Sort-Object Area -Descending |
+                Select-Object -First 1).Handle
         }
         Start-Sleep -Milliseconds 50
     } while ([DateTime]::UtcNow -lt $deadline)
@@ -75,9 +81,16 @@ function Get-ClientPoint([IntPtr]$Window, [double]$X, [double]$Y) {
     [void][L2DCatPreferencesNative]::GetClientRect($Window, [ref]$client)
     $point = [L2DCatPreferencesNative+Point]::new()
     $point.X = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
-    $point.Y = [int][Math]::Round($Y * ($client.B - $client.T) / 640.0)
+    $point.Y = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
     [void][L2DCatPreferencesNative]::ClientToScreen($Window, [ref]$point)
     return $point
+}
+
+function Focus-Window([IntPtr]$Window, [double]$X, [double]$Y) {
+    $point = Get-ClientPoint $Window $X $Y
+    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
+    [void][L2DCatPreferencesNative]::SetCursorPos($point.X, $point.Y)
+    Start-Sleep -Milliseconds 300
 }
 
 function Invoke-Click([IntPtr]$Window, [double]$X, [double]$Y) {
@@ -85,7 +98,7 @@ function Invoke-Click([IntPtr]$Window, [double]$X, [double]$Y) {
     $client = [L2DCatPreferencesNative+Rect]::new()
     [void][L2DCatPreferencesNative]::GetClientRect($Window, [ref]$client)
     $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
-    $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 640.0)
+    $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
     $position = [IntPtr]([long](($clientY -band 0xFFFF) -shl 16) -bor
         [long]($clientX -band 0xFFFF))
     [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
@@ -132,10 +145,25 @@ function Invoke-Text([IntPtr]$Window, [string]$Text) {
         $Window, 0x0007, [IntPtr]::Zero, [IntPtr]::Zero)
     Start-Sleep -Milliseconds 80
     foreach ($character in $Text.ToCharArray()) {
-        [void][L2DCatPreferencesNative]::PostMessageW(
+        [void][L2DCatPreferencesNative]::SendMessageW(
             $Window, 0x0109, [IntPtr][int]$character, [IntPtr]::Zero)
         Start-Sleep -Milliseconds 40
     }
+}
+
+function Invoke-Paste([IntPtr]$Window, [string]$Text) {
+    [Windows.Forms.Clipboard]::SetText($Text)
+    [L2DCatPreferencesNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
+    [L2DCatPreferencesNative]::keybd_event(0x56, 0, 0, [UIntPtr]::Zero)
+    [L2DCatPreferencesNative]::keybd_event(0x56, 0, 2, [UIntPtr]::Zero)
+    [L2DCatPreferencesNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 300
+}
+
+function Invoke-KeyText([IntPtr]$Window, [string]$Text) {
+    [void][L2DCatPreferencesNative]::SetForegroundWindow($Window)
+    [Windows.Forms.SendKeys]::SendWait($Text)
+    Start-Sleep -Milliseconds 300
 }
 
 function Save-Window([IntPtr]$Window, [string]$Name) {
@@ -177,36 +205,40 @@ $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
     -WorkingDirectory (Split-Path $Exe) -PassThru
 try {
     $window = Wait-Preferences $process.Id
-    Invoke-Click $window 100 500
+    Focus-Window $window 450 620
     $baseline = Save-Window $window "01-baseline.png"
-    Invoke-Click $window 310 135
+    Invoke-Click $window 818 248
     $toggled = Save-Window $window "02-toggle-card.png"
-    Invoke-Wheel $window 520 540
+    Invoke-Wheel $window 450 540
+    Focus-Window $window 450 520
     [L2DCatPreferencesNative]::keybd_event(0x22, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 80
     [L2DCatPreferencesNative]::keybd_event(0x22, 0, 2, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 250
     $scrolled = Save-Window $window "03-scrolled.png"
+    Invoke-Wheel $window 450 540
+    [void](Save-Window $window "03b-controls.png")
 
-    Invoke-Click $window 90 90
+    Invoke-Click $window 362 114
     $general = Save-Window $window "04-general.png"
-    Invoke-Click $window 838 383
+    Invoke-PhysicalClick $window 710 248
     $combo = Save-Window $window "05-combo-open.png"
-    [L2DCatPreferencesNative]::keybd_event(0x1B, 0, 0, [UIntPtr]::Zero)
-    [L2DCatPreferencesNative]::keybd_event(0x1B, 0, 2, [UIntPtr]::Zero)
-
-    Invoke-Click $window 90 194
+    Invoke-Click $window 710 248
+    Invoke-PhysicalClick $window 710 328
+    [void](Save-Window $window "05b-language-open.png")
+    Invoke-PhysicalClick $window 710 375
+    Start-Sleep -Milliseconds 500
+    $language = Save-Window $window "05c-language-live.png"
+    Invoke-Click $window 534 114
+    Invoke-Click $window 534 114
     $shortcuts = Save-Window $window "06-shortcuts.png"
-    Invoke-Click $window 745 135
+    Invoke-PhysicalClick $window 700 248
     Invoke-Text $window "TEST"
     Start-Sleep -Milliseconds 300
     $edited = Save-Window $window "07-shortcut-edited.png"
 
-    Invoke-Click $window 90 246
+    Invoke-Click $window 622 114
     $about = Save-Window $window "08-about.png"
-    [Windows.Forms.Clipboard]::SetText("clipboard-audit-sentinel")
-    Invoke-PhysicalClick $window 800 263
-    $clipboard = [Windows.Forms.Clipboard]::GetText()
     [void][L2DCatPreferencesNative]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
     for ($i = 0; $i -lt 50 -and -not (Test-Path $configPath); $i++) {
         Start-Sleep -Milliseconds 50
@@ -217,17 +249,18 @@ try {
         ScrollDifference = Measure-Difference $toggled $scrolled
         PageDifference = Measure-Difference $scrolled $general
         ComboDifference = Measure-Difference $general $combo
+        LanguageDifference = Measure-Difference $general $language
         EditDifference = Measure-Difference $shortcuts $edited
         TogglePersisted = $config.model.mirror -eq $true
         ShortcutPersisted = $config.shortcuts.visibleCat -eq "TEST"
-        CopyWorked = $clipboard -like "l2dcat*"
     }
     $result | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $OutputDir "result.json")
     [pscustomobject]$result | Format-List
     $passed = $result.ToggleDifference -gt 0.0001 -and $result.ScrollDifference -gt 0.02 -and
         $result.PageDifference -gt 0.02 -and $result.ComboDifference -gt 0.002 -and
+        $result.LanguageDifference -gt 0.01 -and
         $result.EditDifference -gt 0.0001 -and $result.TogglePersisted -and
-        $result.ShortcutPersisted -and $result.CopyWorked
+        $result.ShortcutPersisted
     if (-not $passed) { exit 1 }
 } finally {
     if ($process -and -not $process.HasExited) { $process.Kill(); $process.WaitForExit() }

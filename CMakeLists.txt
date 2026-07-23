@@ -18,7 +18,6 @@ set(L2DCAT_LINUXDEPLOY "" CACHE FILEPATH "Path to linuxdeploy AppImage")
 set(L2DCAT_APPIMAGETOOL "" CACHE FILEPATH "Path to appimagetool AppImage")
 set(L2DCAT_CUBISM_SDK "${CMAKE_CURRENT_SOURCE_DIR}/vendor/CubismSdkForNative"
   CACHE PATH "Path to Cubism SDK for Native")
-
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -122,14 +121,16 @@ add_library(l2dcat_runtime STATIC
   src/runtime/window_hit.c src/runtime/window_wheel.c
   src/ui/nuklear_impl.c
   src/ui/ui_backend.c src/ui/ui_cursor.c
-  src/ui/ui_font.c
+  src/ui/ui_font.c src/ui/ui_font_atlas.c
   src/ui/ui_input.c
-  src/ui/ui_sidebar.c
-  src/ui/ui_theme.c
-  src/ui/preferences.c src/ui/preferences_dialog.c src/ui/preferences_import.c
+  src/ui/ui_catime.c src/ui/ui_catime_theme.c
+  src/ui/ui_native_theme.c
+  src/ui/preferences.c src/ui/preferences_render.c
+  src/ui/preferences_dialog.c src/ui/preferences_import.c
+  src/ui/preferences_notice.c
   src/ui/preferences_model.c
   src/ui/preferences_pages.c
-  src/ui/preferences_widgets.c
+  src/ui/preferences_widgets.c src/ui/preferences_controls.c
   ${L2DCAT_LIVE2D_SOURCES})
 target_include_directories(l2dcat_runtime PUBLIC include)
 target_include_directories(l2dcat_runtime SYSTEM PRIVATE

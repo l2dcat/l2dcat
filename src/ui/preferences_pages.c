@@ -1,5 +1,6 @@
 #include "preferences_internal.h"
 #include "preferences_widgets.h"
+#include "preferences_notice.h"
 #include "l2dcat/audio.h"
 #include "l2dcat/i18n.h"
 #include "l2dcat/preferences.h"
@@ -112,6 +113,7 @@ static void update_autostart(L2DCatApp *app, bool old_value) {
     if (l2dcat_platform_set_autostart(app->config.app.autostart, &error) == L2DCAT_OK) return;
     app->config.app.autostart = old_value;
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+    l2dcat_preferences_notice_show(app, error.message, true);
 }
 
 static void update_tray(L2DCatApp *app) {
@@ -123,11 +125,25 @@ static void update_tray(L2DCatApp *app) {
     if (!app->tray) {
         app->config.app.tray_visible = false;
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s", error.message);
+        l2dcat_preferences_notice_show(app, error.message, true);
     }
 }
 
 void l2dcat_preferences_page_general(L2DCatApp *app, struct nk_context *context) {
     L2DCatAppOptions *options = &app->config.app;
+    const char *themes[] = {tr(app, "pages.preference.general.options.auto", "System"),
+        tr(app, "pages.preference.general.options.lightMode", "Light"),
+        tr(app, "pages.preference.general.options.darkMode", "Dark")};
+    const char *languages[] = {"English", "简体中文", "繁體中文", "Português", "Tiếng Việt"};
+    l2dcat_pref_section(context, tr(app,
+        "pages.preference.general.labels.appearanceSettings", "Appearance Settings"));
+    options->theme = (L2DCatTheme)l2dcat_pref_combo(context, "theme", tr(app,
+        "pages.preference.general.labels.themeMode", "Theme Mode"), "",
+        themes, 3, options->theme);
+    options->language = (L2DCatLanguage)l2dcat_pref_combo(context, "language", tr(app,
+        "pages.preference.general.labels.language", "Language"), "",
+        languages, 5, options->language);
+
     l2dcat_pref_section(context, tr(app, "pages.preference.general.labels.appSettings",
         "Application Settings"));
     bool old_autostart = options->autostart;
@@ -143,19 +159,6 @@ void l2dcat_preferences_page_general(L2DCatApp *app, struct nk_context *context)
         "pages.preference.general.labels.showTrayIcon", "Show Tray Icon"), tr(app,
         "pages.preference.general.hints.showTrayIcon", "Show l2dcat in the system tray."),
         &options->tray_visible)) update_tray(app);
-
-    l2dcat_pref_section(context, tr(app,
-        "pages.preference.general.labels.appearanceSettings", "Appearance Settings"));
-    const char *themes[] = {tr(app, "pages.preference.general.options.auto", "System"),
-        tr(app, "pages.preference.general.options.lightMode", "Light"),
-        tr(app, "pages.preference.general.options.darkMode", "Dark")};
-    const char *languages[] = {"English", "简体中文", "繁體中文", "Português", "Tiếng Việt"};
-    options->theme = (L2DCatTheme)l2dcat_pref_combo(context, "theme", tr(app,
-        "pages.preference.general.labels.themeMode", "Theme Mode"), "",
-        themes, 3, options->theme);
-    options->language = (L2DCatLanguage)l2dcat_pref_combo(context, "language", tr(app,
-        "pages.preference.general.labels.language", "Language"), "",
-        languages, 5, options->language);
 
     l2dcat_pref_section(context, tr(app, "native.platformStatus", "Platform status"));
     l2dcat_pref_status(context, "global-input", l2dcat_platform_global_input_supported()
@@ -204,16 +207,4 @@ void l2dcat_preferences_page_about(L2DCatApp *app, struct nk_context *context) {
     l2dcat_pref_status(context, "renderer", tr(app, "native.rendererDiagnostic",
         "Live2D renderer: diagnostic mode"), "");
 #endif
-    if (l2dcat_pref_button(context, "copy-info", tr(app,
-        "pages.preference.about.labels.appInfo", "App Info"), tr(app,
-        "pages.preference.about.hints.appInfo", "Copy application information."), tr(app,
-        "pages.preference.about.buttons.copy", "Copy"))) {
-        char info[256];
-        snprintf(info, sizeof(info), "l2dcat %s\n%s: %s\n%s: %s",
-            L2DCAT_VERSION, tr(app, "native.platformLabel", "Platform"), SDL_GetPlatform(),
-            tr(app, "native.globalInputLabel", "Global input"),
-            l2dcat_platform_global_input_supported() ? tr(app, "native.available", "available")
-                : tr(app, "native.reduced", "reduced"));
-        SDL_SetClipboardText(info);
-    }
 }

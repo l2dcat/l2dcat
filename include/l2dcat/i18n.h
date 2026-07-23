@@ -13,5 +13,7 @@ const char *l2dcat_i18n_get(const L2DCatI18n *i18n, const char *key,
     const char *fallback);
 size_t l2dcat_i18n_glyph_ranges(const L2DCatI18n *i18n, uint32_t *ranges,
     size_t capacity);
+size_t l2dcat_i18n_all_glyph_ranges(const L2DCatI18n *i18n, uint32_t *ranges,
+    size_t capacity);
 
 #endif

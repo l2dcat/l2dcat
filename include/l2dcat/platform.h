@@ -55,7 +55,7 @@ typedef struct L2DCatMenuLabels {
     const char *const *model_names;
     size_t model_count, current_model;
     float scale_percent, opacity_percent;
-    bool pass_through_checked, always_on_top_checked;
+    bool pass_through_checked, always_on_top_checked, dark_theme;
     L2DCatMenuPreview preview, restore;
     void *preview_userdata;
 } L2DCatMenuLabels;

@@ -19,7 +19,9 @@ static bool set_gl_attributes(void) {
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) &&
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0) &&
         SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8) &&
-        SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8) &&
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1) &&
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 }
 
 L2DCatResult l2dcat_window_create(L2DCatApp *app, L2DCatError *error) {
@@ -146,6 +148,9 @@ static void context_menu(L2DCatApp *app) {
         if (strcmp(app->models.entries[i].id, app->config.current_model) == 0)
             current_model = i;
     }
+    bool dark_theme = app->config.app.theme == L2DCAT_THEME_DARK ||
+        (app->config.app.theme == L2DCAT_THEME_AUTO &&
+            SDL_GetSystemTheme() == SDL_SYSTEM_THEME_DARK);
     L2DCatMenuLabels labels = {
         tr(app, "composables.useAppMenu.labels.preference", "Preferences"),
         tr(app, "composables.useAppMenu.labels.hideCat", "Hide Cat"),
@@ -158,6 +163,7 @@ static void context_menu(L2DCatApp *app) {
         model_names, app->models.count, current_model,
         app->config.window.scale_percent, app->config.window.opacity_percent,
         app->config.window.pass_through, app->config.window.always_on_top,
+        dark_theme,
         menu_preview, menu_restore, &preview};
     L2DCatMenuAction action = l2dcat_platform_context_menu(&app->platform, &labels);
     l2dcat_window_menu_action(app, action);

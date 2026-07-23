@@ -139,12 +139,9 @@ static int compare_point(const void *left, const void *right) {
     return a < b ? -1 : a > b;
 }
 
-size_t l2dcat_i18n_glyph_ranges(const L2DCatI18n *value, uint32_t *ranges,
-    size_t capacity) {
-    if (!value || !ranges || capacity < 3) return 0;
-    uint32_t points[4096];
-    size_t count = 0, written = 2;
-    collect_value(yyjson_doc_get_root(value->active), points, &count);
+static size_t build_ranges(uint32_t *points, size_t count,
+    uint32_t *ranges, size_t capacity) {
+    size_t written = 2;
     const unsigned char *builtins =
         (const unsigned char *)"English简体中文繁體中文PortuguêsTiếng Việt";
     while (*builtins) add_point(points, &count, decode_utf8(&builtins));
@@ -161,4 +158,28 @@ size_t l2dcat_i18n_glyph_ranges(const L2DCatI18n *value, uint32_t *ranges,
     }
     ranges[written] = 0;
     return written + 1;
+}
+
+size_t l2dcat_i18n_glyph_ranges(const L2DCatI18n *value, uint32_t *ranges,
+    size_t capacity) {
+    if (!value || !ranges || capacity < 3) return 0;
+    uint32_t points[4096]; size_t count = 0;
+    collect_value(yyjson_doc_get_root(value->active), points, &count);
+    return build_ranges(points, count, ranges, capacity);
+}
+
+size_t l2dcat_i18n_all_glyph_ranges(const L2DCatI18n *value, uint32_t *ranges,
+    size_t capacity) {
+    if (!value || !ranges || capacity < 3) return 0;
+    uint32_t points[4096]; size_t count = 0;
+    collect_value(yyjson_doc_get_root(value->fallback), points, &count);
+    for (int language = L2DCAT_LANG_ZH_CN; language <= L2DCAT_LANG_VI_VN;
+        ++language) {
+        L2DCatError ignored = {0};
+        yyjson_doc *doc = load_locale(value->root, (L2DCatLanguage)language,
+            &ignored);
+        if (doc) { collect_value(yyjson_doc_get_root(doc), points, &count);
+            yyjson_doc_free(doc); }
+    }
+    return build_ranges(points, count, ranges, capacity);
 }

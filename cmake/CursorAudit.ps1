@@ -1,7 +1,10 @@
 param(
     [string]$Exe = "",
     [string]$OutputDir = "",
-    [string]$ImportPath = ""
+    [string]$ImportPath = "",
+    [string]$Language = "zh-CN",
+    [ValidateSet("light", "dark")]
+    [string]$Theme = "light"
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,9 +57,10 @@ function Get-AppWindows([int]$ProcessId) {
             $rect = [L2DCatCursorNative+Rect]::new()
             if ([L2DCatCursorNative]::GetWindowRect($handle, [ref]$rect)) {
                 $area = ($rect.R - $rect.L) * ($rect.B - $rect.T)
-                $style = [L2DCatCursorNative]::GetWindowLongPtr($handle, -16).ToInt64()
-                if ($area -gt 400 -and ($style -band 0x00040000)) {
-                    $windows.Add([pscustomobject]@{ Handle=$handle; Area=$area })
+                $width = $rect.R - $rect.L; $height = $rect.B - $rect.T
+                if ($area -gt 400 -and $width -ge 700 -and $height -ge 550) {
+                    $windows.Add([pscustomobject]@{
+                        Handle=$handle; Area=$area; Width=$width; Height=$height })
                 }
             }
         }
@@ -82,7 +86,7 @@ function Get-ClientPoint([IntPtr]$Window, [double]$X, [double]$Y) {
     [void][L2DCatCursorNative]::GetClientRect($Window, [ref]$client)
     $point = [L2DCatCursorNative+Point]::new()
     $point.X = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
-    $point.Y = [int][Math]::Round($Y * ($client.B - $client.T) / 640.0)
+    $point.Y = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
     [void][L2DCatCursorNative]::ClientToScreen($Window, [ref]$point)
     return $point
 }
@@ -96,6 +100,15 @@ function Invoke-Click([IntPtr]$Window, [double]$X, [double]$Y) {
     Start-Sleep -Milliseconds 80
     [L2DCatCursorNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
     Start-Sleep -Milliseconds 300
+}
+
+function Invoke-Wheel([IntPtr]$Window, [double]$X, [double]$Y, [int]$Delta) {
+    $point = Get-ClientPoint $Window $X $Y
+    [void][L2DCatCursorNative]::SetForegroundWindow($Window)
+    [void][L2DCatCursorNative]::SetCursorPos($point.X, $point.Y)
+    Start-Sleep -Milliseconds 120
+    [L2DCatCursorNative]::mouse_event(0x0800, 0, 0, $Delta, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 450
 }
 
 function Test-Cursor([IntPtr]$Window, [string]$Name, [double]$X,
@@ -123,20 +136,22 @@ function Save-Window([IntPtr]$Window, [string]$Name) {
     [void][L2DCatCursorNative]::GetWindowRect($Window, [ref]$rect)
     $bitmap = [Drawing.Bitmap]::new($rect.R - $rect.L, $rect.B - $rect.T)
     $graphics = [Drawing.Graphics]::FromImage($bitmap)
-    $dc = $graphics.GetHdc()
-    try { [void][L2DCatCursorNative]::PrintWindow($Window, $dc, 2) }
-    finally { $graphics.ReleaseHdc($dc) }
+    $graphics.CopyFromScreen($rect.L, $rect.T, 0, 0, $bitmap.Size)
     $path = Join-Path $OutputDir $Name
     $bitmap.Save($path, [Drawing.Imaging.ImageFormat]::Png)
     $graphics.Dispose(); $bitmap.Dispose()
 }
 
 function Start-AuditPage([int]$Page, [bool]$Import) {
+    # Move away from transient selection/translation overlays before opening the
+    # next window; otherwise a topmost helper can intercept the first hover.
+    [void][L2DCatCursorNative]::SetCursorPos(2, 2)
+    Start-Sleep -Milliseconds 400
     $dataRoot = Join-Path $OutputDir "data-page$Page"
     Remove-Item -LiteralPath $dataRoot -Recurse -Force -ErrorAction SilentlyContinue
     New-Item -ItemType Directory -Force -Path $dataRoot | Out-Null
     $arguments = @("--ci-preferences", "--ci-preference-page=$Page",
-        "--ci-language=zh-CN", "--ci-theme=light", "--data-root=$dataRoot")
+        "--ci-language=$Language", "--ci-theme=$Theme", "--data-root=$dataRoot")
     if ($Import) {
         $target = Join-Path $dataRoot "custom-models\cursor-fixture"
         New-Item -ItemType Directory -Force -Path $target | Out-Null
@@ -145,6 +160,7 @@ function Start-AuditPage([int]$Page, [bool]$Import) {
     $process = Start-Process -FilePath $Exe -ArgumentList $arguments `
         -WorkingDirectory (Split-Path $Exe) -PassThru
     $window = Wait-Preferences $process.Id
+    [void][L2DCatCursorNative]::SetForegroundWindow($window)
     Start-Sleep -Milliseconds 800
     return [pscustomobject]@{ Process=$process; Window=$window }
 }
@@ -155,41 +171,34 @@ $hand = 32649; $text = 32513; $arrow = 32512
 
 $page = Start-AuditPage 0 $false
 try {
-    $results.Add((Test-Cursor $page.Window "sidebar" 90 38 $hand))
-    $results.Add((Test-Cursor $page.Window "toggle-card" 310 135 $hand))
-    $results.Add((Test-Cursor $page.Window "number-property" 750 525 $hand))
-    $results.Add((Test-Cursor $page.Window "empty-space" 500 600 $arrow))
+    $results.Add((Test-Cursor $page.Window "tab" 276 114 $hand))
+    $results.Add((Test-Cursor $page.Window "close" 851 44 $hand))
+    $results.Add((Test-Cursor $page.Window "toggle" 818 248 $hand))
+    $results.Add((Test-Cursor $page.Window "number-property" 818 545 $hand))
+    $results.Add((Test-Cursor $page.Window "empty-space" 500 640 $arrow))
 } finally { $page.Process.Kill(); $page.Process.WaitForExit() }
 
 $page = Start-AuditPage 1 $false
 try {
-    $results.Add((Test-Cursor $page.Window "combo" 740 382 $hand))
+    $results.Add((Test-Cursor $page.Window "combo" 710 248 $hand))
 } finally { $page.Process.Kill(); $page.Process.WaitForExit() }
 
 $page = Start-AuditPage 3 $false
 try {
-    $results.Add((Test-Cursor $page.Window "text-field" 740 135 $text))
-} finally { $page.Process.Kill(); $page.Process.WaitForExit() }
-
-$page = Start-AuditPage 4 $false
-try {
-    $results.Add((Test-Cursor $page.Window "action-button" 740 263 $hand))
+    $results.Add((Test-Cursor $page.Window "text-field" 700 248 $text))
 } finally { $page.Process.Kill(); $page.Process.WaitForExit() }
 
 $page = Start-AuditPage 2 $true
 try {
-    $results.Add((Test-Cursor $page.Window "import-card" 380 170 $hand))
-    $results.Add((Test-Cursor $page.Window "model-card" 650 170 $hand))
-    $results.Add((Test-Cursor $page.Window "model-close" 523 468 $hand))
+    $results.Add((Test-Cursor $page.Window "import-card" 180 270 $hand))
+    $results.Add((Test-Cursor $page.Window "model-card" 450 270 $hand))
+    $results.Add((Test-Cursor $page.Window "model-close" 560 417 $hand))
     Save-Window $page.Window "model-page.png"
-    Invoke-Click $page.Window 523 468
+    Invoke-Click $page.Window 560 417
     Save-Window $page.Window "remove-dialog.png"
-    $results.Add((Test-Cursor $page.Window "cancel-button" 455 330 $hand))
-    $cancel = Get-ClientPoint $page.Window 455 330
-    [void][L2DCatCursorNative]::SetCursorPos($cancel.X, $cancel.Y)
-    [L2DCatCursorNative]::mouse_event(2, 0, 0, 0, [UIntPtr]::Zero)
+    $results.Add((Test-Cursor $page.Window "cancel-button" 523 376 $hand))
+    Invoke-Click $page.Window 523 376
     Save-Window $page.Window "after-cancel.png"
-    [L2DCatCursorNative]::mouse_event(4, 0, 0, 0, [UIntPtr]::Zero)
 } finally { $page.Process.Kill(); $page.Process.WaitForExit() }
 
 $results | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $OutputDir "result.json")

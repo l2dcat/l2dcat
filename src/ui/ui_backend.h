@@ -25,10 +25,10 @@ typedef struct L2DCatUIBackend {
     GLuint vbo;
     GLuint ebo;
     GLuint font_texture;
-    void *font_blob;
-    size_t font_blob_size;
-    void *font_file_handle;
-    void *font_mapping_handle;
+    const struct nk_user_font *caption_font;
+    const struct nk_user_font *body_font;
+    const struct nk_user_font *label_font;
+    const struct nk_user_font *heading_font;
     void *vertices;
     void *elements;
     size_t vertex_capacity;
@@ -45,12 +45,14 @@ typedef struct L2DCatUIBackend {
     bool font_probe_loaded;
     bool font_path_found;
     bool font_file_loaded;
+    bool dark_theme;
     SDL_Cursor *pointer_cursor;
     SDL_Cursor *text_cursor;
     L2DCatUICursor requested_cursor;
 } L2DCatUIBackend;
 
-bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window, const char *font_path,
+bool l2dcat_ui_init(L2DCatUIBackend *ui, SDL_Window *window,
+    const char *body_font_path, const char *heading_font_path,
     const nk_rune *glyph_ranges, L2DCatError *error);
 void l2dcat_ui_destroy(L2DCatUIBackend *ui);
 void l2dcat_ui_input_begin(L2DCatUIBackend *ui);
@@ -58,6 +60,16 @@ void l2dcat_ui_input_end(L2DCatUIBackend *ui);
 bool l2dcat_ui_event(L2DCatUIBackend *ui, const SDL_Event *event);
 void l2dcat_ui_render(L2DCatUIBackend *ui);
 bool l2dcat_ui_frame_valid(const L2DCatUIBackend *ui);
+L2DCatUIBackend *l2dcat_ui_backend_for_context(
+    const struct nk_context *context);
+const struct nk_user_font *l2dcat_ui_caption_font(
+    const struct nk_context *context);
+const struct nk_user_font *l2dcat_ui_body_font(
+    const struct nk_context *context);
+const struct nk_user_font *l2dcat_ui_label_font(
+    const struct nk_context *context);
+const struct nk_user_font *l2dcat_ui_heading_font(
+    const struct nk_context *context);
 void l2dcat_ui_cursor_begin(L2DCatUIBackend *ui);
 void l2dcat_ui_cursor_apply(L2DCatUIBackend *ui);
 void l2dcat_ui_cursor_destroy(L2DCatUIBackend *ui);

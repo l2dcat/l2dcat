@@ -224,7 +224,7 @@ static void render(L2DCatApp *app) {
     SDL_GL_MakeCurrent(app->window, app->gl_context);
     int width, height;
     SDL_GetWindowSizeInPixels(app->window, &width, &height);
-    glViewport(0, 0, width, height);
+    glViewport(0, 0, width, height); glEnable(GL_MULTISAMPLE);
     glDisable(GL_SCISSOR_TEST); glStencilMask(0xff);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
