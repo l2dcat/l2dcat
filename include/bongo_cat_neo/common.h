@@ -10,7 +10,7 @@
 #define BONGO_CAT_NEO_EXECUTABLE "BongoCatNeo"
 #define BONGO_CAT_NEO_APP_ID "com.bongocatneo.desktop"
 #define BONGO_CAT_NEO_NAME_W L"Bongo Cat Neo"
-#define BONGO_CAT_NEO_VERSION "1.1.0"
+#define BONGO_CAT_NEO_VERSION "0.1.0"
 #define BONGO_CAT_NEO_PATH_CAP 1024
 #define BONGO_CAT_NEO_ID_CAP 128
 #define BONGO_CAT_NEO_SHORTCUT_CAP 128

@@ -8,9 +8,7 @@ static void apply_requested(BongoCatNeoUIBackend *ui) {
         cursor = ui->pointer_cursor;
     else if (ui->requested_cursor == BONGO_CAT_NEO_UI_CURSOR_TEXT && ui->text_cursor)
         cursor = ui->text_cursor;
-    if (!cursor) return;
-    if (SDL_GetCursor() != cursor) SDL_SetCursor(cursor);
-    else SDL_SetCursor(NULL);
+    if (cursor && SDL_GetCursor() != cursor) SDL_SetCursor(cursor);
 }
 
 static BongoCatNeoUIBackend *backend_for(const struct nk_context *context) {
@@ -26,12 +24,11 @@ void bongo_cat_neo_ui_cursor_begin(BongoCatNeoUIBackend *ui) {
     if (!ui->text_cursor)
         ui->text_cursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
     ui->requested_cursor = BONGO_CAT_NEO_UI_CURSOR_DEFAULT;
-    apply_requested(ui);
 }
 
 void bongo_cat_neo_ui_cursor_reset(struct nk_context *context) {
     BongoCatNeoUIBackend *ui = backend_for(context);
-    if (ui) { ui->requested_cursor = BONGO_CAT_NEO_UI_CURSOR_DEFAULT; apply_requested(ui); }
+    if (ui) ui->requested_cursor = BONGO_CAT_NEO_UI_CURSOR_DEFAULT;
 }
 
 static void request_cursor(struct nk_context *context, BongoCatNeoUICursor cursor) {
@@ -40,7 +37,6 @@ static void request_cursor(struct nk_context *context, BongoCatNeoUICursor curso
     if (cursor == BONGO_CAT_NEO_UI_CURSOR_TEXT &&
         ui->requested_cursor == BONGO_CAT_NEO_UI_CURSOR_POINTER) return;
     ui->requested_cursor = cursor;
-    apply_requested(ui);
 }
 
 void bongo_cat_neo_ui_cursor_hover_rect(struct nk_context *context,
