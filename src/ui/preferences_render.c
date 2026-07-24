@@ -28,8 +28,8 @@ static void draw_page(BongoCatNeoPreferences *value, struct nk_context *context)
     switch (value->page) {
     case 0: bongo_cat_neo_preferences_page_cat(value->app, context); break;
     case 1: bongo_cat_neo_preferences_page_general(value->app, context); break;
-    case 2: bongo_cat_neo_preferences_page_model(value->app, context); break;
-    case 3: bongo_cat_neo_preferences_page_shortcuts(value->app, context); break;
+    case 2: bongo_cat_neo_preferences_page_model(value, context); break;
+    case 3: bongo_cat_neo_preferences_page_shortcuts(value, context); break;
     default: bongo_cat_neo_preferences_page_about(value->app, context); break;
     }
 }
@@ -79,8 +79,11 @@ static bool draw_shell(BongoCatNeoPreferences *value, struct nk_context *context
         tr(value, "pages.preference.about.title", "About")};
     bool modal = bongo_cat_neo_preferences_remove_dialog_active(value->app);
     bongo_cat_neo_ui_shell_draw(context, (float)width, (float)height, dark);
+    bool title_clicked = false;
     bool close_requested = bongo_cat_neo_ui_header(context, "Bongo Cat Neo",
-        value->ui.heading_font, !modal, dark);
+        value->ui.heading_font, value->logo_texture, &title_clicked, !modal, dark);
+    if (title_clicked && !SDL_OpenURL("https://bongocatneo.com"))
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "Cannot open website: %s", SDL_GetError());
     bongo_cat_neo_ui_tabs(context, menus, 5, &value->page, !modal, dark);
     float body_height = (float)height - BONGO_CAT_NEO_UI_MARGIN * 2.0f -
         BONGO_CAT_NEO_UI_HEADER_HEIGHT - BONGO_CAT_NEO_UI_TABS_HEIGHT;

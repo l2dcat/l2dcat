@@ -15,6 +15,8 @@ bool bongo_cat_neo_preferences_visible(const BongoCatNeoPreferences *preferences
 void bongo_cat_neo_preferences_input_begin(BongoCatNeoPreferences *preferences);
 void bongo_cat_neo_preferences_input_end(BongoCatNeoPreferences *preferences);
 bool bongo_cat_neo_preferences_event(BongoCatNeoPreferences *preferences, const SDL_Event *event);
+bool bongo_cat_neo_preferences_shortcuts_blocked(
+    const BongoCatNeoPreferences *preferences);
 void bongo_cat_neo_preferences_render(BongoCatNeoPreferences *preferences);
 void bongo_cat_neo_preferences_invalidate(BongoCatNeoPreferences *preferences);
 void bongo_cat_neo_preferences_request_model_import(BongoCatNeoPreferences *preferences);

@@ -9,7 +9,7 @@
     "preference": {
       "title": "Tùy chỉnh",
       "cat": {
-        "title": "Mèo",
+        "title": "Hiển thị",
         "labels": {
           "modelSettings": "Cài đặt Mô hình",
           "mirrorMode": "Chế độ gương",
@@ -28,9 +28,6 @@
           "maxFPS": "Tốc độ khung hình tối đa"
         },
         "hints": {
-          "mirrorMode": "Bật để lật ngang mô hình.",
-          "mouseMirror": "Khi bật, chuột của mô hình sẽ phản chiếu theo chuyển động chuột thực tế.",
-          "ignoreMouse": "Khi bật, mô hình sẽ không phản hồi sự kiện chuột. Hữu ích cho chế độ bàn phím hoặc chế độ tay cầm.",
           "motionSound": "Khi bật, mô hình sẽ phát các âm thanh tương ứng khi thực hiện hành động (nếu tồn tại).",
           "behavior": "Khi bật, các hành động và biểu cảm có thể được cấu hình và kích hoạt.",
           "passThrough": "Bật để cửa sổ không ảnh hưởng đến thao tác trên ứng dụng khác.",
@@ -176,24 +173,11 @@
     "modeStandard": "Tiêu chuẩn",
     "modeKeyboard": "Bàn phím",
     "modeGamepad": "Tay cầm",
-    "platformStatus": "Trạng thái nền tảng",
-    "globalInputAvailable": "Đầu vào toàn cục: khả dụng",
-    "globalInputReduced": "Đầu vào toàn cục: hỗ trợ hạn chế",
-    "privilegesAdmin": "Quyền tiến trình: quản trị viên",
-    "privilegesStandard": "Quyền tiến trình: người dùng tiêu chuẩn",
-    "shortcutHint": "Dùng tên như Ctrl+Alt+B. Để trống để tắt phím tắt.",
-    "aboutDescription": "Ứng dụng C11 gốc độc lập với cầu nối C++ nhẹ cho Live2D Cubism.",
-    "rendererCubism": "Bộ dựng Live2D: Cubism Native",
-    "rendererDiagnostic": "Bộ dựng Live2D: chế độ chẩn đoán (chưa cài Cubism SDK)",
     "cancel": "Hủy",
     "delete": "Xóa",
     "select": "Chọn",
     "selected": "Đã chọn",
     "import": "Nhập",
-    "builtIn": "tích hợp",
-    "platformLabel": "Nền tảng",
-    "globalInputLabel": "Đầu vào toàn cục",
-    "available": "khả dụng",
-    "reduced": "hạn chế"
+    "builtIn": "tích hợp"
   }
 }

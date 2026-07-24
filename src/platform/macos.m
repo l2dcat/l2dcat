@@ -150,7 +150,7 @@ void bongo_cat_neo_platform_begin_drag(BongoCatNeoPlatform *platform) {
     NSWindow *window = native_window(platform);
     [window performWindowDragWithEvent:[NSApp currentEvent]];
 }
-bool bongo_cat_neo_platform_global_input_supported(void) {
+bool bongo_cat_neo_platform_dynamic_hit_supported(void) {
     return bongo_cat_neo_macos_input_supported();
 }
 
@@ -215,7 +215,6 @@ BongoCatNeoResult bongo_cat_neo_platform_set_autostart(bool enabled, BongoCatNeo
         return BONGO_CAT_NEO_ERROR_IO;
     }
 }
-bool bongo_cat_neo_platform_is_elevated(void) { return geteuid() == 0; }
 BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *platform,
     const BongoCatNeoMenuLabels *labels) {
     return bongo_cat_neo_macos_context_menu(platform, labels);

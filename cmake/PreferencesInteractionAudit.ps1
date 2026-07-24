@@ -166,6 +166,18 @@ function Invoke-KeyText([IntPtr]$Window, [string]$Text) {
     Start-Sleep -Milliseconds 300
 }
 
+function Invoke-Hotkey([IntPtr]$Window) {
+    [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x10, 0, 0, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x42, 0, 0, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 80
+    [BongoCatNeoPreferencesNative]::keybd_event(0x42, 0, 2, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x10, 0, 2, [UIntPtr]::Zero)
+    [BongoCatNeoPreferencesNative]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
+    Start-Sleep -Milliseconds 350
+}
+
 function Save-Window([IntPtr]$Window, [string]$Name) {
     [void][BongoCatNeoPreferencesNative]::SetForegroundWindow($Window)
     Start-Sleep -Milliseconds 120
@@ -219,25 +231,23 @@ try {
     Invoke-Wheel $window 450 540
     [void](Save-Window $window "03b-controls.png")
 
-    Invoke-Click $window 362 114
+    Invoke-PhysicalClick $window 362 114
     $general = Save-Window $window "04-general.png"
     Invoke-PhysicalClick $window 710 248
     $combo = Save-Window $window "05-combo-open.png"
-    Invoke-Click $window 710 248
+    Invoke-PhysicalClick $window 710 248
     Invoke-PhysicalClick $window 710 328
     [void](Save-Window $window "05b-language-open.png")
     Invoke-PhysicalClick $window 710 375
     Start-Sleep -Milliseconds 500
     $language = Save-Window $window "05c-language-live.png"
-    Invoke-Click $window 534 114
-    Invoke-Click $window 534 114
+    Invoke-PhysicalClick $window 550 114
     $shortcuts = Save-Window $window "06-shortcuts.png"
     Invoke-PhysicalClick $window 700 248
-    Invoke-Text $window "TEST"
-    Start-Sleep -Milliseconds 300
+    Invoke-Hotkey $window
     $edited = Save-Window $window "07-shortcut-edited.png"
 
-    Invoke-Click $window 622 114
+    Invoke-PhysicalClick $window 642 114
     $about = Save-Window $window "08-about.png"
     [void][BongoCatNeoPreferencesNative]::PostMessageW($window, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
     for ($i = 0; $i -lt 50 -and -not (Test-Path $configPath); $i++) {
@@ -251,8 +261,8 @@ try {
         ComboDifference = Measure-Difference $general $combo
         LanguageDifference = Measure-Difference $general $language
         EditDifference = Measure-Difference $shortcuts $edited
-        TogglePersisted = $config.model.mirror -eq $true
-        ShortcutPersisted = $config.shortcuts.visibleCat -eq "TEST"
+        TogglePersisted = $config.window.passThrough -eq $true
+        ShortcutPersisted = $config.shortcuts.visibleCat -eq "Control+Shift+B"
     }
     $result | ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $OutputDir "result.json")
     [pscustomobject]$result | Format-List

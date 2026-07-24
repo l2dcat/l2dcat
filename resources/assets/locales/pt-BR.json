@@ -9,7 +9,7 @@
     "preference": {
       "title": "Preferências",
       "cat": {
-        "title": "Gato",
+        "title": "Exibição",
         "labels": {
           "modelSettings": "Configurações do Modelo",
           "mirrorMode": "Modo Espelho",
@@ -28,9 +28,6 @@
           "maxFPS": "Taxa Máxima de Quadros"
         },
         "hints": {
-          "mirrorMode": "Quando ativado, o modelo será invertido horizontalmente.",
-          "mouseMirror": "Quando ativado, o mouse espelhará o movimento da mão.",
-          "ignoreMouse": "Quando ativado, o modelo não responderá a eventos do mouse. Útil para o modo teclado ou modo controle.",
           "motionSound": "Quando ativado, o modelo reproduzirá efeitos sonoros correspondentes ao executar ações (se existirem).",
           "behavior": "Quando ativado, movimentos e expressões podem ser configurados e acionados.",
           "passThrough": "Quando ativado, a janela não afetará operações em outros aplicativos.",
@@ -176,24 +173,11 @@
     "modeStandard": "Padrão",
     "modeKeyboard": "Teclado",
     "modeGamepad": "Controle",
-    "platformStatus": "Status da plataforma",
-    "globalInputAvailable": "Entrada global: disponível",
-    "globalInputReduced": "Entrada global: suporte reduzido",
-    "privilegesAdmin": "Privilégios do processo: administrador",
-    "privilegesStandard": "Privilégios do processo: usuário padrão",
-    "shortcutHint": "Use nomes como Ctrl+Alt+B. Deixe vazio para desativar um atalho.",
-    "aboutDescription": "Aplicativo nativo independente em C11 com uma ponte C++ leve para Live2D Cubism.",
-    "rendererCubism": "Renderizador Live2D: Cubism Native",
-    "rendererDiagnostic": "Renderizador Live2D: modo de diagnóstico (SDK Cubism não instalado)",
     "cancel": "Cancelar",
     "delete": "Excluir",
     "select": "Selecionar",
     "selected": "Selecionado",
     "import": "Importar",
-    "builtIn": "integrado",
-    "platformLabel": "Plataforma",
-    "globalInputLabel": "Entrada global",
-    "available": "disponível",
-    "reduced": "reduzida"
+    "builtIn": "integrado"
   }
 }

@@ -37,11 +37,11 @@ public static class BongoCatNeoCursorNative {
     [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr handle, ref Point point);
     [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr handle);
+    [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr handle, uint message, IntPtr wparam, IntPtr lparam);
     [DllImport("user32.dll")] public static extern bool GetCursorInfo(ref CursorInfo info);
     [DllImport("user32.dll")] public static extern IntPtr LoadCursor(IntPtr instance, IntPtr name);
     [DllImport("user32.dll")] public static extern void mouse_event(uint flags, uint dx, uint dy, int data, UIntPtr extra);
     [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr handle, IntPtr dc, uint flags);
-    [DllImport("user32.dll")] public static extern bool PostMessageW(IntPtr handle, uint message, IntPtr wparam, IntPtr lparam);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
 }
 '@
@@ -114,13 +114,28 @@ function Invoke-Wheel([IntPtr]$Window, [double]$X, [double]$Y, [int]$Delta) {
 function Test-Cursor([IntPtr]$Window, [string]$Name, [double]$X,
     [double]$Y, [int]$SystemId) {
     $point = Get-ClientPoint $Window $X $Y
-    [void][BongoCatNeoCursorNative]::SetForegroundWindow($Window)
-    [void][BongoCatNeoCursorNative]::SetCursorPos($point.X, $point.Y)
-    Start-Sleep -Milliseconds 250
-    $info = [BongoCatNeoCursorNative+CursorInfo]::new()
-    $info.Size = [Runtime.InteropServices.Marshal]::SizeOf($info)
-    [void][BongoCatNeoCursorNative]::GetCursorInfo([ref]$info)
+    $client = [BongoCatNeoCursorNative+Rect]::new()
+    [void][BongoCatNeoCursorNative]::GetClientRect($Window, [ref]$client)
+    $clientX = [int][Math]::Round($X * ($client.R - $client.L) / 900.0)
+    $clientY = [int][Math]::Round($Y * ($client.B - $client.T) / 680.0)
+    $position = [IntPtr]([long](($clientY -band 0xFFFF) -shl 16) -bor
+        [long]($clientX -band 0xFFFF))
     $expected = [BongoCatNeoCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]$SystemId)
+    $info = $null
+    for ($attempt = 0; $attempt -lt 4; $attempt++) {
+        [void][BongoCatNeoCursorNative]::SetForegroundWindow($Window)
+        [void][BongoCatNeoCursorNative]::SetCursorPos($point.X +
+            $(if ($attempt % 2) { 1 } else { -1 }), $point.Y)
+        Start-Sleep -Milliseconds 45
+        [void][BongoCatNeoCursorNative]::SetCursorPos($point.X, $point.Y)
+        [void][BongoCatNeoCursorNative]::PostMessageW(
+            $Window, 0x0200, [IntPtr]::Zero, $position)
+        Start-Sleep -Milliseconds 250
+        $info = [BongoCatNeoCursorNative+CursorInfo]::new()
+        $info.Size = [Runtime.InteropServices.Marshal]::SizeOf($info)
+        [void][BongoCatNeoCursorNative]::GetCursorInfo([ref]$info)
+        if ($info.Cursor -eq $expected) { break }
+    }
     $arrow = [BongoCatNeoCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]32512)
     $text = [BongoCatNeoCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]32513)
     $hand = [BongoCatNeoCursorNative]::LoadCursor([IntPtr]::Zero, [IntPtr]32649)
@@ -171,21 +186,22 @@ $hand = 32649; $text = 32513; $arrow = 32512
 
 $page = Start-AuditPage 0 $false
 try {
+    Save-Window $page.Window "display-page.png"
     $results.Add((Test-Cursor $page.Window "tab" 276 114 $hand))
     $results.Add((Test-Cursor $page.Window "close" 851 44 $hand))
-    $results.Add((Test-Cursor $page.Window "toggle" 818 248 $hand))
-    $results.Add((Test-Cursor $page.Window "number-property" 818 545 $hand))
+    $results.Add((Test-Cursor $page.Window "toggle" 818 256 $hand))
+    $results.Add((Test-Cursor $page.Window "toggle-secondary" 818 577 $hand))
     $results.Add((Test-Cursor $page.Window "empty-space" 500 640 $arrow))
 } finally { $page.Process.Kill(); $page.Process.WaitForExit() }
 
 $page = Start-AuditPage 1 $false
 try {
-    $results.Add((Test-Cursor $page.Window "combo" 710 248 $hand))
+    $results.Add((Test-Cursor $page.Window "combo" 710 256 $hand))
 } finally { $page.Process.Kill(); $page.Process.WaitForExit() }
 
 $page = Start-AuditPage 3 $false
 try {
-    $results.Add((Test-Cursor $page.Window "text-field" 700 248 $text))
+    $results.Add((Test-Cursor $page.Window "shortcut-field" 700 256 $hand))
 } finally { $page.Process.Kill(); $page.Process.WaitForExit() }
 
 $page = Start-AuditPage 2 $true

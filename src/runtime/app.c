@@ -204,12 +204,14 @@ static void drain_input(BongoCatNeoApp *app) {
             delay = (uint64_t)(app->config.model.auto_release_seconds * 1000.0f);
 #endif
         bongo_cat_neo_input_auto_release(&app->input, &event, delay);
-        bongo_cat_neo_app_shortcuts(app, &event);
+        if (!bongo_cat_neo_preferences_shortcuts_blocked(app->preferences))
+            bongo_cat_neo_app_shortcuts(app, &event);
         bongo_cat_neo_app_apply_input(app, &event);
     }
     uint64_t now = SDL_GetTicks();
     while (bongo_cat_neo_input_take_release(&app->input, now, &event)) {
-        bongo_cat_neo_app_shortcuts(app, &event);
+        if (!bongo_cat_neo_preferences_shortcuts_blocked(app->preferences))
+            bongo_cat_neo_app_shortcuts(app, &event);
         bongo_cat_neo_app_apply_input(app, &event);
     }
     if (!app->smoke_ignore_global_input) bongo_cat_neo_app_apply_mouse(app);

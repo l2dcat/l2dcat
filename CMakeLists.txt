@@ -111,6 +111,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/ui/preferences_notice.c
   src/ui/preferences_model.c
   src/ui/preferences_pages.c
+  src/ui/preferences_shortcuts.c
   src/ui/preferences_widgets.c src/ui/preferences_controls.c
   ${BONGO_CAT_NEO_LIVE2D_SOURCES})
 target_include_directories(bongo_cat_neo_runtime PUBLIC include)

@@ -7,9 +7,18 @@
 
 void bongo_cat_neo_preferences_page_cat(BongoCatNeoApp *app, struct nk_context *context);
 void bongo_cat_neo_preferences_page_general(BongoCatNeoApp *app, struct nk_context *context);
-void bongo_cat_neo_preferences_page_model(BongoCatNeoApp *app, struct nk_context *context);
-void bongo_cat_neo_preferences_page_shortcuts(BongoCatNeoApp *app, struct nk_context *context);
+void bongo_cat_neo_preferences_page_model(BongoCatNeoPreferences *value,
+    struct nk_context *context);
+void bongo_cat_neo_preferences_page_shortcuts(BongoCatNeoPreferences *value,
+    struct nk_context *context);
 void bongo_cat_neo_preferences_page_about(BongoCatNeoApp *app, struct nk_context *context);
+bool bongo_cat_neo_preferences_shortcut_active(const BongoCatNeoPreferences *value,
+    const char *id);
+void bongo_cat_neo_preferences_shortcut_begin(BongoCatNeoPreferences *value,
+    const char *id, char *target, int capacity);
+bool bongo_cat_neo_preferences_shortcut_event(BongoCatNeoPreferences *value,
+    const SDL_Event *event);
+void bongo_cat_neo_preferences_shortcut_cancel(BongoCatNeoPreferences *value);
 void bongo_cat_neo_preferences_import_path(BongoCatNeoApp *app, SDL_Window *window,
     const char *path);
 void bongo_cat_neo_preferences_model_cache_clear(BongoCatNeoApp *app);

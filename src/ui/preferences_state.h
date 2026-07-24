@@ -12,6 +12,9 @@ struct BongoCatNeoPreferences {
     SDL_GLContext gl_context;
     bool owns_gl_context;
     BongoCatNeoUIBackend ui;
+    unsigned int logo_texture;
+    int logo_width;
+    int logo_height;
     int page;
     int style_theme;
     BongoCatNeoLanguage font_language;
@@ -34,6 +37,13 @@ struct BongoCatNeoPreferences {
     int drag_window_y;
     float drag_pointer_x;
     float drag_pointer_y;
+    char shortcut_id[BONGO_CAT_NEO_ID_CAP + 16];
+    char *shortcut_target;
+    int shortcut_capacity;
+    char shortcut_original[BONGO_CAT_NEO_SHORTCUT_CAP];
+    SDL_Keycode shortcut_key;
+    bool shortcut_recording;
+    uint64_t shortcut_suppress_until_ns;
 };
 
 int bongo_cat_neo_preferences_resolved_theme(const BongoCatNeoPreferences *value);

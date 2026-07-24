@@ -9,7 +9,7 @@
     "preference": {
       "title": "偏好設定",
       "cat": {
-        "title": "貓咪設定",
+        "title": "顯示設定",
         "labels": {
           "modelSettings": "模型設定",
           "mirrorMode": "鏡像模式",
@@ -28,9 +28,6 @@
           "maxFPS": "最大幀率"
         },
         "hints": {
-          "mirrorMode": "啟用後，模型將水平鏡像翻轉。",
-          "mouseMirror": "啟用後，滑鼠游標將鏡像跟隨手部移動。",
-          "ignoreMouse": "啟用後，模型將不再回應滑鼠事件，適用於鍵盤模式或手柄模式。",
           "motionSound": "啟用後，模型執行動作時會播放對應音效（如果存在）。",
           "behavior": "啟用後，可以配置和觸發模型的動作與表情。",
           "passThrough": "啟用後，視窗不影響對其他應用程式的操作。",
@@ -176,24 +173,11 @@
     "modeStandard": "標準模式",
     "modeKeyboard": "鍵盤模式",
     "modeGamepad": "遊戲手把模式",
-    "platformStatus": "平台狀態",
-    "globalInputAvailable": "全域輸入：可用",
-    "globalInputReduced": "全域輸入：受限支援",
-    "privilegesAdmin": "程序權限：管理員",
-    "privilegesStandard": "程序權限：標準使用者",
-    "shortcutHint": "使用 Ctrl+Alt+B 這類快捷鍵名稱；留空可停用對應快捷鍵。",
-    "aboutDescription": "獨立的原生 C11 應用程式，透過輕量 C++ 橋接 Live2D Cubism。",
-    "rendererCubism": "Live2D 彩現器：Cubism Native",
-    "rendererDiagnostic": "Live2D 彩現器：診斷模式（未安裝 Cubism SDK）",
     "cancel": "取消",
     "delete": "刪除",
     "select": "選擇",
     "selected": "已選擇",
     "import": "匯入",
-    "builtIn": "內建",
-    "platformLabel": "平台",
-    "globalInputLabel": "全域輸入",
-    "available": "可用",
-    "reduced": "受限"
+    "builtIn": "內建"
   }
 }

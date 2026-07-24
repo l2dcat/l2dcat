@@ -9,7 +9,7 @@
     "preference": {
       "title": "Preferences",
       "cat": {
-        "title": "Cat",
+        "title": "Display",
         "labels": {
           "modelSettings": "Model Settings",
           "mirrorMode": "Mirror Mode",
@@ -28,9 +28,6 @@
           "maxFPS": "Max Frame Rate"
         },
         "hints": {
-          "mirrorMode": "When enabled, the model will be mirrored horizontally.",
-          "mouseMirror": "When enabled, the mouse will mirror the hand movement.",
-          "ignoreMouse": "When enabled, the model will not respond to mouse events. Useful for keyboard mode or gamepad mode.",
           "motionSound": "When enabled, the model will play corresponding sound effects when performing actions (if they exist).",
           "behavior": "When enabled, motions and expressions can be configured and triggered.",
           "passThrough": "When enabled, clicks pass through the window without affecting it.",
@@ -176,24 +173,11 @@
     "modeStandard": "Standard",
     "modeKeyboard": "Keyboard",
     "modeGamepad": "Gamepad",
-    "platformStatus": "Platform status",
-    "globalInputAvailable": "Global input: available",
-    "globalInputReduced": "Global input: reduced support",
-    "privilegesAdmin": "Process privileges: administrator",
-    "privilegesStandard": "Process privileges: standard user",
-    "shortcutHint": "Use shortcut names such as Ctrl+Alt+B. Empty values disable a shortcut.",
-    "aboutDescription": "Standalone native C11 application with a thin C++ bridge for Live2D Cubism.",
-    "rendererCubism": "Live2D renderer: Cubism Native",
-    "rendererDiagnostic": "Live2D renderer: diagnostic mode (Cubism SDK not installed)",
     "cancel": "Cancel",
     "delete": "Delete",
     "select": "Select",
     "selected": "Selected",
     "import": "Import",
-    "builtIn": "built-in",
-    "platformLabel": "Platform",
-    "globalInputLabel": "Global input",
-    "available": "available",
-    "reduced": "reduced"
+    "builtIn": "built-in"
   }
 }

@@ -1,4 +1,4 @@
-#include "preferences_internal.h"
+#include "preferences_state.h"
 #include "preferences_widgets.h"
 #include "preferences_notice.h"
 #include "ui_backend.h"
@@ -233,7 +233,8 @@ static bool model_card(BongoCatNeoApp *app, struct nk_context *context,
     return false;
 }
 
-static void behavior_rows(BongoCatNeoApp *app, struct nk_context *context) {
+static void behavior_rows(BongoCatNeoPreferences *value, struct nk_context *context) {
+    BongoCatNeoApp *app = value->app;
     if (!app->config.model.behavior || !app->behaviors.count) return;
     bongo_cat_neo_pref_section(context, tr(app, "pages.preference.model.behaviorModal.title",
         "Motions and expressions"));
@@ -243,12 +244,19 @@ static void behavior_rows(BongoCatNeoApp *app, struct nk_context *context) {
         if (!shortcut) break;
         char id[BONGO_CAT_NEO_ID_CAP + 16];
         snprintf(id, sizeof(id), "behavior-%s", entry->id);
-        bongo_cat_neo_pref_edit(context, id, entry->label, "", shortcut->shortcut,
-            sizeof(shortcut->shortcut));
+        bool active = bongo_cat_neo_preferences_shortcut_active(value, id);
+        bool clicked = bongo_cat_neo_pref_edit(context, id, entry->label, "",
+            shortcut->shortcut, active, tr(app,
+            "components.shortcut.hints.clickRecordShortcut", "Click to record shortcut"),
+            tr(app, "components.shortcut.hints.pressRecordShortcut", "Press shortcut"));
+        if (clicked) bongo_cat_neo_preferences_shortcut_begin(value, id,
+            shortcut->shortcut, sizeof(shortcut->shortcut));
     }
 }
 
-void bongo_cat_neo_preferences_page_model(BongoCatNeoApp *app, struct nk_context *context) {
+void bongo_cat_neo_preferences_page_model(BongoCatNeoPreferences *value,
+    struct nk_context *context) {
+    BongoCatNeoApp *app = value->app;
     cover_generation++;
     if (!cover_generation) cover_generation++;
     bongo_cat_neo_pref_section(context, tr(app, "pages.preference.model.title", "Installed models"));
@@ -260,5 +268,5 @@ void bongo_cat_neo_preferences_page_model(BongoCatNeoApp *app, struct nk_context
     for (size_t i = 0; i < app->models.count; ++i)
         if (model_card(app, context, &app->models.entries[i])) break;
     prune_model_covers(app);
-    behavior_rows(app, context);
+    behavior_rows(value, context);
 }

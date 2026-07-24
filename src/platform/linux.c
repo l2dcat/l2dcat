@@ -120,7 +120,7 @@ bool bongo_cat_neo_platform_set_geometry(BongoCatNeoPlatform *platform,
 void bongo_cat_neo_platform_begin_drag(BongoCatNeoPlatform *platform) {
     bongo_cat_neo_linux_x11_begin_drag(platform);
 }
-bool bongo_cat_neo_platform_global_input_supported(void) {
+bool bongo_cat_neo_platform_dynamic_hit_supported(void) {
     return bongo_cat_neo_linux_x11_supported(active_platform);
 }
 
@@ -168,7 +168,6 @@ BongoCatNeoResult bongo_cat_neo_platform_set_autostart(bool enabled, BongoCatNeo
     remove(path); bongo_cat_neo_error_set(error, BONGO_CAT_NEO_ERROR_IO, "Cannot write Linux autostart entry");
     return BONGO_CAT_NEO_ERROR_IO;
 }
-bool bongo_cat_neo_platform_is_elevated(void) { return geteuid() == 0; }
 BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *platform,
     const BongoCatNeoMenuLabels *labels) {
     return bongo_cat_neo_linux_context_menu(platform, labels);

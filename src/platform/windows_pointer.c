@@ -3,6 +3,7 @@
 #ifdef _WIN32
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_properties.h>
+#include <dwmapi.h>
 #include <windows.h>
 
 static HWND native_window(BongoCatNeoPlatform *platform) {
@@ -36,14 +37,41 @@ static void update_style(BongoCatNeoPlatform *platform, LONG_PTR add,
     SetWindowPos(window, NULL, 0, 0, 0, 0, flags);
 }
 
+static void refresh_transparency(HWND window) {
+    MARGINS margins = {-1, -1, -1, -1};
+    DwmExtendFrameIntoClientArea(window, &margins);
+    HRGN region = CreateRectRgn(-1, -1, 0, 0);
+    if (!region) return;
+    DWM_BLURBEHIND blur = {0};
+    blur.dwFlags = DWM_BB_ENABLE | DWM_BB_BLURREGION;
+    blur.fEnable = TRUE;
+    blur.hRgnBlur = region;
+    DwmEnableBlurBehindWindow(window, &blur);
+    DeleteObject(region);
+}
+
 void bongo_cat_neo_platform_set_click_through(BongoCatNeoPlatform *platform, bool enabled) {
     update_style(platform, enabled ? WS_EX_TRANSPARENT : 0,
         enabled ? 0 : WS_EX_TRANSPARENT, false);
 }
 
 void bongo_cat_neo_platform_set_taskbar(BongoCatNeoPlatform *platform, bool visible) {
-    update_style(platform, visible ? WS_EX_APPWINDOW : WS_EX_TOOLWINDOW,
-        visible ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW, true);
+    HWND window = native_window(platform);
+    if (!window) return;
+    LONG_PTR style = GetWindowLongPtrW(window, GWL_EXSTYLE);
+    LONG_PTR next = (style | (visible ? WS_EX_APPWINDOW : WS_EX_TOOLWINDOW)) &
+        ~(visible ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW);
+    if (next == style) return;
+    bool shown = IsWindowVisible(window) != FALSE;
+    if (shown) ShowWindow(window, SW_HIDE);
+    SetWindowLongPtrW(window, GWL_EXSTYLE, next);
+    SetWindowPos(window, NULL, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE |
+        SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    refresh_transparency(window);
+    if (shown) {
+        ShowWindow(window, SW_SHOWNOACTIVATE);
+        UpdateWindow(window);
+    }
 }
 
 static const wchar_t tray_proc_property[] = L"BongoCatNeo.TrayWindowProc";

@@ -162,7 +162,7 @@ void bongo_cat_neo_platform_begin_drag(BongoCatNeoPlatform *platform) {
     SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
 
-bool bongo_cat_neo_platform_global_input_supported(void) { return true; }
+bool bongo_cat_neo_platform_dynamic_hit_supported(void) { return true; }
 
 bool bongo_cat_neo_platform_single_instance_begin(void) {
     instance_mutex = CreateMutexW(NULL, FALSE, L"Local\\BongoCatNeo.SingleInstance");
@@ -207,18 +207,6 @@ BongoCatNeoResult bongo_cat_neo_platform_set_autostart(bool enabled, BongoCatNeo
         return BONGO_CAT_NEO_ERROR_PLATFORM;
     }
     return BONGO_CAT_NEO_OK;
-}
-
-bool bongo_cat_neo_platform_is_elevated(void) {
-    BOOL elevated = FALSE;
-    PSID administrators = NULL;
-    SID_IDENTIFIER_AUTHORITY authority = SECURITY_NT_AUTHORITY;
-    if (AllocateAndInitializeSid(&authority, 2, SECURITY_BUILTIN_DOMAIN_RID,
-        DOMAIN_ALIAS_RID_ADMINS, 0, 0, 0, 0, 0, 0, &administrators)) {
-        CheckTokenMembership(NULL, administrators, &elevated);
-        FreeSid(administrators);
-    }
-    return elevated != FALSE;
 }
 
 static wchar_t *wide(const char *text) {

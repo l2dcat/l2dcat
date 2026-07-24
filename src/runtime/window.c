@@ -231,6 +231,9 @@ bool bongo_cat_neo_window_event(BongoCatNeoApp *app, const SDL_Event *event) {
         bongo_cat_neo_window_clamp_to_display(app);
         app->dirty = true;
     }
+    if (event->type == SDL_EVENT_WINDOW_EXPOSED ||
+        event->type == SDL_EVENT_WINDOW_SHOWN ||
+        event->type == SDL_EVENT_WINDOW_RESTORED) app->dirty = true;
     if (event->type == SDL_EVENT_WINDOW_RESIZED ||
         event->type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
         SDL_GetWindowSizeInPixels(app->window,

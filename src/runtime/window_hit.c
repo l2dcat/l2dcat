@@ -103,7 +103,7 @@ bool bongo_cat_neo_window_wait_timeout_self_test(void) {
 void bongo_cat_neo_window_sync_click_through(BongoCatNeoApp *app) {
     if (!app || !app->window) return;
     bool forced = app->config.window.pass_through || app->hover_hidden;
-    if (!forced && !bongo_cat_neo_platform_global_input_supported()) {
+    if (!forced && !bongo_cat_neo_platform_dynamic_hit_supported()) {
         app->pointer_transparent = false;
         app->pointer_hit_dirty = false;
     }

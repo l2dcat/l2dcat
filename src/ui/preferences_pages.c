@@ -25,39 +25,6 @@ static void restore_hover(BongoCatNeoApp *app) {
 void bongo_cat_neo_preferences_page_cat(BongoCatNeoApp *app, struct nk_context *context) {
     BongoCatNeoModelOptions *model = &app->config.model;
     BongoCatNeoWindowOptions *window = &app->config.window;
-    bongo_cat_neo_pref_section(context, tr(app, "pages.preference.cat.labels.modelSettings",
-        "Model Settings"));
-    if (bongo_cat_neo_pref_toggle(context, "mirror", tr(app,
-        "pages.preference.cat.labels.mirrorMode", "Mirror Mode"), tr(app,
-        "pages.preference.cat.hints.mirrorMode", "Mirror the model horizontally."),
-        &model->mirror)) app->dirty = true;
-    bongo_cat_neo_pref_toggle(context, "mouse-mirror", tr(app,
-        "pages.preference.cat.labels.mouseMirror", "Mouse Mirror"), tr(app,
-        "pages.preference.cat.hints.mouseMirror", "Mirror mouse-driven movement."),
-        &model->mouse_mirror);
-    bongo_cat_neo_pref_toggle(context, "ignore-mouse", tr(app,
-        "pages.preference.cat.labels.ignoreMouse", "Ignore Mouse Events"), tr(app,
-        "pages.preference.cat.hints.ignoreMouse", "Do not react to mouse movement."),
-        &model->ignore_mouse);
-    if (bongo_cat_neo_pref_toggle(context, "motion-sound", tr(app,
-        "pages.preference.cat.labels.motionSound", "Motion Sound"), tr(app,
-        "pages.preference.cat.hints.motionSound", "Play sounds attached to motions."),
-        &model->motion_sound)) bongo_cat_neo_audio_set_enabled(app->audio, model->motion_sound);
-    bongo_cat_neo_pref_toggle(context, "behavior", tr(app,
-        "pages.preference.cat.labels.behavior", "Motions and Expressions"), tr(app,
-        "pages.preference.cat.hints.behavior", "Configure motion and expression shortcuts."),
-        &model->behavior);
-#ifdef _WIN32
-    bongo_cat_neo_pref_float(context, "release-delay", tr(app,
-        "pages.preference.cat.labels.autoReleaseDelay", "Auto Release Delay"), tr(app,
-        "pages.preference.cat.hints.autoReleaseDelay", "Release system keys after timeout."),
-        .05f, &model->auto_release_seconds, 30.0f, .05f);
-#endif
-    bongo_cat_neo_pref_int(context, "max-fps", tr(app,
-        "pages.preference.cat.labels.maxFPS", "Max Frame Rate"), tr(app,
-        "pages.preference.cat.hints.maxFPS", "Lower values reduce resource usage."),
-        1, &model->max_fps, 240, 1);
-
     bongo_cat_neo_pref_section(context, tr(app, "pages.preference.cat.labels.windowSettings",
         "Window Settings"));
     if (bongo_cat_neo_pref_toggle(context, "pass-through", tr(app,
@@ -101,6 +68,36 @@ void bongo_cat_neo_preferences_page_cat(BongoCatNeoApp *app, struct nk_context *
     if (old_opacity != window->opacity_percent) bongo_cat_neo_window_cancel_wheel_animation(app);
     if (old_opacity != window->opacity_percent && !app->hover_hidden)
         SDL_SetWindowOpacity(app->window, window->opacity_percent / 100.0f);
+
+    bongo_cat_neo_pref_section(context, tr(app, "pages.preference.cat.labels.modelSettings",
+        "Model Settings"));
+    if (bongo_cat_neo_pref_toggle(context, "mirror", tr(app,
+        "pages.preference.cat.labels.mirrorMode", "Mirror Mode"), "",
+        &model->mirror)) app->dirty = true;
+    bongo_cat_neo_pref_toggle(context, "mouse-mirror", tr(app,
+        "pages.preference.cat.labels.mouseMirror", "Mouse Mirror"), "",
+        &model->mouse_mirror);
+    bongo_cat_neo_pref_toggle(context, "ignore-mouse", tr(app,
+        "pages.preference.cat.labels.ignoreMouse", "Ignore Mouse Events"), "",
+        &model->ignore_mouse);
+    if (bongo_cat_neo_pref_toggle(context, "motion-sound", tr(app,
+        "pages.preference.cat.labels.motionSound", "Motion Sound"), tr(app,
+        "pages.preference.cat.hints.motionSound", "Play sounds attached to motions."),
+        &model->motion_sound)) bongo_cat_neo_audio_set_enabled(app->audio, model->motion_sound);
+    bongo_cat_neo_pref_toggle(context, "behavior", tr(app,
+        "pages.preference.cat.labels.behavior", "Motions and Expressions"), tr(app,
+        "pages.preference.cat.hints.behavior", "Configure motion and expression shortcuts."),
+        &model->behavior);
+#ifdef _WIN32
+    bongo_cat_neo_pref_float(context, "release-delay", tr(app,
+        "pages.preference.cat.labels.autoReleaseDelay", "Auto Release Delay"), tr(app,
+        "pages.preference.cat.hints.autoReleaseDelay", "Release system keys after timeout."),
+        .05f, &model->auto_release_seconds, 30.0f, .05f);
+#endif
+    bongo_cat_neo_pref_int(context, "max-fps", tr(app,
+        "pages.preference.cat.labels.maxFPS", "Max Frame Rate"), tr(app,
+        "pages.preference.cat.hints.maxFPS", "Lower values reduce resource usage."),
+        1, &model->max_fps, 240, 1);
 }
 
 static void update_autostart(BongoCatNeoApp *app, bool old_value) {
@@ -148,45 +145,15 @@ void bongo_cat_neo_preferences_page_general(BongoCatNeoApp *app, struct nk_conte
     if (bongo_cat_neo_pref_toggle(context, "taskbar", tr(app,
         "pages.preference.general.labels.showTaskbarIcon", "Show Taskbar Icon"), tr(app,
         "pages.preference.general.hints.showTaskbarIcon", "Allows window capture in OBS."),
-        &app->config.window.taskbar_visible))
+        &app->config.window.taskbar_visible)) {
         bongo_cat_neo_platform_set_taskbar(&app->platform, app->config.window.taskbar_visible);
+        app->dirty = true;
+    }
     if (bongo_cat_neo_pref_toggle(context, "tray", tr(app,
         "pages.preference.general.labels.showTrayIcon", "Show Tray Icon"), tr(app,
         "pages.preference.general.hints.showTrayIcon", "Show Bongo Cat Neo in the system tray."),
         &options->tray_visible)) update_tray(app);
 
-    bongo_cat_neo_pref_section(context, tr(app, "native.platformStatus", "Platform status"));
-    bongo_cat_neo_pref_status(context, "global-input", bongo_cat_neo_platform_global_input_supported()
-        ? tr(app, "native.globalInputAvailable", "Global input: available")
-        : tr(app, "native.globalInputReduced", "Global input: reduced support"), "");
-    bongo_cat_neo_pref_status(context, "privileges", bongo_cat_neo_platform_is_elevated()
-        ? tr(app, "native.privilegesAdmin", "Process privileges: administrator")
-        : tr(app, "native.privilegesStandard", "Process privileges: standard user"), "");
-}
-
-void bongo_cat_neo_preferences_page_shortcuts(BongoCatNeoApp *app, struct nk_context *context) {
-    BongoCatNeoShortcutOptions *value = &app->config.shortcuts;
-    bongo_cat_neo_pref_section(context, tr(app, "pages.preference.shortcut.title", "Shortcuts"));
-    bongo_cat_neo_pref_edit(context, "shortcut-cat", tr(app,
-        "pages.preference.shortcut.labels.toggleCat", "Toggle Cat"), tr(app,
-        "pages.preference.shortcut.hints.toggleCat", "Toggle the cat window."),
-        value->visible_cat, sizeof(value->visible_cat));
-    bongo_cat_neo_pref_edit(context, "shortcut-pref", tr(app,
-        "pages.preference.shortcut.labels.togglePreferences", "Toggle Preferences"), tr(app,
-        "pages.preference.shortcut.hints.togglePreferences", "Toggle this window."),
-        value->visible_preferences, sizeof(value->visible_preferences));
-    bongo_cat_neo_pref_edit(context, "shortcut-mirror", tr(app,
-        "pages.preference.shortcut.labels.mirrorMode", "Mirror Mode"), tr(app,
-        "pages.preference.shortcut.hints.mirrorMode", "Toggle horizontal mirroring."),
-        value->mirror, sizeof(value->mirror));
-    bongo_cat_neo_pref_edit(context, "shortcut-pass", tr(app,
-        "pages.preference.shortcut.labels.passThrough", "Pass Through"), tr(app,
-        "pages.preference.shortcut.hints.passThrough", "Toggle mouse pass-through."),
-        value->pass_through, sizeof(value->pass_through));
-    bongo_cat_neo_pref_edit(context, "shortcut-top", tr(app,
-        "pages.preference.shortcut.labels.alwaysOnTop", "Always on Top"), tr(app,
-        "pages.preference.shortcut.hints.alwaysOnTop", "Toggle always-on-top."),
-        value->always_on_top, sizeof(value->always_on_top));
 }
 
 void bongo_cat_neo_preferences_page_about(BongoCatNeoApp *app, struct nk_context *context) {
@@ -194,13 +161,5 @@ void bongo_cat_neo_preferences_page_about(BongoCatNeoApp *app, struct nk_context
         "pages.preference.about.labels.aboutApp", "About App"));
     char version[64]; snprintf(version, sizeof(version), "%s %s",
         BONGO_CAT_NEO_NAME, BONGO_CAT_NEO_VERSION);
-    bongo_cat_neo_pref_status(context, "about-version", version, tr(app,
-        "native.aboutDescription", "Standalone native application."));
-#ifdef BONGO_CAT_NEO_HAS_CUBISM
-    bongo_cat_neo_pref_status(context, "renderer", tr(app, "native.rendererCubism",
-        "Live2D renderer: Cubism Native"), "");
-#else
-    bongo_cat_neo_pref_status(context, "renderer", tr(app, "native.rendererDiagnostic",
-        "Live2D renderer: diagnostic mode"), "");
-#endif
+    bongo_cat_neo_pref_status(context, "about-version", version, "");
 }

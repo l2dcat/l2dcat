@@ -30,10 +30,12 @@ void bongo_cat_neo_ui_apply_theme(struct nk_context *context, bool dark);
 void bongo_cat_neo_ui_shell_draw(struct nk_context *context, float width,
     float height, bool dark);
 bool bongo_cat_neo_ui_header(struct nk_context *context, const char *title,
-    const struct nk_user_font *font, bool interactive, bool dark);
+    const struct nk_user_font *font, unsigned int logo_texture,
+    bool *title_clicked, bool interactive, bool dark);
 void bongo_cat_neo_ui_tabs(struct nk_context *context, const char *const *labels,
     int count, int *active, bool interactive, bool dark);
 bool bongo_cat_neo_ui_close_hit(float x, float y, float width);
+bool bongo_cat_neo_ui_title_link_hit(float x, float y, float width);
 bool bongo_cat_neo_ui_title_drag_hit(float x, float y, float width);
 
 #endif

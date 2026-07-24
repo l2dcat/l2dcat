@@ -43,7 +43,7 @@ void bongo_cat_neo_ui_shell_draw(struct nk_context *context, float width,
 static void signature(struct nk_command_buffer *canvas, struct nk_rect bounds,
     float title_width, BongoCatNeoUIPalette p) {
     float width = NK_CLAMP(86.0f, title_width + 16.0f, 188.0f);
-    float x = bounds.x + 24.0f, y = bounds.y + 52.0f;
+    float x = bounds.x + 62.0f, y = bounds.y + 52.0f;
     bool dark = p.surface.r < 128;
     struct nk_color leading = blend(p.accent, rgb(0xA8ECFF), dark ? 38 : 58);
     struct nk_color glow = blend(p.surface, leading, dark ? 24 : 34);
@@ -70,7 +70,8 @@ static struct nk_rect close_rect(struct nk_rect bounds) {
 }
 
 bool bongo_cat_neo_ui_header(struct nk_context *context, const char *title,
-    const struct nk_user_font *font, bool interactive, bool dark) {
+    const struct nk_user_font *font, unsigned int logo_texture,
+    bool *title_clicked, bool interactive, bool dark) {
     struct nk_rect bounds;
     nk_layout_row_dynamic(context, BONGO_CAT_NEO_UI_HEADER_HEIGHT, 1);
     if (nk_widget(&bounds, context) == NK_WIDGET_INVALID) return false;
@@ -78,15 +79,24 @@ bool bongo_cat_neo_ui_header(struct nk_context *context, const char *title,
     struct nk_command_buffer *canvas = nk_window_get_canvas(context);
     if (!font) font = context->style.font;
     float title_width = text_width(font, title);
-    struct nk_rect text = nk_rect(bounds.x + 28,
+    struct nk_rect logo = nk_rect(bounds.x + 17, bounds.y + 7, 36, 36);
+    if (logo_texture) {
+        struct nk_image image = nk_image_id((int)logo_texture);
+        nk_draw_image(canvas, logo, &image, nk_rgb(255, 255, 255));
+    }
+    struct nk_rect text = nk_rect(bounds.x + 62,
         bounds.y + (48.0f - font->height) * .5f,
-        NK_MIN(title_width + 1, bounds.w - 92), font->height);
-    struct nk_rect title_hit = nk_rect(bounds.x + 20, bounds.y + 12,
-        NK_MIN(title_width + 205, bounds.w - 92), 56);
+        NK_MIN(title_width + 1, bounds.w - 126), font->height);
+    struct nk_rect title_hit = nk_rect(bounds.x + 10, bounds.y + 4,
+        NK_MIN(title_width + 90, bounds.w - 92), 58);
     bool title_hover = interactive &&
         nk_input_is_mouse_hovering_rect(&context->input, title_hit);
     nk_draw_text(canvas, text, title, nk_strlen(title), font,
         nk_rgba(0, 0, 0, 0), title_hover ? rgb(0xF77DAA) : p.accent);
+    if (title_hover) bongo_cat_neo_ui_cursor_hover_rect(context, title_hit,
+        BONGO_CAT_NEO_UI_CURSOR_POINTER);
+    if (title_clicked) *title_clicked = interactive &&
+        nk_input_is_mouse_click_in_rect(&context->input, NK_BUTTON_LEFT, title_hit);
     signature(canvas, bounds, title_width, p);
     struct nk_rect close = close_rect(bounds);
     bool hover = interactive &&
@@ -151,8 +161,14 @@ bool bongo_cat_neo_ui_close_hit(float x, float y, float width) {
         y >= 20.0f && y <= 68.0f;
 }
 
+bool bongo_cat_neo_ui_title_link_hit(float x, float y, float width) {
+    return x >= 20.0f && x <= NK_MIN(320.0f, width - 82.0f) &&
+        y >= 14.0f && y <= 70.0f;
+}
+
 bool bongo_cat_neo_ui_title_drag_hit(float x, float y, float width) {
     return x >= BONGO_CAT_NEO_UI_MARGIN && x <= width - BONGO_CAT_NEO_UI_MARGIN &&
         y >= BONGO_CAT_NEO_UI_MARGIN && y <= BONGO_CAT_NEO_UI_HEADER_HEIGHT &&
-        !bongo_cat_neo_ui_close_hit(x, y, width);
+        !bongo_cat_neo_ui_close_hit(x, y, width) &&
+        !bongo_cat_neo_ui_title_link_hit(x, y, width);
 }

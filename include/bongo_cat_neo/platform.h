@@ -74,13 +74,12 @@ void bongo_cat_neo_platform_raise_window(SDL_Window *window);
 bool bongo_cat_neo_platform_set_geometry(BongoCatNeoPlatform *platform,
     int x, int y, int width, int height);
 void bongo_cat_neo_platform_begin_drag(BongoCatNeoPlatform *platform);
-bool bongo_cat_neo_platform_global_input_supported(void);
+bool bongo_cat_neo_platform_dynamic_hit_supported(void);
 void bongo_cat_neo_platform_set_tray_left_click(void *tray, BongoCatNeoTrayClick callback,
     void *userdata);
 bool bongo_cat_neo_platform_single_instance_begin(void);
 void bongo_cat_neo_platform_single_instance_end(void);
 BongoCatNeoResult bongo_cat_neo_platform_set_autostart(bool enabled, BongoCatNeoError *error);
-bool bongo_cat_neo_platform_is_elevated(void);
 BongoCatNeoMenuAction bongo_cat_neo_platform_context_menu(BongoCatNeoPlatform *platform,
     const BongoCatNeoMenuLabels *labels);
 BongoCatNeoResult bongo_cat_neo_platform_embedded_assets(const char *target, BongoCatNeoError *error);
