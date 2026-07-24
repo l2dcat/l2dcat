@@ -75,6 +75,9 @@ static bool open_window(BongoCatNeoPreferences *value) {
         SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
     int width, height;
     preferred_window_size(&width, &height);
+#ifdef _WIN32
+    SDL_SetHint(SDL_HINT_WINDOWS_ERASE_BACKGROUND_MODE, "0");
+#endif
     value->window = SDL_CreateWindow(BONGO_CAT_NEO_NAME, width, height, flags);
     if (!value->window) return false;
     SDL_SetWindowMinimumSize(value->window, BONGO_CAT_NEO_PREF_MIN_WIDTH,
@@ -126,6 +129,7 @@ static bool open_window(BongoCatNeoPreferences *value) {
     SDL_GL_SetSwapInterval(1);
     SDL_StartTextInput(value->window);
     value->render_dirty = true;
+    bongo_cat_neo_preferences_live_resize_install(value);
     SDL_GL_MakeCurrent(value->app->window, value->app->gl_context);
     return true;
 }
@@ -152,6 +156,7 @@ void bongo_cat_neo_preferences_show(BongoCatNeoPreferences *value) {
 }
 void bongo_cat_neo_preferences_close(BongoCatNeoPreferences *value) {
     if (!value || !value->window) return;
+    bongo_cat_neo_preferences_live_resize_uninstall(value);
     bongo_cat_neo_preferences_shortcut_cancel(value);
     SDL_GL_MakeCurrent(value->window, value->gl_context);
     if (value->input_active) bongo_cat_neo_preferences_input_end(value);

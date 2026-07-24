@@ -33,6 +33,8 @@ struct BongoCatNeoPreferences {
     bool notice_error;
     bool native_drag;
     bool chrome_dragging;
+    bool live_resize_active;
+    bool live_resize_rendering;
     int drag_window_x;
     int drag_window_y;
     float drag_pointer_x;
@@ -48,5 +50,7 @@ struct BongoCatNeoPreferences {
 
 int bongo_cat_neo_preferences_resolved_theme(const BongoCatNeoPreferences *value);
 void bongo_cat_neo_preferences_apply_theme(BongoCatNeoPreferences *value);
+void bongo_cat_neo_preferences_live_resize_install(BongoCatNeoPreferences *value);
+void bongo_cat_neo_preferences_live_resize_uninstall(BongoCatNeoPreferences *value);
 
 #endif

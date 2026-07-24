@@ -107,6 +107,7 @@ add_library(bongo_cat_neo_runtime STATIC
   src/ui/ui_catime.c src/ui/ui_catime_theme.c
   src/ui/ui_native_theme.c
   src/ui/preferences.c src/ui/preferences_render.c
+  src/ui/preferences_live_resize.c
   src/ui/preferences_dialog.c src/ui/preferences_import.c
   src/ui/preferences_notice.c
   src/ui/preferences_model.c
